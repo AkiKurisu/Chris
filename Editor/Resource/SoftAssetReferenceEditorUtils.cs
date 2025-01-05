@@ -20,6 +20,7 @@ namespace Chris.Resource.Editor
             // Cleanup cache since SoftObjectHandle is not valid anymore
             GlobalObjectManager.OnGlobalObjectCleanup += () => refDic.Clear();
         }
+        
         /// <summary>
         /// Optimized fast api for load asset from guid in editor
         /// </summary>
@@ -52,6 +53,7 @@ namespace Chris.Resource.Editor
             }
             return newObject;
         }
+        
         public static UObject GetAsset(SoftAssetReference softAssetReference)
         {
             if (string.IsNullOrEmpty(softAssetReference.Address)) return null;
@@ -62,6 +64,7 @@ namespace Chris.Resource.Editor
             }
             return asset;
         }
+        
         /// <summary>
         /// Create a soft asset reference from object
         /// </summary>
@@ -74,7 +77,7 @@ namespace Chris.Resource.Editor
             {
                 return new SoftAssetReference();
             }
-            var reference = new SoftAssetReference() { Guid = asset.GetAssetGUID(), Locked = true };
+            var reference = new SoftAssetReference { Guid = asset.GetAssetGUID(), Locked = true };
             var existingEntry = asset.ToAddressableAssetEntry();
             if (existingEntry != null)
             {
@@ -93,6 +96,7 @@ namespace Chris.Resource.Editor
             }
             return reference;
         }
+        
         /// <summary>
         /// Create a generic soft asset reference from object
         /// </summary>
@@ -103,6 +107,7 @@ namespace Chris.Resource.Editor
         {
             return (SoftAssetReference<T>)FromObject(asset, groupName);
         }
+        
         /// <summary>
         /// Move reference object safe in editor
         /// </summary>
@@ -115,6 +120,7 @@ namespace Chris.Resource.Editor
             reference.Address = newEntry.address;
         }
     }
+    
     public static class ResourceEditorUtils
     {
         public static AddressableAssetGroup GetOrCreateAssetGroup(string groupName)
@@ -127,6 +133,7 @@ namespace Chris.Resource.Editor
             infoSchema.IncludeAddressInCatalog = true;
             return group;
         }
+        
         public static AddressableAssetEntry AddAsset(this AddressableAssetGroup group, UObject asset, params string[] labels)
         {
             Assert.IsNotNull(group);
@@ -144,6 +151,7 @@ namespace Chris.Resource.Editor
             }
             return entry;
         }
+        
         public static AddressableAssetEntry ToAddressableAssetEntry(this UObject asset)
         {
             var entries = new List<AddressableAssetEntry>();
@@ -159,6 +167,7 @@ namespace Chris.Resource.Editor
             string path = AssetDatabase.GetAssetPath(asset);
             return entries.FirstOrDefault(x => x.AssetPath == path);
         }
+        
         public static AddressableAssetEntry FindAssetEntry(string address, Type assetType)
         {
             var entries = new List<AddressableAssetEntry>();

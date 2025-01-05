@@ -8,6 +8,7 @@ namespace Chris.Mod.Editor
     {
         public override string Description => "Use mod name for naming shader bundle and monoScript bundle." +
                 " If you build mod in source project and use project hash as name, use this builder for preventing bundle conflict.";
+        
         public override void Build(ModExportConfig exportConfig, string buildPath)
         {
             AddressableAssetSettingsDefaultObject.Settings.ShaderBundleNaming = ShaderBundleNaming.Custom;

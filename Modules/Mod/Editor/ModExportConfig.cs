@@ -6,15 +6,22 @@ namespace Chris.Mod.Editor
     public class ModExportConfig : ScriptableObject
     {
         public string authorName = "Default";
+        
         public string modName = "Mod";
+        
         public string version = "1.0";
+        
         [Multiline]
         public string description;
+        
         [Tooltip("Texture need to be set as Readable and format is RGBA32Bit")]
         public Texture2D modIcon;
+        
         public CustomBuilder[] customBuilders;
+        
         [HideInInspector]
         public string lastExportPath;
+        
         internal bool Validate()
         {
             if (string.IsNullOrEmpty(authorName)) return false;
@@ -22,12 +29,7 @@ namespace Chris.Mod.Editor
             if (string.IsNullOrEmpty(version)) return false;
             return true;
         }
-        public AddressableAssetGroup Group
-        {
-            get
-            {
-                return ModBuildUtility.GetOrCreateGroup($"Mod_{modName}");
-            }
-        }
+        
+        public AddressableAssetGroup Group => ModBuildUtility.GetOrCreateGroup($"Mod_{modName}");
     }
 }

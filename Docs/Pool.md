@@ -47,5 +47,3 @@ public class PoolingPerformanceTest : MonoBehaviour
 ```
 
 ![Pooling Performance](./Images/pooling-performance.png)
-
-The time taken will be longer than the original one. For prefabs with multiple components (such as bullets), the time taken may be shorter than the original one, depending on the heavy weight of `Awake()` and `Start()`.

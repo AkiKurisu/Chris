@@ -5,10 +5,13 @@ namespace Chris.Gameplay
     public abstract class ActorComponent : MonoBehaviour
     {
         private Actor _actor;
+
+        private Type _componentType;
         
         protected virtual void Awake()
         {
             RegisterActorComponent(this, GetComponent<Actor>());
+            _componentType = GetType();
         }
         
         public T GetTActor<T>() where T : Actor
@@ -39,6 +42,11 @@ namespace Chris.Gameplay
             }
             Actor.RegisterActorComponent(actor, component);
             component._actor = null;
+        }
+
+        public Type GetComponentType()
+        {
+            return _componentType;
         }
     }
 }

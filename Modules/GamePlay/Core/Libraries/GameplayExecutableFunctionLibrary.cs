@@ -48,6 +48,13 @@ namespace Chris.Gameplay
         {
             return GameWorld.Get().GetSubsystem(type);
         }
+        
+        [ExecutableFunction]
+        public static SubsystemBase Flow_GetOrCreateSubsystem(
+            [CeresMetadata(ExecutableFunction.RESOLVE_RETURN)] SerializedType<SubsystemBase> type)
+        {
+            return WorldSubsystem.GetOrCreate(type);
+        }
 
         #endregion
     }

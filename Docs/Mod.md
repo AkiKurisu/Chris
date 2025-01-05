@@ -6,6 +6,12 @@ Efficient mod workflow based on Addressables.
 
 - Build mods in other project for your game.
 
+## Version
+
+Unity 2022.3
+
+> TODO: Support Unity 6
+
 ## Runtime API
 
 ```C#

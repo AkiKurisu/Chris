@@ -57,6 +57,7 @@ namespace Chris.DataDriven
         {
             DataTables[name] = dataTable;
         }
+        
         protected void RegisterDataTable(DataTable dataTable)
         {
             DataTables[dataTable.name] = dataTable;
@@ -64,15 +65,11 @@ namespace Chris.DataDriven
         
         public DataTable GetDataTable(string name)
         {
-            if (DataTables.TryGetValue(name, out var table))
-            {
-                return table;
-            }
-            return null;
+            return DataTables.GetValueOrDefault(name);
         }
         
         /// <summary>
-        /// Async initiaize manager at start of game, loading your dataTables in this stage
+        /// Async initialize manager at start of game, loading your dataTables in this stage
         /// </summary>
         /// <param name="sync">Whether initialize in sync, useful when need blocking loading</param>
         /// <returns></returns>
@@ -84,13 +81,13 @@ namespace Chris.DataDriven
         private static TManager _instance;
         
         // Force implementation has this constructor
-        public DataTableManager(object _)
+        protected DataTableManager(object _)
         {
             _instance = (TManager)this;
         }
         
         /// <summary>
-        /// Get <see cref="{TManager}"/>
+        /// Get <see cref="DataTableManager{TManager}"/> singleton
         /// </summary>
         /// <returns></returns>
         public static TManager Get()

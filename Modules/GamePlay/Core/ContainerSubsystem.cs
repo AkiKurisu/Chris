@@ -16,7 +16,7 @@ namespace Chris.Gameplay
 
         public static ContainerSubsystem Get()
         {
-            return WorldSubsystem.GetOrCreate<ContainerSubsystem>();
+            return GameWorld.Get()?.GetSubsystem<ContainerSubsystem>();
         }
         
         /// <summary>
@@ -30,11 +30,11 @@ namespace Chris.Gameplay
             var type = typeof(T);
             if (!_typeCallbackMap.ContainsKey(type))
             {
-                _typeCallbackMap[type] = (obj) => callback((T)obj);
+                _typeCallbackMap[type] = obj => callback((T)obj);
             }
             else
             {
-                _typeCallbackMap[type] += (obj) => callback((T)obj);
+                _typeCallbackMap[type] += obj => callback((T)obj);
             }
         }
         

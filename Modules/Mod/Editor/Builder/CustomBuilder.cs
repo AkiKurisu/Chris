@@ -4,6 +4,7 @@ namespace Chris.Mod.Editor
     public abstract class CustomBuilder : ScriptableObject, IModBuilder
     {
         public virtual string Description { get; }
+        
         public virtual void Build(ModExportConfig exportConfig, string buildPath)
         {
 

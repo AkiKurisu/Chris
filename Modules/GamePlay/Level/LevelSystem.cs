@@ -75,7 +75,7 @@ namespace Chris.Gameplay.Level
     }
     public static class LevelSystem
     {
-        public static LevelReference EmptyLevel = new() { Scenes = Array.Empty<LevelSceneRow>() };
+        public static readonly LevelReference EmptyLevel = new() { Scenes = Array.Empty<LevelSceneRow>() };
         
         public static LevelReference LastLevel { get; private set; } = EmptyLevel;
         
@@ -84,7 +84,7 @@ namespace Chris.Gameplay.Level
         
         private static SceneInstance _mainScene;
 
-        public async static UniTask LoadAsync(string levelName)
+        public static async UniTask LoadAsync(string levelName)
         {
             var reference = FindLevel(levelName);
             if (reference != null)
@@ -93,7 +93,7 @@ namespace Chris.Gameplay.Level
             }
         }
 
-        public async static UniTask LoadAsync(LevelReference reference)
+        public static async UniTask LoadAsync(LevelReference reference)
         {
             LastLevel = CurrentLevel;
             CurrentLevel = reference;

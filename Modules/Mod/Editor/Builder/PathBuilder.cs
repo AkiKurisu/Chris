@@ -13,7 +13,9 @@ namespace Chris.Mod.Editor
     public class PathBuilder : IModBuilder
     {
         private bool buildRemoteCatalog;
+        
         private Dictionary<BundledAssetGroupSchema, bool> includeInBuildMap;
+        
         public void Build(ModExportConfig exportConfig, string buildPath)
         {
             //Force enable remote catalog
@@ -45,6 +47,7 @@ namespace Chris.Mod.Editor
                 settings.profileSettings.SetValue(settings.activeProfileId, "Remote.BuildPath", buildPath);
             }
         }
+        
         public void Cleanup(ModExportConfig exportConfig)
         {
             //Reset build setting
@@ -101,6 +104,7 @@ namespace Chris.Mod.Editor
                 File.Delete(hashPath);
             }
         }
+        
         public void Write(ref ModInfo modInfo) { }
     }
 }

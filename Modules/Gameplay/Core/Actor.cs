@@ -24,8 +24,6 @@ namespace Chris.Gameplay
         [ImplementableEvent]
         protected virtual void Awake()
         {
-            _graph = GetFlowGraph();
-            _graph.Compile();
             RegisterActor(this);
             ProcessEvent();
         }
@@ -71,6 +69,7 @@ namespace Chris.Gameplay
         {
             ProcessEvent();
             UnregisterActor(this);
+            _graph?.Dispose();
             _actorComponents.Clear();
         }
         
@@ -178,7 +177,7 @@ namespace Chris.Gameplay
         {
             foreach (var component in _actorComponents)
             {
-                if (component.GetType()  == type) return component;
+                if (component.GetComponentType()== type) return component;
             }
             return null;
         }

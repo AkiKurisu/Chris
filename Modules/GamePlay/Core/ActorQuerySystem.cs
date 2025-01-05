@@ -30,7 +30,7 @@ namespace Chris.Gameplay
         
         private readonly List<Actor> _actors = new();
         
-        private static readonly ProfilerMarker TickPM = new("ActorQuerySystem.Tick");
+        private static readonly ProfilerMarker TickProfilerMarker = new("ActorQuerySystem.Tick");
         
         protected override void Initialize()
         {
@@ -39,7 +39,7 @@ namespace Chris.Gameplay
         
         public override void Tick()
         {
-            using (TickPM.Auto())
+            using (TickProfilerMarker.Auto())
             {
                 if (IsActorsDirty)
                 {

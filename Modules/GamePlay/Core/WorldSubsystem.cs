@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Ceres.Graph.Flow.Annotations;
 using R3;
 using UnityEngine;
 namespace Chris.Gameplay
@@ -174,6 +175,7 @@ namespace Chris.Gameplay
         /// Get attached world
         /// </summary>
         /// <returns></returns>
+        [ExecutableFunction]
         public GameWorld GetWorld() => _world;
 
         /// <summary>
@@ -207,6 +209,7 @@ namespace Chris.Gameplay
             return _world.ActorsInWorld.Count;
         }
     }
+    
     /// <summary>
     /// Subsystem bound to an actor world.
     /// </summary>
@@ -220,7 +223,7 @@ namespace Chris.Gameplay
         public virtual bool CanCreate(GameWorld world) => true;
 
         /// <summary>
-        /// Get or create system if not registered.
+        /// Get or create system if not registered
         /// </summary>
         /// <param name="world"></param>
         /// <typeparam name="T"></typeparam>
@@ -239,15 +242,46 @@ namespace Chris.Gameplay
             world.RegisterSubsystem(system);
             return system;
         }
+        
+        /// <summary>
+        /// Get or create system if not registered
+        /// </summary>
+        /// <param name="world"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static WorldSubsystem GetOrCreate(GameWorld world, Type type)
+        {
+            if (!GameWorld.IsValid()) return null;
+            
+            var system = (WorldSubsystem)world.GetSubsystem(type);
+            if (system != null) return system;
+            
+            system = (WorldSubsystem)Activator.CreateInstance(type);
+            if (!system.CanCreate(world)) return null;
+            
+            system.SetWorld(world);
+            world.RegisterSubsystem(system);
+            return system;
+        }
 
         /// <summary>
-        /// Get or create system if not registered.
+        /// Get or create system if not registered
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public static T GetOrCreate<T>() where T : WorldSubsystem, new()
         {
             return !GameWorld.IsValid() ? null : GetOrCreate<T>(GameWorld.Get());
+        }
+
+        /// <summary>
+        /// Get or create system if not registered
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static WorldSubsystem GetOrCreate(Type type)
+        {
+            return !GameWorld.IsValid() ? null : GetOrCreate(GameWorld.Get(), type);
         }
     }
 }

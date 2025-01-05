@@ -65,7 +65,6 @@ namespace Chris.Gameplay
     /// </summary>
     public class GameWorld : MonoBehaviour
     {
-        
         private ulong _serialNum = 1;
         
         private const int InitialCapacity = 100;

@@ -7,6 +7,7 @@ using UnityEngine;
 namespace Chris.DataDriven
 {
     public interface IDataTableRow { }
+    
     [Serializable]
     internal class DataTableRow
     {
@@ -18,13 +19,16 @@ namespace Chris.DataDriven
             RowData = SerializedObject<IDataTableRow>.FromObject(row);
         }
     }
+    
     [CreateAssetMenu(fileName = "DataTable", menuName = "Chris/DataTable")]
     public class DataTable : ScriptableObject
     {
         [SerializeField]
         private SerializedType<IDataTableRow> m_rowType;
+        
         [SerializeField]
         private DataTableRow[] m_rows;
+        
         /// <summary>
         /// Get default row struct
         /// </summary>
@@ -33,6 +37,7 @@ namespace Chris.DataDriven
         {
             return m_rowType.GetObject();
         }
+        
         /// <summary>
         /// Get row struct type
         /// </summary>
@@ -41,6 +46,7 @@ namespace Chris.DataDriven
         {
             return m_rowType;
         }
+        
         /// <summary>
         /// Get data rows from table
         /// </summary>
@@ -48,6 +54,7 @@ namespace Chris.DataDriven
         {
             return m_rows.Select(x => x.RowData.GetObject() as T).ToArray();
         }
+        
         /// <summary>
         /// Get data rows from table
         /// </summary>
@@ -56,6 +63,18 @@ namespace Chris.DataDriven
         {
             return m_rows.Select(x => x.RowData.GetObject()).ToArray();
         }
+        
+        /// <summary>
+        /// Get data rows from table by predicate
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public T[] GetRows<T>(Predicate<T> predicate) where T: class, IDataTableRow
+        {
+            return m_rows.Select(x => x.RowData.GetObject()).OfType<T>().Where(x=> predicate(x)).ToArray();
+        }
+        
         /// <summary>
         /// Get data row from table
         /// </summary>
@@ -64,6 +83,7 @@ namespace Chris.DataDriven
         {
             return m_rows[index].RowData.GetObject() as T;
         }
+        
         /// <summary>
         /// Get data row from table by index
         /// </summary>
@@ -73,10 +93,11 @@ namespace Chris.DataDriven
         {
             return m_rows[index].RowData.GetObject();
         }
+
         /// <summary>
         /// Get data row from table by RowId
         /// </summary>
-        /// <param name="index"></param>
+        /// <param name="rowId"></param>
         /// <returns></returns>
         public T GetRow<T>(string rowId) where T : class, IDataTableRow
         {
@@ -89,10 +110,29 @@ namespace Chris.DataDriven
             }
             return null;
         }
+        
+        /// <summary>
+        /// Get data row from table by predicate
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public T GetRow<T>(Predicate<T> predicate) where T: class, IDataTableRow
+        {
+            foreach (var row in m_rows)
+            {
+                if (row is T tRow && predicate(tRow))
+                {
+                    return tRow;
+                }
+            }
+            return null;
+        }
+
         /// <summary>
         /// Get data row from table by RowId
         /// </summary>
-        /// <param name="index"></param>
+        /// <param name="rowId"></param>
         /// <returns></returns>
         public IDataTableRow GetRow(string rowId)
         {
@@ -105,70 +145,93 @@ namespace Chris.DataDriven
             }
             return null;
         }
+        
         /// <summary>
         /// Add a data row to the table
         /// </summary>
-        /// <param name="RowName"></param>
+        /// <param name="rowId"></param>
         /// <param name="row"></param>
         /// <returns></returns>
-        public bool AddRow(string RowName, IDataTableRow row)
+        public bool AddRow(string rowId, IDataTableRow row)
         {
             var rowKeys = m_rows.Select(x => x.RowId).ToList();
-            if (rowKeys.Contains(RowName))
+            if (rowKeys.Contains(rowId))
             {
                 return false;
             }
-            ArrayUtils.Add(ref m_rows, new DataTableRow(RowName, row));
+            ArrayUtils.Add(ref m_rows, new DataTableRow(rowId, row));
             return true;
         }
+        
         /// <summary>
         /// Update a data row from the table
         /// </summary>
-        /// <param name="RowName"></param>
+        /// <param name="rowId"></param>
         /// <param name="newRow"></param>
         /// <returns></returns>
-        public bool UpdateRow(string RowName, IDataTableRow newRow)
+        public bool UpdateRow(string rowId, IDataTableRow newRow)
         {
             var internalMap = GetInternalRowMap();
-            if (!internalMap.TryGetValue(RowName, out var row))
+            if (!internalMap.TryGetValue(rowId, out var row))
             {
                 return false;
             }
             row.RowData = SerializedObject<IDataTableRow>.FromObject(newRow);
             return true;
         }
+        
+        /// <summary>
+        /// Add or update a data row from the table
+        /// </summary>
+        /// <param name="rowId"></param>
+        /// <param name="newRow"></param>
+        /// <returns></returns>
+        public void AddOrUpdateRow(string rowId, IDataTableRow newRow)
+        {
+            var internalMap = GetInternalRowMap();
+            if (!internalMap.TryGetValue(rowId, out var row))
+            {
+                ArrayUtils.Add(ref m_rows, new DataTableRow(rowId, newRow));
+                return;
+            }
+            row.RowData = SerializedObject<IDataTableRow>.FromObject(newRow);
+        }
+        
         /// <summary>
         /// Remove data rows from the table
         /// </summary>
-        /// <param name="rowIndexs"></param>
-        public void RemoveRow(List<int> rowIndexs)
+        /// <param name="rowIndex"></param>
+        public void RemoveRow(List<int> rowIndex)
         {
-            m_rows = m_rows.Where((x, id) => !rowIndexs.Contains(id)).ToArray();
+            m_rows = m_rows.Where((x, id) => !rowIndex.Contains(id)).ToArray();
         }
+        
         /// <summary>
         /// Remove all data rows from the table
         /// </summary>
         public void RemoveAllRows()
         {
-            m_rows = new DataTableRow[0];
+            m_rows = Array.Empty<DataTableRow>();
         }
+        
         /// <summary>
         /// Insert a row to dataTable
         /// </summary>
         /// <param name="index"></param>
-        /// <param name="RowName"></param>
+        /// <param name="rowId"></param>
         /// <param name="row"></param>
         /// <returns></returns>
-        public bool InsertRow(int index, string RowName, IDataTableRow row)
+        public bool InsertRow(int index, string rowId, IDataTableRow row)
         {
             var rowKeys = m_rows.Select(x => x.RowId).ToList();
-            if (rowKeys.Contains(RowName))
+            if (rowKeys.Contains(rowId))
             {
                 return false;
             }
-            ArrayUtils.Insert(ref m_rows, index, new DataTableRow(RowName, row));
+            ArrayUtils.Insert(ref m_rows, index, new DataTableRow(rowId, row));
             return true;
         }
+        
         /// <summary>
         /// Reorder a row
         /// </summary>
@@ -178,6 +241,7 @@ namespace Chris.DataDriven
         {
             ArrayUtils.Reorder(ref m_rows, fromIndex, toIndex);
         }
+        
         /// <summary>
         /// Get all data rows as map with RowId as key
         /// </summary>
@@ -186,6 +250,7 @@ namespace Chris.DataDriven
         {
             return m_rows.ToDictionary(x => x.RowId, x => x.RowData.GetObject());
         }
+        
         #region Internal API
         /// <summary>
         /// Get editable row map
@@ -195,6 +260,7 @@ namespace Chris.DataDriven
         {
             return m_rows.ToDictionary(x => x.RowId, x => x);
         }
+        
         /// <summary>
         /// Internal use only, since we should ensure incomming row type is valid
         /// </summary>
@@ -203,6 +269,7 @@ namespace Chris.DataDriven
         {
             m_rowType = SerializedType<IDataTableRow>.FromType(rowStructType);
         }
+        
         /// <summary>
         /// Get a valid new row id
         /// </summary>
@@ -218,6 +285,7 @@ namespace Chris.DataDriven
             }
             return id;
         }
+        
         /// <summary>
         /// Update dataTable struct and rows
         /// </summary>
@@ -230,6 +298,7 @@ namespace Chris.DataDriven
                 m_rows[i].RowData.InternalUpdate();
             }
         }
+        
         /// <summary>
         /// Clear editor object cache.
         /// </summary>
@@ -243,6 +312,7 @@ namespace Chris.DataDriven
             }
 #endif
         }
+        
         /// <summary>
         /// Get data rows from table without modify default object
         /// </summary>
@@ -250,6 +320,7 @@ namespace Chris.DataDriven
         {
             return m_rows.Select(x => x.RowData.NewObject() as T).ToArray();
         }
+        
         /// <summary>
         /// Get data rows from table without modify default object
         /// </summary>
@@ -258,6 +329,7 @@ namespace Chris.DataDriven
         {
             return m_rows.Select(x => x.RowData.NewObject()).ToArray();
         }
+        
         /// <summary>
         /// Get all data rows as map with RowId as key without modify default object
         /// </summary>
