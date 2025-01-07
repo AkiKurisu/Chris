@@ -1,13 +1,14 @@
 using System;
 using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
+using Chris.Tasks;
 using UnityEngine;
 namespace Chris.Gameplay.Animations
 {
     public partial class AnimationProxy
     {
+        /* Following API only works on default layer */
         #region Flow API
-        /* Only works on default layer */
         
         [ExecutableFunction]
         public void Flow_LoadAnimator(RuntimeAnimatorController runtimeAnimator, float blendInTime)
@@ -22,6 +23,19 @@ namespace Chris.Gameplay.Animations
         }
         
         [ExecutableFunction]
+        public void Flow_PlayAnimation(
+            AnimationClip animationClip, 
+            float blendInTime, 
+            float blendOutTime)
+        {
+            CreateSequenceBuilder()
+                .Append(animationClip, blendInTime)
+                .SetBlendOut(blendOutTime)
+                .Build()
+                .Run();
+        }
+        
+        [ExecutableFunction]
         public void Flow_PlayAnimationWithCompleteEvent(
             AnimationClip animationClip, 
             float blendInTime, 
@@ -32,8 +46,9 @@ namespace Chris.Gameplay.Animations
             CreateSequenceBuilder()
                 .Append(animationClip, blendInTime)
                 .SetBlendOut(blendOutTime)
-                .AppendCallBack(_ => onCompleteAction())
-                .Build();
+                .AppendCallBack(_ => onCompleteAction?.Invoke())
+                .Build()
+                .Run();
         }
         
         [ExecutableFunction]
