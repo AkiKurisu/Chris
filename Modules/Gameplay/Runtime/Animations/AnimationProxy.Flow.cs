@@ -1,3 +1,4 @@
+using System;
 using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using UnityEngine;
@@ -27,10 +28,11 @@ namespace Chris.Gameplay.Animations
             float blendOutTime, 
             EventDelegate onComplete)
         {
+            Action onCompleteAction = onComplete;
             CreateSequenceBuilder()
                 .Append(animationClip, blendInTime)
                 .SetBlendOut(blendOutTime)
-                .AppendCallBack(_ => onComplete.Invoke(animationClip))
+                .AppendCallBack(_ => onCompleteAction())
                 .Build();
         }
         
