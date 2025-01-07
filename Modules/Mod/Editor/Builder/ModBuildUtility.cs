@@ -15,23 +15,27 @@ namespace Chris.Mod.Editor
         /// <param name="exportConfig"></param>
         /// <param name="buildPath"></param>
         void Build(ModExportConfig exportConfig, string buildPath);
+        
         /// <summary>
         /// Write meta data
         /// </summary>
         /// <param name="modInfo"></param>
         void Write(ref ModInfo modInfo);
+        
         /// <summary>
         /// Clean after build
         /// </summary>
         /// <param name="exportConfig"></param>
         void Cleanup(ModExportConfig exportConfig);
     }
+    
     public class ModBuildUtility
     {
         public static string GetAssetGUID(Object asset)
         {
             return AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(asset));
         }
+        
         public static string AddAssetToGroupSimplify(AddressableAssetGroup group, List<AddressableAssetEntry> entries, Object asset, params string[] labels)
         {
             if (asset == null) return null;
@@ -52,6 +56,7 @@ namespace Chris.Mod.Editor
             entries.Add(entry);
             return address;
         }
+        
         public static string AddAssetToGroup(AddressableAssetGroup group, List<AddressableAssetEntry> entries, Object asset, params string[] labels)
         {
             if (asset == null) return null;
@@ -70,12 +75,14 @@ namespace Chris.Mod.Editor
             entries.Add(entry);
             return entry.address;
         }
+        
         public static AddressableAssetGroup GetOrCreateGroup(string groupName)
         {
             var schemas = AddressableAssetSettingsDefaultObject.Settings.DefaultGroup.Schemas;
             return AddressableAssetSettingsDefaultObject.Settings.FindGroup(groupName)
                 ?? AddressableAssetSettingsDefaultObject.Settings.CreateGroup(groupName, false, false, true, schemas);
         }
+        
         public static void CleanUpAssetGroup(AddressableAssetGroup assetGroup)
         {
             foreach (AddressableAssetEntry entry in assetGroup.entries.ToList())
