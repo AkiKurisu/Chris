@@ -5,7 +5,7 @@ using Chris.Resource;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
-namespace Chris.Audios
+namespace Chris.Gameplay.Audios
 {
     /// <summary>
     /// Command structure of character voice

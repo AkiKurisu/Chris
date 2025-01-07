@@ -3,11 +3,20 @@ using Chris.Events;
 using Chris.Schedulers;
 using UnityEngine;
 using UnityEngine.Animations;
-namespace Chris.Animations
+namespace Chris.Gameplay.Animations
 {
-    public class AnimationNotifyEvent : EventBase<AnimationNotifyEvent>
+    /// <summary>
+    /// Category for AnimationProxy events
+    /// </summary>
+    public interface IAnimationProxyEvent
+    {
+        
+    }
+    
+    public class AnimationNotifyEvent : EventBase<AnimationNotifyEvent>, IAnimationProxyEvent
     {
         public AnimationNotifier Notifier { get; private set; }
+        
         public static AnimationNotifyEvent GetPooled(AnimationNotifier notifier)
         {
             var evt = GetPooled();
@@ -15,6 +24,7 @@ namespace Chris.Animations
             return evt;
         }
     }
+    
     /// <summary>
     /// Class for define an notifier for animation proxy montage
     /// </summary>
@@ -23,25 +33,30 @@ namespace Chris.Animations
         /// <summary>
         /// Notify name
         /// </summary>
-        public string Name;
+        public readonly string Name;
+        
         /// <summary>
         /// Animator layer to observe if montage use animator controller
         /// </summary>
-        public int Layer = 0;
+        public readonly int Layer;
+        
         /// <summary>
         /// Normalized time to observe, do not observe time if less than zero
         /// </summary>
-        public float NormalizedTime = -1;
+        public readonly float NormalizedTime = -1;
+        
         public AnimationNotifier()
         {
 
         }
+        
         public AnimationNotifier(string name, int layer = 0, float normalizedTime = -1)
         {
             Name = name;
             Layer = layer;
             NormalizedTime = normalizedTime;
         }
+        
         public virtual bool CanNotify(AnimationProxy animationProxy, LayerHandle layerHandle, float lastTime)
         {
             if (NormalizedTime < 0) return true;
@@ -68,21 +83,20 @@ namespace Chris.Animations
     /// </summary>
     public class AnimationNotifier_AnimationState : AnimationNotifier
     {
-        public int StateHash;
-        public AnimationNotifier_AnimationState()
-        {
+        public readonly int StateHash;
 
-        }
         public AnimationNotifier_AnimationState(string name, string stateName, int layer = 0, float normalizedTime = -1)
         : base(name, layer, normalizedTime)
         {
             StateHash = Animator.StringToHash(stateName);
         }
+        
         public AnimationNotifier_AnimationState(string name, int stateHash, int layer = 0, float normalizedTime = -1)
         : base(name, layer, normalizedTime)
         {
             StateHash = stateHash;
         }
+        
         public override bool CanNotify(AnimationProxy animationProxy, LayerHandle layerHandle, float lastTime)
         {
             var playable = animationProxy.GetLeafPlayable(layerHandle);
@@ -95,17 +109,22 @@ namespace Chris.Animations
                                  .GetCurrentAnimatorStateInfo(Layer).shortNameHash == StateHash;
         }
     }
+    
     public partial class AnimationProxy
     {
         private class AnimationNotifierContext
         {
             public AnimationNotifier Notifier;
+            
             public LayerHandle LayerHandle;
+            
             public float LastTime;
         }
-        private class AnimationPreStopEvent : EventBase<AnimationPreStopEvent>
+        
+        private class AnimationPreStopEvent : EventBase<AnimationPreStopEvent>, IAnimationProxyEvent
         {
             public float BlendOutDuration { get; private set; }
+            
             public static AnimationPreStopEvent GetPooled(float blendOutDuration)
             {
                 var evt = GetPooled();
@@ -113,66 +132,76 @@ namespace Chris.Animations
                 return evt;
             }
         }
+        
         public class AnimationEventHandler : CallbackEventHandler
         {
             public override IEventCoordinator Root => EventSystem.Instance;
+            
             public override void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default)
             {
                 e.Target = this;
                 EventSystem.Instance.Dispatch(e, dispatchMode, MonoDispatchType.LateUpdate);
             }
+            
             public void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default, MonoDispatchType monoDispatchType = MonoDispatchType.LateUpdate)
             {
                 e.Target = this;
                 EventSystem.Instance.Dispatch(e, dispatchMode, monoDispatchType);
             }
         }
-        private readonly List<AnimationNotifierContext> notifierContexts = new();
-        private SchedulerHandle eventTickHandle;
-        private AnimationEventHandler eventHandler;
+        
+        private readonly List<AnimationNotifierContext> _notifierContexts = new();
+        
+        private SchedulerHandle _eventTickHandle;
+        
+        private AnimationEventHandler _eventHandler;
+        
         public AnimationEventHandler GetEventHandler()
         {
-            if (eventHandler == null)
+            if (_eventHandler == null)
             {
-                eventHandler = new AnimationEventHandler();
-                eventHandler.RegisterCallback<AnimationPreStopEvent>(DoStop);
+                _eventHandler = new AnimationEventHandler();
+                _eventHandler.RegisterCallback<AnimationPreStopEvent>(DoStop);
             }
-            return eventHandler;
+            return _eventHandler;
         }
+        
         public void AddNotifier(AnimationNotifier animationNotifier, LayerHandle layerHandle = default)
         {
-            notifierContexts.Add(new AnimationNotifierContext()
+            _notifierContexts.Add(new AnimationNotifierContext()
             {
                 Notifier = animationNotifier,
                 LayerHandle = layerHandle,
                 LastTime = 1
             });
-            if (!eventTickHandle.IsValid())
+            if (!_eventTickHandle.IsValid())
             {
-                Scheduler.WaitFrame(ref eventTickHandle, 1, TickEvents, TickFrame.LateUpdate, true);
+                Scheduler.WaitFrame(ref _eventTickHandle, 1, TickEvents, TickFrame.LateUpdate, true);
             }
         }
+        
         public void RemoveNotifier(string Name, LayerHandle layerHandle = default)
         {
             int inLayerIndex = GetLayerIndex(layerHandle);
-            for (int i = notifierContexts.Count - 1; i >= 0; i--)
+            for (int i = _notifierContexts.Count - 1; i >= 0; i--)
             {
-                if (notifierContexts[i].Notifier.Name == Name && GetLayerIndex(notifierContexts[i].LayerHandle) == inLayerIndex)
+                if (_notifierContexts[i].Notifier.Name == Name && GetLayerIndex(_notifierContexts[i].LayerHandle) == inLayerIndex)
                 {
-                    notifierContexts.RemoveAt(i);
+                    _notifierContexts.RemoveAt(i);
                     break;
                 }
             }
-            if (notifierContexts.Count == 0)
+            if (_notifierContexts.Count == 0)
             {
-                eventTickHandle.Cancel();
+                _eventTickHandle.Cancel();
             }
         }
+        
         private void TickEvents(int frame)
         {
-            for (int i = 0; i < notifierContexts.Count; ++i)
+            for (int i = 0; i < _notifierContexts.Count; ++i)
             {
-                var context = notifierContexts[i];
+                var context = _notifierContexts[i];
                 var notifier = context.Notifier;
                 float normalizedTime = GetLeafAnimationNormalizedTime(context.LayerHandle, notifier.Layer);
 
@@ -185,19 +214,23 @@ namespace Chris.Animations
                 context.LastTime = normalizedTime;
             }
         }
+        
         public void RegisterNotifyCallback(EventCallback<AnimationNotifyEvent> callback)
         {
             GetEventHandler().RegisterCallback(callback, default);
         }
+        
         public void UnregisterNotifyCallback(EventCallback<AnimationNotifyEvent> callback)
         {
             GetEventHandler().UnregisterCallback(callback, default);
         }
-        private void DispatchStopEvent(float blendoutDuration)
+        
+        private void DispatchStopEvent(float blendOutDuration)
         {
-            using var evt = AnimationPreStopEvent.GetPooled(blendoutDuration);
+            using var evt = AnimationPreStopEvent.GetPooled(blendOutDuration);
             GetEventHandler().SendEvent(evt, monoDispatchType: MonoDispatchType.Update);
         }
+        
         private void DoStop(AnimationPreStopEvent preStopEvent)
         {
             if (RestoreAnimatorControllerOnStop && Animator.runtimeAnimatorController != SourceController)

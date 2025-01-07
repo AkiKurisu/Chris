@@ -5,7 +5,6 @@ using Ceres.Graph.Flow.Utilities;
 using Chris.Schedulers;
 using Chris.Serialization;
 using UnityEngine.Scripting;
-using UObject = UnityEngine.Object;
 namespace Chris.Gameplay
 {
     /// <summary>
@@ -16,19 +15,22 @@ namespace Chris.Gameplay
     {
         #region Scheduler
 
-        [ExecutableFunction(IsSelfTarget = true), CeresLabel("Schedule Timer by Event")]
-        public static SchedulerHandle Flow_SchedulerDelay(UObject context, 
-            float delaySeconds, EventDelegate<float> onUpdate, EventDelegate onComplete)
+        [ExecutableFunction, CeresLabel("Schedule Timer by Event")]
+        public static SchedulerHandle Flow_SchedulerDelay(
+            float delaySeconds, EventDelegate onComplete, EventDelegate<float> onUpdate, 
+            TickFrame tickFrame, bool isLooped, bool ignoreTimeScale)
         {
-            var handle = Scheduler.Delay(delaySeconds, onUpdate: onUpdate?.Create(context), onComplete: onComplete?.Create(context));
+            var handle = Scheduler.Delay(delaySeconds,onComplete,onUpdate,
+                tickFrame, isLooped, ignoreTimeScale);
             return handle;
         }
         
-        [ExecutableFunction(IsSelfTarget = true), CeresLabel("Schedule FrameCounter by Event")]
-        public static SchedulerHandle Flow_SchedulerWaitFrame(UObject context, 
-            int frame, EventDelegate<int> onUpdate, EventDelegate onComplete)
+        [ExecutableFunction, CeresLabel("Schedule FrameCounter by Event")]
+        public static SchedulerHandle Flow_SchedulerWaitFrame(
+            int frame, EventDelegate onComplete, EventDelegate<int> onUpdate,
+            TickFrame tickFrame, bool isLooped)
         {
-            var handle = Scheduler.WaitFrame(frame, onUpdate: onUpdate?.Create(context), onComplete: onComplete?.Create(context));
+            var handle = Scheduler.WaitFrame(frame, onComplete, onUpdate, tickFrame, isLooped);
             return handle;
         }
         

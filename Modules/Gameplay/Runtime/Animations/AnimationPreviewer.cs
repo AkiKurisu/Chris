@@ -1,5 +1,5 @@
 using UnityEngine;
-namespace Chris.Animations
+namespace Chris.Gameplay.Animations
 {
     /// <summary>
     /// MonoBehaviour to preview animation pose using <see cref="AnimationProxy"/>

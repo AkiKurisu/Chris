@@ -3,30 +3,35 @@ using Chris.Schedulers;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
-namespace Chris.Animations
+namespace Chris.Gameplay.Animations
 {
     public partial class AnimationProxy
     {
         public class AnimationPlayableNode : IDisposable
         {
             public PlayableGraph Graph { get; }
+            
             public Playable Playable { get; }
+            
             /// <summary>
             /// Get leaf animator controller, since we can not access to Playable's animator controller, 
             /// we cache playable source controller in constructor.         
             /// </summary>
             /// <value></value>
             public RuntimeAnimatorController AnimatorController { get; }
+            
             public AnimationPlayableNode(Playable playable, RuntimeAnimatorController sourceController = null)
             {
                 Graph = playable.GetGraph();
                 Playable = playable;
                 AnimatorController = sourceController;
             }
+            
             public bool IsValid()
             {
                 return Playable.IsValid();
             }
+            
             /// <summary>
             /// Destroy playable recursively
             /// </summary>
@@ -48,11 +53,15 @@ namespace Chris.Animations
 
             }
         }
+        
         public class AnimationMontageNode : AnimationPlayableNode
         {
             public AnimationMontageNode Parent;
+            
             public AnimationPlayableNode Child; /* Can be montage or normal playable node */
+            
             public SchedulerHandle BlendHandle;
+            
             public AnimationMontageNode(Playable playable, RuntimeAnimatorController runtimeAnimatorController) : base(playable, runtimeAnimatorController)
             {
 
@@ -66,6 +75,7 @@ namespace Chris.Animations
             {
                 return Parent == null;
             }
+            
             /// <summary>
             /// Whether node can be shrink to optimize graph structure when parent is completly blend out
             /// </summary>
@@ -79,6 +89,7 @@ namespace Chris.Animations
                 // Not complete blend yet
                 return Playable.GetInputWeight(1) == 1 && Playable.GetInputWeight(0) == 0;
             }
+            
             /// <summary>
             /// Dispose playable resources recursively
             /// </summary>
@@ -89,8 +100,9 @@ namespace Chris.Animations
                 Child = null;
                 Parent = null;
             }
+            
             /// <summary>
-            /// Crossfade parent to child by weight
+            /// Cross-fade parent to child by weight
             /// </summary>
             /// <param name="weight"></param>
             public virtual void Blend(float weight)
@@ -98,8 +110,9 @@ namespace Chris.Animations
                 Playable.SetInputWeight(0, 1 - weight);
                 Playable.SetInputWeight(1, weight);
             }
+            
             /// <summary>
-            /// Get cross fade current weight
+            /// Get cross-fade current weight
             /// </summary>
             /// <returns></returns>
             public virtual float GetBlendWeight()
@@ -108,6 +121,7 @@ namespace Chris.Animations
                     return 1 - Playable.GetInputWeight(0);
                 return 0;
             }
+            
             /// <summary>
             /// Shrink link list to release not used playables
             /// </summary>
@@ -128,29 +142,37 @@ namespace Chris.Animations
                 Destroy();
                 return parent.Shrink();
             }
+            
             private void SetChild(AnimationPlayableNode newChild)
             {
                 Child = newChild;
                 Graph.Disconnect(Playable, 1);
                 Graph.Connect(newChild.Playable, 0, Playable, 1);
             }
+            
             public void ScheduleBlendIn(float duration, Action callBack = null)
             {
                 Scheduler.Delay(ref BlendHandle, duration, () => { Blend(1); callBack?.Invoke(); }, x => Blend(x / duration));
             }
+            
             public void ScheduleBlendOut(float duration, Action callBack = null)
             {
                 Scheduler.Delay(ref BlendHandle, duration, () => { Blend(0); callBack?.Invoke(); }, x => Blend(1 - x / duration));
             }
+            
             public static AnimationMontageNode operator |(AnimationMontageNode left, AnimationPlayableNode right)
             {
                 return CreateMontage(left, right);
             }
+            
             #region Factory
+
             /// <summary>
             /// Create layer montage
             /// </summary>
-            /// <param name="sourcePlayable"></param>
+            /// <param name="source"></param>
+            /// <param name="context"></param>
+            /// <param name="contexts"></param>
             /// <returns></returns>
             public static AnimationLayerMontageNode CreateLayerMontage(AnimationMontageNode source, LayerContext context, LayerContext[] contexts)
             {
@@ -196,10 +218,11 @@ namespace Chris.Animations
                     Children = children
                 };
             }
+
             /// <summary>
             /// Create blendable montage with child only, parent is out of proxy scope
             /// </summary>
-            /// <param name="sourcePlayable"></param>
+            /// <param name="source"></param>
             /// <returns></returns>
             public static AnimationMontageNode CreateChildOnlyMontage(AnimationPlayableNode source)
             {

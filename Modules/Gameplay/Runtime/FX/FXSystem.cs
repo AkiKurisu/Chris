@@ -1,14 +1,12 @@
 using Chris.Pool;
 using Chris.Resource;
 using Cysharp.Threading.Tasks;
-using Chris.React;
 using R3;
 using UnityEngine;
 using UnityEngine.Assertions;
 using Object = UnityEngine.Object;
-namespace Chris.FX
+namespace Chris.Gameplay.FX
 {
-    // TODO: Add fx preloading
     public static class FXSystem
     {
         /// <summary>
@@ -16,6 +14,7 @@ namespace Chris.FX
         /// </summary>
         /// <value></value>
         public static bool AddressSafeCheck { get; set; } = false;
+        
         /// <summary>
         /// Play particle system by address
         /// </summary>
@@ -27,6 +26,7 @@ namespace Chris.FX
                 ResourceSystem.CheckAsset<GameObject>(address);
             PlayFXAsync(address, Vector3.zero, Quaternion.identity, parent, true).Forget();
         }
+        
         /// <summary>
         /// Play particle system by address
         /// </summary>
@@ -41,6 +41,7 @@ namespace Chris.FX
                 ResourceSystem.CheckAsset<GameObject>(address);
             PlayFXAsync(address, position, rotation, parent, useLocalPosition).Forget();
         }
+        
         /// <summary>
         /// Play particle system by prefab
         /// </summary>
@@ -50,6 +51,7 @@ namespace Chris.FX
         {
             Instantiate(prefab, Vector3.zero, Quaternion.identity, parent, true).Play();
         }
+        
         /// <summary>
         /// Play particle system by prefab
         /// </summary>
@@ -62,6 +64,7 @@ namespace Chris.FX
         {
             Instantiate(prefab, position, rotation, parent, useLocalPosition).Play();
         }
+        
         /// <summary>
         /// Release particle system
         /// </summary>
@@ -70,6 +73,7 @@ namespace Chris.FX
         {
             GameObjectPoolManager.ReleasePool(PooledParticleSystem.GetPooledKey(address));
         }
+        
         /// <summary>
         /// Async instantiate pooled particle system by address
         /// </summary>
@@ -82,6 +86,7 @@ namespace Chris.FX
                 await ResourceSystem.CheckAssetAsync<GameObject>(address);
             return await PooledParticleSystem.InstantiateAsync(address, parent);
         }
+        
         /// <summary>
         /// Async instantiate pooled particle system by address
         /// </summary>
@@ -89,12 +94,13 @@ namespace Chris.FX
         /// <param name="position"></param>
         /// <param name="rotation"></param>
         /// <param name="parent">The parent attached to. If parent exists, it will use prefab's scale as local scale instead of lossy scale</param>
-        /// <param name="useLocalPosition">Whether use local position instead of world position, default is false</param>
+        /// <param name="useLocalPosition">Whether to use local position instead of world position, default is false</param>
         /// <returns></returns>
         public static async UniTask<PooledParticleSystem> InstantiateAsync(string address, Vector3 position, Quaternion rotation, Transform parent = null, bool useLocalPosition = false)
         {
             return await PooledParticleSystem.InstantiateAsync(address, position, rotation, parent, useLocalPosition);
         }
+        
         /// <summary>
         /// Instantiate pooled particle system by prefab, optimized version of <see cref="Object.Instantiate(Object, Transform)"/> 
         /// </summary>
@@ -105,6 +111,7 @@ namespace Chris.FX
         {
             return PooledParticleSystem.Instantiate(prefab, parent);
         }
+        
         /// <summary>
         /// Instantiate pooled particle system by prefab, optimized version of <see cref="Object.Instantiate(Object, Vector3, Quaternion, Transform)"/> 
         /// </summary>
@@ -112,91 +119,101 @@ namespace Chris.FX
         /// <param name="position"></param>
         /// <param name="rotation"></param>
         /// <param name="parent">The parent attached to. If parent exists, it will use prefab's scale as local scale instead of lossy scale</param>
-        /// <param name="useLocalPosition">Whether use local position instead of world position, default is false</param>
+        /// <param name="useLocalPosition">Whether to use local position instead of world position, default is false</param>
         /// <returns></returns>
         public static PooledParticleSystem Instantiate(GameObject prefab, Vector3 position, Quaternion rotation, Transform parent = null, bool useLocalPosition = false)
         {
             return PooledParticleSystem.Instantiate(prefab, position, rotation, parent, useLocalPosition);
         }
+        
         private static async UniTask PlayFXAsync(string address, Vector3 position, Quaternion rotation, Transform parent, bool useLocalPosition)
         {
             var pooledFX = await InstantiateAsync(address, position, rotation, parent, useLocalPosition);
             pooledFX.Play();
         }
-        public sealed class PooledParticleSystem : PooledComponent<PooledParticleSystem, ParticleSystem>
+    }
+    
+    public sealed class PooledParticleSystem : PooledComponent<PooledParticleSystem, ParticleSystem>
+    {
+        public new class ComponentCache : PooledComponent<PooledParticleSystem, ParticleSystem>.ComponentCache
         {
-            public new class ComponentCache : PooledComponent<PooledParticleSystem, ParticleSystem>.ComponentCache
+            /// <summary>
+            /// Particle system total duration
+            /// </summary>
+            public float Duration;
+        }
+        
+        private const string Key = "FX";
+        
+        public static PoolKey GetPooledKey(string address)
+        {
+            // append prefix since different type UObjects can have same address
+            return new PoolKey(Key, address);
+        }
+        
+        public static async UniTask<PooledParticleSystem> InstantiateAsync(string address, Transform parent)
+        {
+            var pooledParticleSystem = pool.Get();
+            PoolKey key = GetPooledKey(address);
+            pooledParticleSystem.PoolKey = key;
+            var fxObject = GameObjectPoolManager.Get(key, out var metaData, parent, createEmptyIfNotExist: false);
+            if (!fxObject)
             {
-                /// <summary>
-                /// Particle system total duration
-                /// </summary>
-                public float duration;
+                var handle = ResourceSystem.InstantiateAsync(address, parent);
+                fxObject = await handle;
+                // decrease ref count when pool manager release root
+                _ = handle.AddTo(fxObject);
             }
-            private const string key = "FX";
-            public static PoolKey GetPooledKey(string address)
+            pooledParticleSystem.GameObject = fxObject;
+            pooledParticleSystem.Cache = metaData as ComponentCache;
+            pooledParticleSystem.Init();
+            return pooledParticleSystem;
+        }
+        
+        public static async UniTask<PooledParticleSystem> InstantiateAsync(string address, Vector3 position, Quaternion rotation, Transform parent = null, bool useLocalPosition = false)
+        {
+            var pooledFX = await InstantiateAsync(address, parent);
+            if (useLocalPosition)
+                pooledFX.GameObject.transform.SetLocalPositionAndRotation(position, rotation);
+            else
+                pooledFX.GameObject.transform.SetPositionAndRotation(position, rotation);
+            return pooledFX;
+        }
+        
+        protected override void Init()
+        {
+            IsDisposed = false;
+            InitDisposables();
+            Transform = GameObject.transform;
+            Cache ??= new ComponentCache();
+            if (!Cache.component)
             {
-                // append prefix since different type UObjects can have same address
-                return new PoolKey(key, address);
+                var particles = GameObject.GetComponentsInChildren<ParticleSystem>();
+                Assert.IsTrue(particles.Length > 0);
+                Cache.component = particles[0];
+                ((ComponentCache)Cache).Duration = particles.GetDuration();
             }
-            public static async UniTask<PooledParticleSystem> InstantiateAsync(string address, Transform parent)
+            Assert.IsNotNull(Component);
+        }
+        
+        public void Play(bool releaseOnEnd = true)
+        {
+            if (releaseOnEnd && !Component.main.loop)
             {
-                var pooledParticleSystem = pool.Get();
-                PoolKey key = GetPooledKey(address);
-                pooledParticleSystem.PoolKey = key;
-                var fxObject = GameObjectPoolManager.Get(key, out var metaData, parent, createEmptyIfNotExist: false);
-                if (!fxObject)
-                {
-                    var handle = ResourceSystem.InstantiateAsync(address, parent);
-                    fxObject = await handle;
-                    // decrease ref count when pool manager release root
-                    _ = handle.AddTo(fxObject);
-                }
-                pooledParticleSystem.GameObject = fxObject;
-                pooledParticleSystem.Cache = metaData as ComponentCache;
-                pooledParticleSystem.Init();
-                return pooledParticleSystem;
+                // Push particle system to pool manager after particle system end
+                Destroy(((ComponentCache)Cache).Duration);
             }
-            public static async UniTask<PooledParticleSystem> InstantiateAsync(string address, Vector3 position, Quaternion rotation, Transform parent = null, bool useLocalPosition = false)
-            {
-                var pooledFX = await InstantiateAsync(address, parent);
-                if (useLocalPosition)
-                    pooledFX.GameObject.transform.SetLocalPositionAndRotation(position, rotation);
-                else
-                    pooledFX.GameObject.transform.SetPositionAndRotation(position, rotation);
-                return pooledFX;
-            }
-            protected sealed override void Init()
-            {
-                IsDisposed = false;
-                InitDisposables();
-                Transform = GameObject.transform;
-                Cache ??= new ComponentCache();
-                if (!Cache.component)
-                {
-                    var particles = GameObject.GetComponentsInChildren<ParticleSystem>();
-                    Assert.IsTrue(particles.Length > 0);
-                    Cache.component = particles[0];
-                    ((ComponentCache)Cache).duration = particles.GetDuration();
-                }
-                Assert.IsNotNull(Component);
-            }
-            public void Play(bool releaseOnEnd = true)
-            {
-                if (releaseOnEnd && !Component.main.loop)
-                {
-                    // Push particle system to pool manager after particle system end
-                    Destroy(((ComponentCache)Cache).duration);
-                }
-                if (Component.isPlaying) Component.Stop();
-                Component.Play();
-            }
-            public void Stop(bool release = true)
-            {
-                Component.Stop();
-                if (release) Dispose();
-            }
+            if (Component.isPlaying) Component.Stop();
+            Component.Play();
+        }
+        
+        public void Stop(bool release = true)
+        {
+            Component.Stop();
+            if (release) Dispose();
         }
     }
+    
     // Reference: https://blog.csdn.net/ls9512/article/details/103815387
     public static class ParticleSystemExtension
     {
@@ -208,10 +225,9 @@ namespace Chris.FX
         public static float GetDuration(this ParticleSystem[] particles)
         {
             var duration = -1f;
-            for (var i = 0; i < particles.Length; i++)
+            foreach (var ps in particles)
             {
-                var ps = particles[i];
-                var time = ps.GetDuration(false);
+                var time = ps.GetDuration();
                 if (time > duration)
                 {
                     duration = time;
@@ -219,6 +235,7 @@ namespace Chris.FX
             }
             return duration;
         }
+        
         private static float GetMaxValue(this ParticleSystem.MinMaxCurve minMaxCurve)
         {
             switch (minMaxCurve.mode)
@@ -233,9 +250,11 @@ namespace Chris.FX
                     var ret1 = minMaxCurve.curveMin.GetMaxValue();
                     var ret2 = minMaxCurve.curveMax.GetMaxValue();
                     return ret1 > ret2 ? ret1 : ret2;
+                default:
+                    return -1f;
             }
-            return -1f;
         }
+        
         private static float GetMinValue(this ParticleSystem.MinMaxCurve minMaxCurve)
         {
             switch (minMaxCurve.mode)
@@ -253,13 +272,13 @@ namespace Chris.FX
             }
             return -1f;
         }
+        
         private static float GetMaxValue(this AnimationCurve curve)
         {
             var ret = float.MinValue;
             var frames = curve.keys;
-            for (var i = 0; i < frames.Length; i++)
+            foreach (var frame in frames)
             {
-                var frame = frames[i];
                 var value = frame.value;
                 if (value > ret)
                 {
@@ -269,13 +288,13 @@ namespace Chris.FX
 
             return ret;
         }
+        
         private static float GetMinValue(this AnimationCurve curve)
         {
             var ret = float.MaxValue;
             var frames = curve.keys;
-            for (var i = 0; i < frames.Length; i++)
+            foreach (var frame in frames)
             {
-                var frame = frames[i];
                 var value = frame.value;
                 if (value < ret)
                 {
@@ -284,6 +303,7 @@ namespace Chris.FX
             }
             return ret;
         }
+        
         public static float GetDuration(this ParticleSystem particle, bool allowLoop = false)
         {
             if (!particle.emission.enabled) return 0f;

@@ -3,29 +3,36 @@ using System.Collections.Generic;
 using Chris.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
-namespace Chris.Animations
+namespace Chris.Gameplay.Animations
 {
     public partial class AnimationProxy
     {
         public delegate void AnimationProxyDelegate(AnimationProxy animationProxy);
+        
         /// <summary>
         /// Builder for creating dynamic animation sequence.
         /// </summary>
         public struct AnimationSequenceBuilder : IDisposable
         {
-            private List<TaskBase> taskBuffer;
-            private SequenceTask sequence;
-            private float blendOutTime;
-            private bool isDisposed;
-            private AnimationProxy proxy;
+            private List<TaskBase> _taskBuffer;
+            
+            private SequenceTask _sequence;
+            
+            private float _blendOutTime;
+            
+            private bool _isDisposed;
+            
+            private AnimationProxy _proxy;
+            
             internal AnimationSequenceBuilder(AnimationProxy proxy)
             {
-                this.proxy = proxy;
-                blendOutTime = 0f;
-                sequence = null;
-                isDisposed = false;
-                taskBuffer = ListPool<TaskBase>.Get();
+                _proxy = proxy;
+                _blendOutTime = 0f;
+                _sequence = null;
+                _isDisposed = false;
+                _taskBuffer = ListPool<TaskBase>.Get();
             }
+            
             /// <summary>
             /// Append an animation clip
             /// </summary>
@@ -36,6 +43,7 @@ namespace Chris.Animations
             {
                 return Append(animationClip, animationClip.length, blendInDuration);
             }
+            
             /// <summary>
             /// Append an animation clip
             /// </summary>
@@ -50,13 +58,14 @@ namespace Chris.Animations
                     Debug.LogWarning("Builder is invalid but try to access it");
                     return this;
                 }
-                taskBuffer.Add(LoadAnimationClipTask.GetPooled(proxy, animationClip, duration, blendInDuration));
+                _taskBuffer.Add(LoadAnimationClipTask.GetPooled(_proxy, animationClip, duration, blendInDuration));
                 return this;
             }
+
             /// <summary>
-            /// Append an animatior controller
+            /// Append an animator controller
             /// </summary>
-            /// <param name="animationClip">Clip to play</param>
+            /// <param name="animatorController"></param>
             /// <param name="duration">Duration can be infinity as loop</param>
             /// <param name="blendInDuration">FadeIn time</param>
             /// <returns></returns>
@@ -67,9 +76,10 @@ namespace Chris.Animations
                     Debug.LogWarning("Builder is invalid but try to access it");
                     return this;
                 }
-                taskBuffer.Add(LoadAnimatorTask.GetPooled(proxy, animatorController, duration, blendInDuration));
+                _taskBuffer.Add(LoadAnimatorTask.GetPooled(_proxy, animatorController, duration, blendInDuration));
                 return this;
             }
+            
             /// <summary>
             /// Append a proxy call back after current last action in the sequence
             /// </summary>
@@ -77,24 +87,26 @@ namespace Chris.Animations
             /// <returns></returns>
             public readonly AnimationSequenceBuilder AppendCallBack(AnimationProxyDelegate callBack)
             {
-                taskBuffer.Add(AnimationProxyCallBackTask.GetPooled(proxy, callBack));
+                _taskBuffer.Add(AnimationProxyCallBackTask.GetPooled(_proxy, callBack));
                 return this;
             }
+            
             /// <summary>
             /// Set animation sequence blend out time, default is 0
             /// </summary>
-            /// <param name="blendOutTime"></param>
+            /// <param name="inBlendOutTime"></param>
             /// <returns></returns>
-            public AnimationSequenceBuilder SetBlendOut(float blendOutTime)
+            public AnimationSequenceBuilder SetBlendOut(float inBlendOutTime)
             {
                 if (!IsValid())
                 {
                     Debug.LogWarning("Builder is invalid but try to access it");
                     return this;
                 }
-                this.blendOutTime = blendOutTime;
+                _blendOutTime = inBlendOutTime;
                 return this;
             }
+            
             /// <summary>
             /// Build an animation sequence
             /// </summary>
@@ -103,10 +115,11 @@ namespace Chris.Animations
                 if (!IsValid())
                 {
                     Debug.LogWarning("Builder is invalid, rebuild is not allowed");
-                    return sequence;
+                    return _sequence;
                 }
                 return BuildInternal(SequenceTask.GetPooled());
             }
+            
             /// <summary>
             /// Append animation sequence after an existed sequence
             /// </summary>
@@ -120,134 +133,161 @@ namespace Chris.Animations
                 }
                 BuildInternal(sequenceTask);
             }
+            
             private SequenceTask BuildInternal(SequenceTask sequenceTask)
             {
-                foreach (var task in taskBuffer)
+                foreach (var task in _taskBuffer)
                 {
                     sequenceTask.Append(task);
                 }
-                float time = blendOutTime;
-                AnimationProxy animProxy = proxy;
+                float time = _blendOutTime;
+                AnimationProxy animProxy = _proxy;
                 sequenceTask.AppendCallBack(() => animProxy.Stop(time));
-                sequence = sequenceTask;
-                taskBuffer.Clear();
-                sequence.Acquire();
-                return sequence;
+                _sequence = sequenceTask;
+                _taskBuffer.Clear();
+                _sequence.Acquire();
+                return _sequence;
             }
+            
             /// <summary>
             /// Whether builder is valid
             /// </summary>
             /// <returns></returns>
             public readonly bool IsValid()
             {
-                return sequence == null && !isDisposed;
+                return _sequence == null && !_isDisposed;
             }
+
             /// <summary>
             /// Dispose internal playable graph
-            /// </summary> <summary>
+            /// </summary> <summary />
             public void Dispose()
             {
-                if (isDisposed)
+                if (_isDisposed)
                 {
                     return;
                 }
-                isDisposed = true;
-                proxy = null;
-                sequence = null;
-                ListPool<TaskBase>.Release(taskBuffer);
-                taskBuffer = null;
+                _isDisposed = true;
+                _proxy = null;
+                _sequence = null;
+                ListPool<TaskBase>.Release(_taskBuffer);
+                _taskBuffer = null;
             }
         }
+        
         private sealed class LoadAnimationClipTask : PooledTaskBase<LoadAnimationClipTask>
         {
-            private AnimationProxy proxy;
-            private AnimationClip animationClip;
-            private float blendInTime;
-            private float duration;
-            private double startTimestamp;
+            private AnimationProxy _proxy;
+            
+            private AnimationClip _animationClip;
+            
+            private float _blendInTime;
+            
+            private float _duration;
+            
+            private double _startTimestamp;
+            
             public static LoadAnimationClipTask GetPooled(AnimationProxy proxy, AnimationClip animationClip, float duration, float blendInTime)
             {
                 var task = GetPooled();
-                task.proxy = proxy;
-                task.animationClip = animationClip;
-                task.duration = duration;
-                task.blendInTime = blendInTime;
+                task._proxy = proxy;
+                task._animationClip = animationClip;
+                task._duration = duration;
+                task._blendInTime = blendInTime;
                 return task;
             }
+            
             public override void Tick()
             {
-                if (Time.timeSinceLevelLoadAsDouble - startTimestamp >= duration)
+                if (Time.timeSinceLevelLoadAsDouble - _startTimestamp >= _duration)
                 {
                     CompleteTask();
                 }
             }
+            
             public override void Start()
             {
                 base.Start();
-                startTimestamp = Time.timeSinceLevelLoadAsDouble;
-                proxy.LoadAnimationClip(animationClip, blendInTime);
+                _startTimestamp = Time.timeSinceLevelLoadAsDouble;
+                _proxy.LoadAnimationClip(_animationClip, _blendInTime);
             }
         }
+        
         private sealed class LoadAnimatorTask : PooledTaskBase<LoadAnimatorTask>
         {
-            private AnimationProxy proxy;
-            private RuntimeAnimatorController animatorController;
-            private float blendInTime;
-            private float duration;
-            private double startTimestamp;
+            private AnimationProxy _proxy;
+            
+            private RuntimeAnimatorController _animatorController;
+            
+            private float _blendInTime;
+            
+            private float _duration;
+            
+            private double _startTimestamp;
+            
             public static LoadAnimatorTask GetPooled(AnimationProxy proxy, RuntimeAnimatorController animatorController, float duration, float blendInTime)
             {
                 var task = GetPooled();
-                task.proxy = proxy;
-                task.animatorController = animatorController;
-                task.duration = duration;
-                task.blendInTime = blendInTime;
+                task._proxy = proxy;
+                task._animatorController = animatorController;
+                task._duration = duration;
+                task._blendInTime = blendInTime;
                 return task;
             }
+            
             public override void Tick()
             {
-                if (Time.timeSinceLevelLoadAsDouble - startTimestamp >= duration)
+                if (Time.timeSinceLevelLoadAsDouble - _startTimestamp >= _duration)
                 {
                     CompleteTask();
                 }
             }
+            
             public override void Start()
             {
                 base.Start();
-                startTimestamp = Time.timeSinceLevelLoadAsDouble;
-                proxy.LoadAnimator(animatorController, blendInTime);
+                _startTimestamp = Time.timeSinceLevelLoadAsDouble;
+                _proxy.LoadAnimator(_animatorController, _blendInTime);
             }
+            
             protected override void Reset()
             {
                 base.Reset();
-                proxy = null;
-                animatorController = null;
+                _proxy = null;
+                _animatorController = null;
             }
         }
+        
         private sealed class AnimationProxyCallBackTask : PooledTaskBase<AnimationProxyCallBackTask>
         {
-            private AnimationProxy proxy;
-            private AnimationProxyDelegate callBack;
+            private AnimationProxy _proxy;
+            
+            private AnimationProxyDelegate _callBack;
+            
             public static AnimationProxyCallBackTask GetPooled(AnimationProxy proxy, AnimationProxyDelegate callBack)
             {
                 var task = GetPooled();
-                task.callBack = callBack;
-                task.proxy = proxy;
+                task._callBack = callBack;
+                task._proxy = proxy;
                 return task;
             }
+            
             public override void Tick()
             {
-                callBack?.Invoke(proxy);
+                _callBack?.Invoke(_proxy);
                 CompleteTask();
             }
+            
             protected override void Reset()
             {
                 base.Reset();
-                proxy = null;
-                callBack = null;
+                _proxy = null;
+                _callBack = null;
             }
         }
+        
         #region Public API
+        
         /// <summary>
         /// Create an <see cref="AnimationSequenceBuilder"/> from this proxy
         /// </summary>
@@ -256,6 +296,7 @@ namespace Chris.Animations
         {
             return new AnimationSequenceBuilder(this);
         }
+        
         #endregion Public API
     }
 }

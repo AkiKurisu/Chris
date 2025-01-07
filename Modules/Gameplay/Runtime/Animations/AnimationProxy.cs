@@ -2,11 +2,11 @@ using System;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
-namespace Chris.Animations
+namespace Chris.Gameplay.Animations
 {
     /// <summary>
-    /// Animation proxy that can cross-fade multi <see cref="RuntimeAnimatorController"/> 
-    /// and <see cref="AnimationClip"/> in multi layer. 
+    /// Animation proxy can blend multi <see cref="RuntimeAnimatorController"/> 
+    /// and <see cref="AnimationClip"/> in hierarchy. 
     /// </summary>
     public partial class AnimationProxy : IDisposable
     {
@@ -40,7 +40,7 @@ namespace Chris.Animations
         public const int DefaultLayerIndex = 0;
         
         /// <summary>
-        /// Is proxy blendout
+        /// Is proxy blend out
         /// </summary>
         /// <value></value>
         protected bool IsBlendIn { get; private set; }
@@ -55,14 +55,8 @@ namespace Chris.Animations
         /// Is proxy playing
         /// </summary>
         /// <value></value>
-        public bool IsPlaying
-        {
-            get
-            {
-                return Graph.IsValid() && Graph.IsPlaying();
-            }
-        }
-        
+        public bool IsPlaying => Graph.IsValid() && Graph.IsPlaying();
+
         /// <summary>
         /// Should proxy clear <see cref="RuntimeAnimatorController"/> of <see cref="Animator"/> when completely blend in 
         /// which can prevent animation artifacts. Set <see cref="RestoreAnimatorControllerOnStop"/> to true to automatically 
@@ -309,7 +303,7 @@ namespace Chris.Animations
         protected virtual void SetOutGraph()
         {
             IsBlendOut = false;
-            eventTickHandle.Cancel();
+            _eventTickHandle.Cancel();
             Graph.Stop();
             Graph.Destroy();
         }
@@ -409,8 +403,8 @@ namespace Chris.Animations
         /// </summary>
         public virtual void Dispose()
         {
-            notifierContexts.Clear();
-            eventTickHandle.Dispose();
+            _notifierContexts.Clear();
+            _eventTickHandle.Dispose();
             SourceController = null;
             if (Graph.IsValid())
                 Graph.Destroy();

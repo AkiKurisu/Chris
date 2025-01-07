@@ -1,12 +1,13 @@
 using UnityEditor;
 using UnityEngine;
 using UEditor = UnityEditor.Editor;
-namespace Chris.Animations.Editor
+namespace Chris.Gameplay.Animations.Editor
 {
     [CustomEditor(typeof(AnimationPreviewer))]
     public class AnimationPreviewerEditor : UEditor
     {
-        private AnimationPreviewer Previewer => target as AnimationPreviewer;
+        private AnimationPreviewer Previewer => (AnimationPreviewer)target;
+        
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
@@ -27,6 +28,7 @@ namespace Chris.Animations.Editor
             }
             GUI.enabled = true;
         }
+        
         private bool IsPlaying()
         {
             if (Application.isPlaying)
@@ -35,6 +37,7 @@ namespace Chris.Animations.Editor
             }
             return AnimationMode.InAnimationMode();
         }
+        
         private void Preview()
         {
             if (Application.isPlaying)
@@ -47,6 +50,7 @@ namespace Chris.Animations.Editor
                 AnimationMode.SampleAnimationClip(Previewer.Animator.gameObject, Previewer.AnimationClip, 0);
             }
         }
+        
         private void Stop()
         {
             if (Application.isPlaying)

@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Animations;
 using UAnimator = UnityEngine.Animator;
-namespace Chris.Animations
+namespace Chris.Gameplay.Animations
 {
     /// <summary>
     /// Proxy layer handle
@@ -21,7 +21,7 @@ namespace Chris.Animations
         {
             return left.Id != right.Id;
         }
-        public override readonly bool Equals(object obj)
+        public readonly override bool Equals(object obj)
         {
             if (obj is not LayerHandle handle) return false;
             return handle.Id == Id;
@@ -45,8 +45,11 @@ namespace Chris.Animations
     public struct LayerDescriptor : IEquatable<LayerDescriptor>
     {
         public string Name;
+        
         public uint Index;
+        
         public bool Additive;
+        
         public AvatarMask AvatarMask;
 
         public readonly bool Equals(LayerDescriptor other)
@@ -63,28 +66,38 @@ namespace Chris.Animations
         public class LayerContext
         {
             public LayerHandle Handle;
+            
             public LayerDescriptor Descriptor;
+            
             public AnimationLayerMontageNode MontageNode;
+            
             public static readonly LayerContext Empty = new();
         }
-        public readonly Dictionary<LayerHandle, LayerContext> _layerContexts = new();
+        
+        public readonly Dictionary<LayerHandle, LayerContext> LayerContexts = new();
+
         /// <summary>
         /// Get or create a new montage layer
         /// </summary>
         /// <param name="layerHandle"></param>
         /// <param name="layerName"></param>
         /// <param name="layerIndex"></param>
+        /// <param name="additive"></param>
         /// <param name="avatarMask"></param>
-        public void CreateLayer(ref LayerHandle layerHandle, string layerName, uint layerIndex = 0, AvatarMask avatarMask = null)
+        public void CreateLayer(ref LayerHandle layerHandle, string layerName, 
+            uint layerIndex = 0, bool additive = false,
+            AvatarMask avatarMask = null)
         {
-            var descriptor = new LayerDescriptor()
+            var descriptor = new LayerDescriptor
             {
                 Name = layerName,
                 Index = layerIndex,
+                Additive = additive,
                 AvatarMask = avatarMask
             };
             CreateLayer(ref layerHandle, descriptor);
         }
+        
         /// <summary>
         ///  Get or create a new montage layer
         /// </summary>
@@ -96,7 +109,7 @@ namespace Chris.Animations
             {
                 Id = UAnimator.StringToHash(layerDescriptor.Name)
             };
-            if (_layerContexts.TryGetValue(layerHandle, out var context))
+            if (LayerContexts.TryGetValue(layerHandle, out var context))
             {
                 /* Skip if is matched with current layer */
                 if (context.Descriptor.Equals(layerDescriptor))
@@ -109,7 +122,7 @@ namespace Chris.Animations
                     Debug.LogError($"[AnimationProxy] Can not create new layer when another layer named {layerDescriptor.Name} is executing");
                     return;
                 }
-                _layerContexts.Remove(layerHandle);
+                LayerContexts.Remove(layerHandle);
             }
             context = new LayerContext()
             {
@@ -117,20 +130,23 @@ namespace Chris.Animations
                 Descriptor = layerDescriptor,
                 MontageNode = null,
             };
-            _layerContexts.Add(layerHandle, context);
+            LayerContexts.Add(layerHandle, context);
         }
+        
         public LayerContext GetLayerContext(LayerHandle handle)
         {
-            if (_layerContexts.TryGetValue(handle, out var layerContext))
+            if (LayerContexts.TryGetValue(handle, out var layerContext))
             {
                 return layerContext;
             }
             return LayerContext.Empty;
         }
+        
         public LayerContext[] GetAllLayerContexts()
         {
-            return _layerContexts.Values.OrderBy(x => x.Descriptor.Index).ToArray();
+            return LayerContexts.Values.OrderBy(x => x.Descriptor.Index).ToArray();
         }
+        
         public int GetLayerIndex(LayerHandle layerHandle)
         {
             if (RootMontage is AnimationLayerMontageNode)
@@ -141,21 +157,24 @@ namespace Chris.Animations
             }
             return DefaultLayerIndex;
         }
+        
         public readonly struct AnimationClipInstanceProxy
         {
-            private readonly AnimationClipPlayable clipPlayable;
+            private readonly AnimationClipPlayable _clipPlayable;
             internal AnimationClipInstanceProxy(AnimationClipPlayable playable)
             {
-                clipPlayable = playable;
+                _clipPlayable = playable;
             }
+            
             #region Wrapper
+            
             /// <summary>
             /// Returns the AnimationClip stored in the AnimationClipPlayable.
             /// </summary>
             /// <returns></returns>
             public AnimationClip GetAnimationClip()
             {
-                return clipPlayable.GetAnimationClip();
+                return _clipPlayable.GetAnimationClip();
             }
 
             /// <summary>
@@ -164,7 +183,7 @@ namespace Chris.Animations
             /// <returns></returns>
             public bool GetApplyFootIK()
             {
-                return clipPlayable.GetApplyFootIK();
+                return _clipPlayable.GetApplyFootIK();
             }
 
             /// <summary>
@@ -173,7 +192,7 @@ namespace Chris.Animations
             /// <param name="value"></param>
             public void SetApplyFootIK(bool value)
             {
-                clipPlayable.SetApplyFootIK(value);
+                _clipPlayable.SetApplyFootIK(value);
             }
 
             /// <summary>
@@ -182,7 +201,7 @@ namespace Chris.Animations
             /// <returns></returns>
             public bool GetApplyPlayableIK()
             {
-                return clipPlayable.GetApplyPlayableIK();
+                return _clipPlayable.GetApplyPlayableIK();
             }
 
             /// <summary>
@@ -191,223 +210,246 @@ namespace Chris.Animations
             /// <param name="value"></param>
             public void SetApplyPlayableIK(bool value)
             {
-                clipPlayable.SetApplyPlayableIK(value);
+                _clipPlayable.SetApplyPlayableIK(value);
             }
+            
             #endregion Wrapper
         }
+        
         public readonly struct AnimatorControllerInstanceProxy
         {
-            private readonly AnimatorControllerPlayable animatorPlayable;
-            private readonly RuntimeAnimatorController animatorController;
+            private readonly AnimatorControllerPlayable _animatorPlayable;
+            
+            private readonly RuntimeAnimatorController _animatorController;
+            
             internal AnimatorControllerInstanceProxy(AnimatorControllerPlayable playable, RuntimeAnimatorController sourceController)
             {
-                animatorPlayable = playable;
-                animatorController = sourceController;
+                _animatorPlayable = playable;
+                _animatorController = sourceController;
             }
+            
             public RuntimeAnimatorController GetAnimatorController()
             {
-                return animatorController;
+                return _animatorController;
             }
+            
             #region Wrapper
+            
             public float GetFloat(string name)
             {
-                return animatorPlayable.GetFloat(name);
+                return _animatorPlayable.GetFloat(name);
             }
 
             public float GetFloat(int id)
             {
-                return animatorPlayable.GetFloat(id);
+                return _animatorPlayable.GetFloat(id);
             }
+            
             public void SetFloat(string name, float value)
             {
-                animatorPlayable.SetFloat(name, value);
+                _animatorPlayable.SetFloat(name, value);
             }
+            
             public void SetFloat(int id, float value)
             {
-                animatorPlayable.SetFloat(id, value);
+                _animatorPlayable.SetFloat(id, value);
             }
+            
             public bool GetBool(string name)
             {
-                return animatorPlayable.GetBool(name);
+                return _animatorPlayable.GetBool(name);
             }
+            
             public bool GetBool(int id)
             {
-                return animatorPlayable.GetBool(id);
+                return _animatorPlayable.GetBool(id);
             }
+            
             public void SetBool(string name, bool value)
             {
-                animatorPlayable.SetBool(name, value);
+                _animatorPlayable.SetBool(name, value);
             }
 
             public void SetBool(int id, bool value)
             {
-                animatorPlayable.SetBool(id, value);
+                _animatorPlayable.SetBool(id, value);
             }
 
             public int GetInteger(string name)
             {
-                return animatorPlayable.GetInteger(name);
+                return _animatorPlayable.GetInteger(name);
             }
+            
             public int GetInteger(int id)
             {
-                return animatorPlayable.GetInteger(id);
+                return _animatorPlayable.GetInteger(id);
             }
+            
             public void SetInteger(string name, int value)
             {
-                animatorPlayable.SetInteger(name, value);
+                _animatorPlayable.SetInteger(name, value);
             }
 
             public void SetInteger(int id, int value)
             {
-                animatorPlayable.SetInteger(id, value);
+                _animatorPlayable.SetInteger(id, value);
             }
             public void SetTrigger(string name)
             {
-                animatorPlayable.SetTrigger(name);
+                _animatorPlayable.SetTrigger(name);
             }
 
             public void SetTrigger(int id)
             {
-                animatorPlayable.SetTrigger(id);
+                _animatorPlayable.SetTrigger(id);
             }
 
             public void ResetTrigger(string name)
             {
-                animatorPlayable.ResetTrigger(name);
+                _animatorPlayable.ResetTrigger(name);
             }
+            
             public void ResetTrigger(int id)
             {
-                animatorPlayable.ResetTrigger(id);
+                _animatorPlayable.ResetTrigger(id);
             }
+            
             public bool IsParameterControlledByCurve(string name)
             {
-                return animatorPlayable.IsParameterControlledByCurve(name);
+                return _animatorPlayable.IsParameterControlledByCurve(name);
             }
+            
             public bool IsParameterControlledByCurve(int id)
             {
-                return animatorPlayable.IsParameterControlledByCurve(id);
+                return _animatorPlayable.IsParameterControlledByCurve(id);
             }
 
             public int GetLayerCount()
             {
-                return animatorPlayable.GetLayerCount();
+                return _animatorPlayable.GetLayerCount();
             }
 
             public string GetLayerName(int layerIndex)
             {
-                return animatorPlayable.GetLayerName(layerIndex);
+                return _animatorPlayable.GetLayerName(layerIndex);
             }
 
             public int GetLayerIndex(string layerName)
             {
-                return animatorPlayable.GetLayerIndex(layerName);
+                return _animatorPlayable.GetLayerIndex(layerName);
             }
+            
             public float GetLayerWeight(int layerIndex)
             {
-                return animatorPlayable.GetLayerWeight(layerIndex);
+                return _animatorPlayable.GetLayerWeight(layerIndex);
             }
+            
             public void SetLayerWeight(int layerIndex, float weight)
             {
-                animatorPlayable.SetLayerWeight(layerIndex, weight);
+                _animatorPlayable.SetLayerWeight(layerIndex, weight);
             }
 
             public AnimatorStateInfo GetCurrentAnimatorStateInfo(int layerIndex)
             {
-                return animatorPlayable.GetCurrentAnimatorStateInfo(layerIndex);
+                return _animatorPlayable.GetCurrentAnimatorStateInfo(layerIndex);
             }
 
             public AnimatorStateInfo GetNextAnimatorStateInfo(int layerIndex)
             {
-                return animatorPlayable.GetNextAnimatorStateInfo(layerIndex);
+                return _animatorPlayable.GetNextAnimatorStateInfo(layerIndex);
             }
 
             public AnimatorTransitionInfo GetAnimatorTransitionInfo(int layerIndex)
             {
-                return animatorPlayable.GetAnimatorTransitionInfo(layerIndex);
+                return _animatorPlayable.GetAnimatorTransitionInfo(layerIndex);
             }
 
             public AnimatorClipInfo[] GetCurrentAnimatorClipInfo(int layerIndex)
             {
-                return animatorPlayable.GetCurrentAnimatorClipInfo(layerIndex);
+                return _animatorPlayable.GetCurrentAnimatorClipInfo(layerIndex);
             }
 
             public void GetCurrentAnimatorClipInfo(int layerIndex, List<AnimatorClipInfo> clips)
             {
-                animatorPlayable.GetCurrentAnimatorClipInfo(layerIndex, clips);
+                _animatorPlayable.GetCurrentAnimatorClipInfo(layerIndex, clips);
             }
 
             public void GetNextAnimatorClipInfo(int layerIndex, List<AnimatorClipInfo> clips)
             {
-                animatorPlayable.GetNextAnimatorClipInfo(layerIndex, clips);
+                _animatorPlayable.GetNextAnimatorClipInfo(layerIndex, clips);
             }
+            
             public int GetCurrentAnimatorClipInfoCount(int layerIndex)
             {
-                return animatorPlayable.GetCurrentAnimatorClipInfoCount(layerIndex);
+                return _animatorPlayable.GetCurrentAnimatorClipInfoCount(layerIndex);
             }
+            
             public int GetNextAnimatorClipInfoCount(int layerIndex)
             {
-                return animatorPlayable.GetNextAnimatorClipInfoCount(layerIndex);
+                return _animatorPlayable.GetNextAnimatorClipInfoCount(layerIndex);
             }
 
             public AnimatorClipInfo[] GetNextAnimatorClipInfo(int layerIndex)
             {
-                return animatorPlayable.GetNextAnimatorClipInfo(layerIndex);
+                return _animatorPlayable.GetNextAnimatorClipInfo(layerIndex);
             }
             public bool IsInTransition(int layerIndex)
             {
-                return animatorPlayable.IsInTransition(layerIndex);
+                return _animatorPlayable.IsInTransition(layerIndex);
             }
 
             public int GetParameterCount()
             {
-                return animatorPlayable.GetParameterCount();
+                return _animatorPlayable.GetParameterCount();
             }
 
             public AnimatorControllerParameter GetParameter(int index)
             {
-                return animatorPlayable.GetParameter(index);
+                return _animatorPlayable.GetParameter(index);
             }
 
             public void CrossFadeInFixedTime(string stateName, float transitionDuration, int layer = -1, float fixedTime = 0f)
             {
-                animatorPlayable.CrossFadeInFixedTime(stateName, transitionDuration, layer, fixedTime);
+                _animatorPlayable.CrossFadeInFixedTime(stateName, transitionDuration, layer, fixedTime);
             }
+            
             public void CrossFadeInFixedTime(int stateNameHash, float transitionDuration, int layer = -1, float fixedTime = 0.0f)
             {
-                animatorPlayable.CrossFadeInFixedTime(stateNameHash, transitionDuration, layer, fixedTime);
+                _animatorPlayable.CrossFadeInFixedTime(stateNameHash, transitionDuration, layer, fixedTime);
             }
             public void CrossFade(string stateName, float transitionDuration, int layer = -1, float normalizedTime = float.NegativeInfinity)
             {
-                animatorPlayable.CrossFade(stateName, transitionDuration, layer, normalizedTime);
+                _animatorPlayable.CrossFade(stateName, transitionDuration, layer, normalizedTime);
             }
 
             public void CrossFade(int stateNameHash, float transitionDuration, int layer = -1, float normalizedTime = float.NegativeInfinity)
             {
-                animatorPlayable.CrossFade(stateNameHash, transitionDuration, layer, normalizedTime);
+                _animatorPlayable.CrossFade(stateNameHash, transitionDuration, layer, normalizedTime);
             }
+            
             public void PlayInFixedTime(string stateName, int layer = -1, float fixedTime = float.NegativeInfinity)
             {
-                animatorPlayable.PlayInFixedTime(stateName, layer, fixedTime);
+                _animatorPlayable.PlayInFixedTime(stateName, layer, fixedTime);
             }
 
             public void PlayInFixedTime(int stateNameHash, int layer = -1, float fixedTime = float.NegativeInfinity)
             {
-                animatorPlayable.PlayInFixedTime(stateNameHash, layer, fixedTime);
+                _animatorPlayable.PlayInFixedTime(stateNameHash, layer, fixedTime);
             }
 
             public void Play(string stateName, int layer = -1, float normalizedTime = float.NegativeInfinity)
             {
-                animatorPlayable.Play(stateName, layer, normalizedTime);
+                _animatorPlayable.Play(stateName, layer, normalizedTime);
             }
 
             public void Play(int stateNameHash, int layer = -1, float normalizedTime = float.NegativeInfinity)
             {
-                animatorPlayable.Play(stateNameHash, layer, normalizedTime);
+                _animatorPlayable.Play(stateNameHash, layer, normalizedTime);
             }
 
             public bool HasState(int layerIndex, int stateID)
             {
-                return animatorPlayable.HasState(layerIndex, stateID);
+                return _animatorPlayable.HasState(layerIndex, stateID);
             }
             #endregion Public API
         }
