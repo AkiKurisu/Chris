@@ -6,10 +6,6 @@ Resource module is based on Addressables.
 
 - `ResourceSystem` Let you use Rx/Async for asset loading.
 
-- `AudioSystem` Use poolable audio source.
-
-- `FXSystem` Use poolable particle system.
-
 - `SoftAssetReference` Speed up asset management workflow.
 
 

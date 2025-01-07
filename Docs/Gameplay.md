@@ -1,14 +1,14 @@
-# Animations
+# Gameplay
 
-Create dynamic animation sequence and cutscene from script based on Playables.
+Based on Ceres to integrate visual scripting and C#. Also contains some tools that may be useful.
 
-## Features
+## Animations
 
 - Use `AnimationProxy` to play montage by `RuntimeAnimatorController` and `AnimationClip`.
 - Support multi layers and events.
 - Use `AnimationPreviewer` to preview `AnimationClip` in Editor Mode and Play Mode.
 
-## AnimationProxy Example
+### AnimationProxy Example
 
 ```C#
 public class MontageExample : MonoBehaviour
@@ -24,12 +24,12 @@ public class MontageExample : MonoBehaviour
         yield return new WaitForSeconds(1f);
         animationProxy.LoadAnimator(controllerB, 0.5f); /* Crossfade controllerA to controllerB in 0.5s */
         yield return new WaitForSeconds(1f);
-        chaAnimationProxy.Stop(0.5f); /* Crossfade controllerB to animator in 0.5s */
+        animationProxy.Stop(0.5f); /* Crossfade controllerB to animator in 0.5s */
     }
 }
 ```
 
-## SequenceBuilder Example
+### SequenceBuilder Example
 
 ```C#
 public class SequenceExample : MonoBehaviour
@@ -51,6 +51,14 @@ public class SequenceExample : MonoBehaviour
 }
 ```
 
-## Debugger
+### Debugger
 
 Recommend to use [Unity PlayableGraph Monitor](`https://github.com/SolarianZ/UnityPlayableGraphMonitorTool`)
+
+## Audios
+
+- `AudioSystem` Use poolable audio source.
+
+## FX
+
+- `FXSystem` Use poolable particle system.

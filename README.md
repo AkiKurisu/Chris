@@ -38,12 +38,14 @@ A Unity game framework designed for efficient development.
 
 ![DataTable](./Docs/Images/datatable_editor_window.png)
 
-[Animations](./Docs/Animations.md)
->Create dynamic animation sequence and cutscene from script based on Playables.
-
 ## Modules
 
 Modules are based on core features.
+
+[Gameplay](./Docs/Gameplay.md)
+>Based on Ceres to integrate visual scripting and C#. Also contains some tools that may be useful.
+
+![Visual Scripting](./Docs/Images/visual_scripting.png)
 
 [AI](./Docs/AI.md)
 
@@ -83,6 +85,8 @@ Modules are based on core features.
 [Unity.UIElements](https://github.com/Unity-Technologies/UnityCsReference/tree/2022.3/ModuleOverrides/com.unity.ui/Core)
 
 [Unity Timer](https://github.com/akbiggs/UnityTimer)
+
+[Ceres](https://github.com/AkiKurisu/Ceres)
 
 ## License
 
