@@ -11,13 +11,13 @@ namespace Chris.Gameplay.Animations
         #region Flow API
         
         [ExecutableFunction]
-        public void Flow_LoadAnimator(RuntimeAnimatorController runtimeAnimator, float blendInTime)
+        public void Flow_LoadAnimator(RuntimeAnimatorController runtimeAnimator, float blendInTime = 0.25f)
         {
             LoadAnimator(runtimeAnimator, blendInTime);
         }
         
         [ExecutableFunction]
-        public void Flow_LoadAnimationClip(AnimationClip animationClip, float blendInTime)
+        public void Flow_LoadAnimationClip(AnimationClip animationClip, float blendInTime = 0.25f)
         {
             LoadAnimationClip(animationClip, blendInTime);
         }
@@ -25,11 +25,12 @@ namespace Chris.Gameplay.Animations
         [ExecutableFunction]
         public void Flow_PlayAnimation(
             AnimationClip animationClip, 
-            float blendInTime, 
-            float blendOutTime)
+            int loopCount = 1,
+            float blendInTime = 0.25f, 
+            float blendOutTime = 0.25f)
         {
             CreateSequenceBuilder()
-                .Append(animationClip, blendInTime)
+                .Append(animationClip, animationClip.length * loopCount, blendInTime)
                 .SetBlendOut(blendOutTime)
                 .Build()
                 .Run();
@@ -38,13 +39,14 @@ namespace Chris.Gameplay.Animations
         [ExecutableFunction]
         public void Flow_PlayAnimationWithCompleteEvent(
             AnimationClip animationClip, 
-            float blendInTime, 
-            float blendOutTime, 
-            EventDelegate onComplete)
+            int loopCount = 1,
+            float blendInTime = 0.25f, 
+            float blendOutTime = 0.25f, 
+            EventDelegate onComplete = null)
         {
             Action onCompleteAction = onComplete;
             CreateSequenceBuilder()
-                .Append(animationClip, blendInTime)
+                .Append(animationClip, animationClip.length * loopCount, blendInTime)
                 .SetBlendOut(blendOutTime)
                 .AppendCallBack(_ => onCompleteAction?.Invoke())
                 .Build()
@@ -52,9 +54,9 @@ namespace Chris.Gameplay.Animations
         }
         
         [ExecutableFunction]
-        public void Flow_StopAnimation(float fadeOutTime)
+        public void Flow_StopAnimation(float blendOutTime = 0.25f)
         {
-            Stop(fadeOutTime);
+            Stop(blendOutTime);
         }
         
         #endregion Flow API
