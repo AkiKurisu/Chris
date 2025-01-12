@@ -303,6 +303,7 @@ namespace Chris.Gameplay.Animations
         /// </summary>
         protected virtual void SetOutGraph()
         {
+            StopAllAnimationSequences();
             IsBlendOut = false;
             _eventTickHandle.Cancel();
             Graph.Stop();
@@ -408,6 +409,7 @@ namespace Chris.Gameplay.Animations
         /// </summary>
         public virtual void Dispose()
         {
+            StopAllAnimationSequences();
             _notifierContexts.Clear();
             _eventTickHandle.Dispose();
             SourceController = null;

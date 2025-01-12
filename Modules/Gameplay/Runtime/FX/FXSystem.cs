@@ -1,3 +1,4 @@
+using Ceres.Graph.Flow.Annotations;
 using Chris.Pool;
 using Chris.Resource;
 using Cysharp.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace Chris.Gameplay.FX
         public static bool AddressSafeCheck { get; set; } = false;
         
         /// <summary>
-        /// Play particle system by address
+        /// Play particle system from address
         /// </summary>
         /// <param name="address"></param>
         /// <param name="parent"></param>
@@ -28,7 +29,7 @@ namespace Chris.Gameplay.FX
         }
         
         /// <summary>
-        /// Play particle system by address
+        /// Play particle system from address
         /// </summary>
         /// <param name="address"></param>
         /// <param name="position"></param>
@@ -43,7 +44,7 @@ namespace Chris.Gameplay.FX
         }
         
         /// <summary>
-        /// Play particle system by prefab
+        /// Play particle system from prefab
         /// </summary>
         /// <param name="prefab"></param>
         /// <param name="parent"></param>
@@ -53,7 +54,7 @@ namespace Chris.Gameplay.FX
         }
         
         /// <summary>
-        /// Play particle system by prefab
+        /// Play particle system from prefab
         /// </summary>
         /// <param name="prefab"></param>
         /// <param name="position"></param>
@@ -75,7 +76,7 @@ namespace Chris.Gameplay.FX
         }
         
         /// <summary>
-        /// Async instantiate pooled particle system by address
+        /// Async instantiate pooled particle system from address
         /// </summary>
         /// <param name="address"></param>
         /// <param name="parent"></param>
@@ -88,7 +89,7 @@ namespace Chris.Gameplay.FX
         }
         
         /// <summary>
-        /// Async instantiate pooled particle system by address
+        /// Async instantiate pooled particle system from address
         /// </summary>
         /// <param name="address"></param>
         /// <param name="position"></param>
@@ -102,7 +103,7 @@ namespace Chris.Gameplay.FX
         }
         
         /// <summary>
-        /// Instantiate pooled particle system by prefab, optimized version of <see cref="Object.Instantiate(Object, Transform)"/> 
+        /// Instantiate pooled particle system from prefab, optimized version of <see cref="Object.Instantiate(Object, Transform)"/> 
         /// </summary>
         /// <param name="prefab"></param>
         /// <param name="parent"></param>
@@ -113,7 +114,7 @@ namespace Chris.Gameplay.FX
         }
         
         /// <summary>
-        /// Instantiate pooled particle system by prefab, optimized version of <see cref="Object.Instantiate(Object, Vector3, Quaternion, Transform)"/> 
+        /// Instantiate pooled particle system from prefab, optimized version of <see cref="Object.Instantiate(Object, Vector3, Quaternion, Transform)"/> 
         /// </summary>
         /// <param name="prefab"></param>
         /// <param name="position"></param>
@@ -196,6 +197,7 @@ namespace Chris.Gameplay.FX
             Assert.IsNotNull(Component);
         }
         
+        [ExecutableFunction]
         public void Play(bool releaseOnEnd = true)
         {
             if (releaseOnEnd && !Component.main.loop)
@@ -207,10 +209,17 @@ namespace Chris.Gameplay.FX
             Component.Play();
         }
         
+        [ExecutableFunction]
         public void Stop(bool release = true)
         {
             Component.Stop();
             if (release) Dispose();
+        }
+
+        [ExecutableFunction]
+        public float GetDuration()
+        {
+            return ((ComponentCache)Cache).Duration;
         }
     }
     

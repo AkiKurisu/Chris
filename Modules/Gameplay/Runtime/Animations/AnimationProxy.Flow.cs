@@ -8,7 +8,7 @@ namespace Chris.Gameplay.Animations
 {
     public partial class AnimationProxy
     {
-        private readonly Dictionary<AnimationClip, SequenceTask> _runningTasks = new();
+        private readonly Dictionary<AnimationClip, SequenceTask> _runningSequences = new();
         
         /* Following API only works on default layer */
         #region Flow API
@@ -21,11 +21,12 @@ namespace Chris.Gameplay.Animations
             float blendOutTime = 0.25f)
         {
             Flow_StopAnimation(animationClip);
-            _runningTasks[animationClip] = CreateSequenceBuilder()
+            _runningSequences[animationClip] = CreateSequenceBuilder()
                 .Append(animationClip, animationClip.length * loopCount, blendInTime)
                 .SetBlendOut(blendOutTime)
                 .Build()
                 .Run();
+            _runningSequences[animationClip].Acquire();
         }
         
         [ExecutableFunction]
@@ -38,32 +39,43 @@ namespace Chris.Gameplay.Animations
         {
             Flow_StopAnimation(animationClip);
             Action onCompleteAction = onComplete;
-            _runningTasks[animationClip] = CreateSequenceBuilder()
+            _runningSequences[animationClip] = CreateSequenceBuilder()
                 .Append(animationClip, animationClip.length * loopCount, blendInTime)
                 .SetBlendOut(blendOutTime)
                 .AppendCallBack(_ => onCompleteAction?.Invoke())
                 .Build()
                 .Run();
+            _runningSequences[animationClip].Acquire();
         }
 
         [ExecutableFunction]
         public void Flow_StopAnimation(AnimationClip animationClip)
         {
-            if (!_runningTasks.TryGetValue(animationClip, out var task)) return;
+            if (!_runningSequences.TryGetValue(animationClip, out var task)) return;
             task?.Stop();
-            _runningTasks.Remove(animationClip);
+            task?.Dispose();
+            _runningSequences.Remove(animationClip);
         }
         
         [ExecutableFunction]
         public void Flow_StopAllAnimation()
         {
-            foreach (var runningTask in _runningTasks)
-            {
-                runningTask.Value?.Stop();
-            }
-            _runningTasks.Clear();
+            StopAllAnimationSequences();
         }
         
         #endregion Flow API
+
+        /// <summary>
+        /// Stop all running animation sequences created by this proxy
+        /// </summary>
+        public void StopAllAnimationSequences()
+        {
+            foreach (var pair in _runningSequences)
+            {
+                pair.Value?.Stop();
+                pair.Value?.Dispose();
+            }
+            _runningSequences.Clear();
+        }
     }
 }

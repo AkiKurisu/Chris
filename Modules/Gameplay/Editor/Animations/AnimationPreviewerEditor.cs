@@ -11,7 +11,7 @@ namespace Chris.Gameplay.Animations.Editor
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
-            GUI.enabled = Previewer.AnimationClip && Previewer.Animator;
+            GUI.enabled = Previewer.animationClip && Previewer.animator;
             if (IsPlaying())
             {
                 if (GUILayout.Button("Stop"))
@@ -47,7 +47,7 @@ namespace Chris.Gameplay.Animations.Editor
             else
             {
                 AnimationMode.StartAnimationMode();
-                AnimationMode.SampleAnimationClip(Previewer.Animator.gameObject, Previewer.AnimationClip, 0);
+                AnimationMode.SampleAnimationClip(Previewer.animator.gameObject, Previewer.animationClip, 0);
             }
         }
         

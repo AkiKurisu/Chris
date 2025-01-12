@@ -1,11 +1,8 @@
 using Ceres.Annotations;
-using Ceres.Graph;
 using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using Ceres.Graph.Flow.Utilities;
 using Chris.Schedulers;
-using Unity.Collections.LowLevel.Unsafe;
-using UnityEngine;
 using UnityEngine.Scripting;
 namespace Chris.Gameplay.Flow.Utilities
 {
@@ -15,27 +12,6 @@ namespace Chris.Gameplay.Flow.Utilities
     [Preserve]
     public class SchedulerExecutableLibrary: ExecutableFunctionLibrary
     {
-        [RuntimeInitializeOnLoadMethod]
-#if UNITY_EDITOR
-        [UnityEditor.InitializeOnLoadMethod]
-#endif
-        private static unsafe void InitializeOnLoad()
-        {
-            /* Implicit conversation */
-            CeresPort<SchedulerHandle>.MakeCompatibleTo<double>(handle =>
-            {
-                double value = default;
-                UnsafeUtility.CopyStructureToPtr(ref handle, &value);
-                return value;
-            });
-            CeresPort<double>.MakeCompatibleTo<SchedulerHandle>(d =>
-            {
-                SchedulerHandle handle = default;
-                UnsafeUtility.CopyStructureToPtr(ref d, &handle);
-                return handle;
-            });
-        }
-        
         #region Scheduler
 
         [ExecutableFunction, CeresLabel("Schedule Timer by Event")]
@@ -57,8 +33,8 @@ namespace Chris.Gameplay.Flow.Utilities
             return handle;
         }
         
-        [ExecutableFunction(IsScriptMethod = true, DisplayTarget = false), CeresLabel("Cancel Scheduler")]
-        public static void Flow_SchedulerHandleCancel(SchedulerHandle handle)
+        [ExecutableFunction, CeresLabel("Cancel Scheduler")]
+        public static void Flow_SchedulerCancel(SchedulerHandle handle)
         {
             handle.Cancel();
         }

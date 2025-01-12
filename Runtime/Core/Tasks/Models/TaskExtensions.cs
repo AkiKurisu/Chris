@@ -17,6 +17,12 @@ namespace Chris.Tasks
             return taskBase;
         }
         
+        /// <summary>
+        /// Run the task, return <see cref="TTask"/> self
+        /// </summary>
+        /// <param name="taskBase"></param>
+        /// <typeparam name="TTask"></typeparam>
+        /// <returns></returns>
         public static TTask Run<TTask>(this TTask taskBase) where TTask: TaskBase
         {
             return (TTask)Run((TaskBase)taskBase);

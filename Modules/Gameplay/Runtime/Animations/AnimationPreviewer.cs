@@ -2,41 +2,46 @@ using UnityEngine;
 namespace Chris.Gameplay.Animations
 {
     /// <summary>
-    /// MonoBehaviour to preview animation pose using <see cref="AnimationProxy"/>
+    /// MonoBehaviour to preview animation pose both in editor and play mode
     /// </summary>
     public class AnimationPreviewer : MonoBehaviour
     {
-        public Animator Animator;
-        public AnimationClip AnimationClip;
-        private AnimationProxy animationProxy;
+        public Animator animator;
+        
+        public AnimationClip animationClip;
+        
+        private AnimationProxy _animationProxy;
+        
         private void Reset()
         {
-            Animator = GetComponentInChildren<Animator>();
+            animator = GetComponentInChildren<Animator>();
         }
+        
         private void OnDestroy()
         {
             Release();
         }
+        
         #region Runtime Rreview
         public void Preview()
         {
-            animationProxy ??= new AnimationProxy(Animator);
-            animationProxy.LoadAnimationClip(AnimationClip, 0);
+            _animationProxy ??= new AnimationProxy(animator);
+            _animationProxy.LoadAnimationClip(animationClip, 0);
         }
         public void Stop()
         {
-            animationProxy.Stop(0);
+            _animationProxy.Stop(0);
         }
 
         public bool IsPlaying()
         {
-            return animationProxy != null && animationProxy.IsPlaying;
+            return _animationProxy != null && _animationProxy.IsPlaying;
         }
         #endregion Runtime Rreview
 
         internal void Release()
         {
-            animationProxy?.Dispose();
+            _animationProxy?.Dispose();
         }
     }
 }
