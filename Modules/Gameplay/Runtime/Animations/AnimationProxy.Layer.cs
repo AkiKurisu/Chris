@@ -9,10 +9,20 @@ namespace Chris.Gameplay.Animations
     /// <summary>
     /// Proxy layer handle
     /// </summary>
-    public struct LayerHandle : IEquatable<LayerHandle>
+    public readonly struct LayerHandle : IEquatable<LayerHandle>
     {
-        public int Id;
+        public readonly int Id;
 
+        public LayerHandle(string layerName)
+        {
+            Id = UAnimator.StringToHash(layerName);
+        }
+        
+        public LayerHandle(int layerId)
+        {
+            Id = layerId;
+        }
+        
         public static bool operator ==(LayerHandle left, LayerHandle right)
         {
             return left.Id == right.Id;
@@ -21,12 +31,12 @@ namespace Chris.Gameplay.Animations
         {
             return left.Id != right.Id;
         }
-        public readonly override bool Equals(object obj)
+        public override bool Equals(object obj)
         {
             if (obj is not LayerHandle handle) return false;
             return handle.Id == Id;
         }
-        public readonly bool Equals(LayerHandle other)
+        public bool Equals(LayerHandle other)
         {
             return other.Id == Id;
         }
@@ -34,11 +44,12 @@ namespace Chris.Gameplay.Animations
         {
             return Id.GetHashCode();
         }
-        public readonly bool IsValid()
+        public bool IsValid()
         {
             return Id != 0;
         }
     }
+    
     /// <summary>
     /// Proxy layer descriptor
     /// </summary>
@@ -58,6 +69,7 @@ namespace Chris.Gameplay.Animations
                     && AvatarMask == other.AvatarMask && Name == other.Name;
         }
     }
+    
     public partial class AnimationProxy
     {
         /// <summary>
@@ -105,10 +117,7 @@ namespace Chris.Gameplay.Animations
         /// <param name="layerDescriptor"></param>
         public void CreateLayer(ref LayerHandle layerHandle, LayerDescriptor layerDescriptor)
         {
-            layerHandle = new LayerHandle()
-            {
-                Id = UAnimator.StringToHash(layerDescriptor.Name)
-            };
+            layerHandle = new LayerHandle(layerDescriptor.Name);
             if (LayerContexts.TryGetValue(layerHandle, out var context))
             {
                 /* Skip if is matched with current layer */

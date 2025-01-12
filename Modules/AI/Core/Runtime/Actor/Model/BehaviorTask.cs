@@ -24,7 +24,7 @@ namespace Chris.AI
         public BehaviorTask() : base()
         {
             // pause on cctor, manually start by controller
-            mStatus = TaskStatus.Paused;
+            Status = TaskStatus.Paused;
         }
         public void SetController(AIController host)
         {

@@ -28,7 +28,7 @@ namespace Chris.Tasks
         }
         private static void StopDelayTask(object instance)
         {
-            ((DelayTask)instance).mStatus = TaskStatus.Completed;
+            ((DelayTask)instance).Status = TaskStatus.Completed;
         }
     }
 }

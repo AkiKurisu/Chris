@@ -4,18 +4,16 @@ using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using Ceres.Graph.Flow.Utilities;
 using Chris.Schedulers;
-using Chris.Serialization;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.Scripting;
-namespace Chris.Gameplay
+namespace Chris.Gameplay.Flow.Utilities
 {
     /// <summary>
-    /// Executable function library for Gameplay
+    /// Executable function library for Chris.Schedulers
     /// </summary>
     [Preserve]
-    [FormerlySerializedType("Chris.Gameplay.GameplayExecutableFunctionLibrary, Chris.Gameplay")]
-    public class GameplayExecutableLibrary: ExecutableFunctionLibrary
+    public class SchedulerExecutableLibrary: ExecutableFunctionLibrary
     {
         [RuntimeInitializeOnLoadMethod]
 #if UNITY_EDITOR
@@ -24,13 +22,13 @@ namespace Chris.Gameplay
         private static unsafe void InitializeOnLoad()
         {
             /* Implicit conversation */
-            CeresPort<SchedulerHandle>.MakeCompatibleTo(handle =>
+            CeresPort<SchedulerHandle>.MakeCompatibleTo<double>(handle =>
             {
                 double value = default;
                 UnsafeUtility.CopyStructureToPtr(ref handle, &value);
                 return value;
             });
-            CeresPort<double>.MakeCompatibleTo(d =>
+            CeresPort<double>.MakeCompatibleTo<SchedulerHandle>(d =>
             {
                 SchedulerHandle handle = default;
                 UnsafeUtility.CopyStructureToPtr(ref d, &handle);
@@ -66,23 +64,5 @@ namespace Chris.Gameplay
         }
         
         #endregion Scheduler
-
-        #region Subsystem
-
-        [ExecutableFunction]
-        public static SubsystemBase Flow_GetSubsystem(
-            [CeresMetadata(ExecutableFunction.RESOLVE_RETURN)] SerializedType<SubsystemBase> type)
-        {
-            return GameWorld.Get().GetSubsystem(type);
-        }
-        
-        [ExecutableFunction]
-        public static SubsystemBase Flow_GetOrCreateSubsystem(
-            [CeresMetadata(ExecutableFunction.RESOLVE_RETURN)] SerializedType<SubsystemBase> type)
-        {
-            return WorldSubsystem.GetOrCreate(type);
-        }
-
-        #endregion
     }
 }

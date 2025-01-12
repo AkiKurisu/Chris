@@ -1,4 +1,5 @@
 using System;
+using Ceres.Graph.Flow.Annotations;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
@@ -346,6 +347,7 @@ namespace Chris.Gameplay.Animations
         /// <param name="animatorController"></param>
         /// <param name="blendInDuration"></param>
         /// <param name="layerHandle"></param>
+        [ExecutableFunction]
         public void LoadAnimator(RuntimeAnimatorController animatorController, float blendInDuration = 0.25f, LayerHandle layerHandle = default)
         {
             // Ensure old graph is destroyed
@@ -364,6 +366,7 @@ namespace Chris.Gameplay.Animations
         /// <param name="animationClip"></param>
         /// <param name="blendInDuration"></param>
         /// <param name="layerHandle"></param>
+        [ExecutableFunction]
         public void LoadAnimationClip(AnimationClip animationClip, float blendInDuration = 0.25f, LayerHandle layerHandle = default)
         {
             // Ensure old graph is destroyed
@@ -374,16 +377,18 @@ namespace Chris.Gameplay.Animations
             }
             LoadAnimationClip_Implementation(animationClip, blendInDuration, layerHandle);
         }
-        
+
         /// <summary>
         /// Stop animation proxy montage and blend out if <see cref="blendOutDuration"/> greater than 0
         /// </summary>
         /// <param name="blendOutDuration"></param>
-        public void Stop(float blendOutDuration = 0.25f)
+        /// <param name="immediately">Whether to stop montage immediately when duration is zero</param>
+        [ExecutableFunction]
+        public void Stop(float blendOutDuration = 0.25f, bool immediately = true)
         {
             if (!IsPlaying) return;
             IsBlendOut = true;
-            if (blendOutDuration <= 0)
+            if (blendOutDuration <= 0 && immediately)
             {
                 if (RestoreAnimatorControllerOnStop && Animator.runtimeAnimatorController != SourceController)
                 {

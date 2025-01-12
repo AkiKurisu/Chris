@@ -1,6 +1,7 @@
 using System;
 using Cysharp.Threading.Tasks;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UObject = UnityEngine.Object;
 namespace Chris.Resource
 {
     /// <summary>
@@ -31,18 +32,18 @@ namespace Chris.Resource
         /// Register completed result callback, no need to unregister since delegate list is clear after fire event
         /// </summary>
         /// <param name="callBack"></param>
-        public void RegisterCallBack(Action callBack)
+        public void RegisterCallBack(Action<UObject> callBack)
         {
-            InternalHandle.Completed += (h) => callBack?.Invoke();
+            InternalHandle.Completed += h => callBack?.Invoke(h.Result as UObject);
         }
         
         /// <summary>
         /// Register completed result callback, no need to unregister since delegate list is clear after fire event
         /// </summary>
         /// <returns></returns>
-        public object WaitForCompletion()
+        public UObject WaitForCompletion()
         {
-            return InternalHandle.WaitForCompletion();
+            return InternalHandle.WaitForCompletion() as UObject;
         }
         
         /// <summary>
@@ -107,7 +108,7 @@ namespace Chris.Resource
         /// <param name="callBack"></param>
         public void RegisterCallBack(Action<T> callBack)
         {
-            InternalHandle.Completed += (h) => callBack?.Invoke(h.Result);
+            InternalHandle.Completed += h => callBack?.Invoke(h.Result);
         }
         
         /// <summary>

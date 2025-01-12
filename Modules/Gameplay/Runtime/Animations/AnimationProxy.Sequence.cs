@@ -142,7 +142,7 @@ namespace Chris.Gameplay.Animations
                 }
                 float time = _blendOutTime;
                 AnimationProxy animProxy = _proxy;
-                sequenceTask.AppendCallBack(() => animProxy.Stop(time));
+                sequenceTask.AppendCallback(() => animProxy.Stop(time));
                 _sequence = sequenceTask;
                 _taskBuffer.Clear();
                 _sequence.Acquire();

@@ -69,7 +69,7 @@ namespace Chris.Gameplay
         {
             ProcessEvent();
             UnregisterActor(this);
-            _graph?.Dispose();
+            ReleaseGraph();
             _actorComponents.Clear();
         }
         

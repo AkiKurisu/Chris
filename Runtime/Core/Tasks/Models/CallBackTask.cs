@@ -16,7 +16,7 @@ namespace Chris.Tasks
         public override void Tick()
         {
             callBack?.Invoke();
-            mStatus = TaskStatus.Completed;
+            Status = TaskStatus.Completed;
         }
         protected override void Reset()
         {
