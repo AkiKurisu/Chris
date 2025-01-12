@@ -19,6 +19,7 @@ namespace Chris.Serialization
             
             public bool isGeneric;
         }
+        
         private static string StripTypeNameString(string str, int index)
         {
             int toIndex = index + 1;
@@ -136,11 +137,11 @@ namespace Chris.Serialization
                 Debug.LogError("SerializedType not support unassigned generic type");
                 return null;
             }
-            if (SerializedTypeRedirector.TryRedirect(serializedTypeString, out var type))
+            var data = SplitTypeString(serializedTypeString);
+            if (SerializedTypeRedirector.TryRedirect(data.typeName, out var type))
             {
                 return type;
             }
-            var data = SplitTypeString(serializedTypeString);
             return Type.GetType(data.typeName);
         }
 
@@ -325,13 +326,15 @@ namespace Chris.Serialization
     /// <summary>
     /// Attribute type that changed assembly, namespace or class name.
     /// </summary>
+    /// <remarks>Format is {Namespace}.{ClassName}, {AssemblyName}</remarks>
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
     public sealed class FormerlySerializedTypeAttribute : Attribute
     {
-        public string OldSerializedType { get; }
-        public FormerlySerializedTypeAttribute(string oldSerializedType)
+        public string TypeName { get; }
+        
+        public FormerlySerializedTypeAttribute(string typeName)
         {
-            OldSerializedType = oldSerializedType;
+            TypeName = typeName;
         }
     }
 
@@ -355,19 +358,19 @@ namespace Chris.Serialization
                 return AppDomain.CurrentDomain.GetAssemblies()
                         .SelectMany(x => x.GetTypes())
                         .Where(x => x.GetCustomAttribute<FormerlySerializedTypeAttribute>() != null)
-                        .ToDictionary(x => x.GetCustomAttribute<FormerlySerializedTypeAttribute>().OldSerializedType, x => x);
+                        .ToDictionary(x => x.GetCustomAttribute<FormerlySerializedTypeAttribute>().TypeName, x => x);
             });
         }
         
         /// <summary>
         /// Try get redirected type
         /// </summary>
-        /// <param name="stringType"></param>
+        /// <param name="typeName"></param>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static bool TryRedirect(string stringType, out Type type)
+        public static bool TryRedirect(string typeName, out Type type)
         {
-            return UpdatableType.Value.TryGetValue(stringType, out type);
+            return UpdatableType.Value.TryGetValue(typeName, out type);
         }
     }
 }

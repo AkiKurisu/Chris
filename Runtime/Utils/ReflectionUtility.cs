@@ -200,7 +200,8 @@ namespace Chris
             typeof(long), typeof(ulong),
             typeof(short), typeof(ushort),
             typeof(float),
-            typeof(double)
+            typeof(double),
+            typeof(bool)
         };
 
         public static bool IsSerializableNumericTypes(Type type)

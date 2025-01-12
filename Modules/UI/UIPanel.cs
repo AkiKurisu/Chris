@@ -136,8 +136,7 @@ namespace Chris.UI
         
         public void ClearFields()
         {
-            if (_panelField == null) return;
-            _panelField.Clear();
+            _panelField?.Clear();
         }
         
         public TPanel Cast<TPanel>() where TPanel : UIPanel

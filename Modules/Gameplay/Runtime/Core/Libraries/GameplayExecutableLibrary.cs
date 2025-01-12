@@ -1,9 +1,12 @@
 using Ceres.Annotations;
+using Ceres.Graph;
 using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using Ceres.Graph.Flow.Utilities;
 using Chris.Schedulers;
 using Chris.Serialization;
+using Unity.Collections.LowLevel.Unsafe;
+using UnityEngine;
 using UnityEngine.Scripting;
 namespace Chris.Gameplay
 {
@@ -11,8 +14,30 @@ namespace Chris.Gameplay
     /// Executable function library for Gameplay
     /// </summary>
     [Preserve]
-    public class GameplayExecutableFunctionLibrary: ExecutableFunctionLibrary
+    [FormerlySerializedType("Chris.Gameplay.GameplayExecutableFunctionLibrary, Chris.Gameplay")]
+    public class GameplayExecutableLibrary: ExecutableFunctionLibrary
     {
+        [RuntimeInitializeOnLoadMethod]
+#if UNITY_EDITOR
+        [UnityEditor.InitializeOnLoadMethod]
+#endif
+        private static unsafe void InitializeOnLoad()
+        {
+            /* Implicit conversation */
+            CeresPort<SchedulerHandle>.MakeCompatibleTo(handle =>
+            {
+                double value = default;
+                UnsafeUtility.CopyStructureToPtr(ref handle, &value);
+                return value;
+            });
+            CeresPort<double>.MakeCompatibleTo(d =>
+            {
+                SchedulerHandle handle = default;
+                UnsafeUtility.CopyStructureToPtr(ref d, &handle);
+                return handle;
+            });
+        }
+        
         #region Scheduler
 
         [ExecutableFunction, CeresLabel("Schedule Timer by Event")]
