@@ -10,11 +10,16 @@
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "ICSharpCode.SharpZipLib.dll",
+        "R3.dll",
+        "Newtonsoft.Json.dll"
+    ],
     "autoReferenced": true,
     "defineConstraints": [
-        "AF_ADDRESSABLES_INSATLL"
+        "AF_ADDRESSABLES_INSATLL",
+        "!UNITY_6000"
     ],
     "versionDefines": [
         {
