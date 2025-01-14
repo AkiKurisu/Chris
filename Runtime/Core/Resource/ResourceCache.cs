@@ -4,17 +4,21 @@ using System.Linq;
 using System.Collections;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UObject = UnityEngine.Object;
 namespace Chris.Resource
 {
     /// <summary>
     /// Loading and cache specific asset as a group and release them by control version
     /// </summary>
     /// <typeparam name="TAsset"></typeparam>
-    public class ResourceCache<TAsset> : IDisposable, IReadOnlyDictionary<string, TAsset> where TAsset : UnityEngine.Object
+    public class ResourceCache<TAsset> : IDisposable, IReadOnlyDictionary<string, TAsset> 
+        where TAsset : UObject
     {
-        private readonly Dictionary<string, ResourceHandle<TAsset>> internalHandles = new();
-        private readonly Dictionary<string, TAsset> cacheMap = new();
-        private readonly Dictionary<string, int> versionMap = new();
+        private readonly Dictionary<string, ResourceHandle<TAsset>> _internalHandles = new();
+        
+        private readonly Dictionary<string, TAsset> _cacheMap = new();
+        
+        private readonly Dictionary<string, int> _versionMap = new();
 
         /// <summary>
         /// Validate asset location before loading, throw <see cref="InvalidResourceRequestException"/> if not exist
@@ -26,20 +30,23 @@ namespace Chris.Resource
         /// Current cache version
         /// </summary>
         /// <value></value>
-        public int Version { get; private set; } = 0;
+        public int Version { get; private set; }
 
-        public IEnumerable<string> Keys => cacheMap.Keys;
+        public IEnumerable<string> Keys => _cacheMap.Keys;
 
-        public IEnumerable<TAsset> Values => cacheMap.Values;
+        public IEnumerable<TAsset> Values => _cacheMap.Values;
 
-        public int Count => cacheMap.Count;
+        public int Count => _cacheMap.Count;
 
-        public TAsset this[string key] => cacheMap[key];
-        private int loadinRef = 0;
+        public TAsset this[string key] => _cacheMap[key];
+        
+        private int _loadingRef;
+        
         /// <summary>
         /// Flags when any asset is in loading
         /// </summary>
-        public bool IsLoading => loadinRef > 0;
+        public bool IsLoading => _loadingRef > 0;
+        
         /// <summary>
         /// Load and cache asset async
         /// </summary>
@@ -47,17 +54,18 @@ namespace Chris.Resource
         /// <returns></returns>
         public async UniTask<TAsset> LoadAssetAsync(string address)
         {
-            versionMap[address] = Version;
-            if (!cacheMap.TryGetValue(address, out TAsset asset))
+            _versionMap[address] = Version;
+            if (!_cacheMap.TryGetValue(address, out TAsset asset))
             {
-                loadinRef++;
+                _loadingRef++;
                 if (AddressSafeCheck)
                     await ResourceSystem.CheckAssetAsync<TAsset>(address);
                 asset = await LoadNewAssetAsync(address);
-                loadinRef--;
+                _loadingRef--;
             }
             return asset;
         }
+        
         /// <summary>
         /// Load and cache asset in sync way which will block game, not recommend
         /// </summary>
@@ -65,8 +73,8 @@ namespace Chris.Resource
         /// <returns></returns>
         public TAsset LoadAsset(string address)
         {
-            versionMap[address] = Version;
-            if (!cacheMap.TryGetValue(address, out TAsset asset))
+            _versionMap[address] = Version;
+            if (!_cacheMap.TryGetValue(address, out TAsset asset))
             {
                 if (AddressSafeCheck)
                     ResourceSystem.CheckAsset<TAsset>(address);
@@ -76,7 +84,7 @@ namespace Chris.Resource
         }
         private ResourceHandle<TAsset> LoadNewAssetAsync(string address, Action<TAsset> callBack = null)
         {
-            if (internalHandles.TryGetValue(address, out var internalHandle))
+            if (_internalHandles.TryGetValue(address, out var internalHandle))
             {
                 if (internalHandle.IsDone())
                 {
@@ -92,49 +100,54 @@ namespace Chris.Resource
             //Create a new resource load call, also track it's handle
             internalHandle = ResourceSystem.LoadAssetAsync<TAsset>(address, (asset) =>
             {
-                cacheMap.Add(address, asset);
+                _cacheMap.Add(address, asset);
                 callBack?.Invoke(asset);
             });
-            internalHandles.Add(address, internalHandle);
+            _internalHandles.Add(address, internalHandle);
             return internalHandle;
         }
+        
         /// <summary>
         /// Implementation of <see cref="IDisposable"/>, release all handles in cache.
         /// </summary>
         public void Dispose()
         {
-            foreach (var handle in internalHandles.Values)
+            foreach (var handle in _internalHandles.Values)
             {
                 ResourceSystem.ReleaseAsset(handle);
             }
-            internalHandles.Clear();
-            cacheMap.Clear();
-            versionMap.Clear();
+            _internalHandles.Clear();
+            _cacheMap.Clear();
+            _versionMap.Clear();
         }
+        
         /// <summary>
         /// Get cache addresses
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<string> GetCacheKeys() => cacheMap.Keys;
+        public IEnumerable<string> GetCacheKeys() => _cacheMap.Keys;
+        
         /// <summary>
         /// Update version
         /// </summary>
         public int UpdateVersion() => ++Version;
+        
         /// <summary>
         /// Release all assets with target version
         /// </summary>
         /// <param name="version"></param>
         public void ReleaseAssetsWithVersion(int version)
         {
-            versionMap.Where(p => p.Value == version).Select(p => p.Key).ToList().ForEach(ads =>
+            _versionMap.Where(p => p.Value == version).Select(p => p.Key).ToList().ForEach(ads =>
             {
-                if (internalHandles.TryGetValue(ads, out var handle))
+                if (_internalHandles.TryGetValue(ads, out var handle))
                     ResourceSystem.ReleaseAsset(handle);
-                cacheMap.Remove(ads);
-                internalHandles.Remove(ads);
-                versionMap.Remove(ads);
+                _cacheMap.Remove(ads);
+                _internalHandles.Remove(ads);
+                _versionMap.Remove(ads);
             });
         }
+        
         /// <summary>
         /// Release assets with last version and update version
         /// </summary>
@@ -143,28 +156,69 @@ namespace Chris.Resource
             ReleaseAssetsWithVersion(Version);
             UpdateVersion();
         }
+        
         public bool ContainsKey(string key)
         {
-            return cacheMap.ContainsKey(key);
+            return _cacheMap.ContainsKey(key);
         }
+        
         public bool TryGetValue(string key, out TAsset value)
         {
-            return cacheMap.TryGetValue(key, out value);
+            return _cacheMap.TryGetValue(key, out value);
         }
+        
         public IEnumerator<KeyValuePair<string, TAsset>> GetEnumerator()
         {
-            return cacheMap.GetEnumerator();
+            return _cacheMap.GetEnumerator();
         }
+        
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return cacheMap.GetEnumerator();
+            return _cacheMap.GetEnumerator();
         }
     }
+
+    #region Common Unity Assets
+    
     /// <summary>
-    /// Resource cache for audioClip
+    /// Resource cache for <see cref="AudioClip"/>
     /// </summary>
     public class AudioClipCache : ResourceCache<AudioClip>
     {
 
     }
+    
+    /// <summary>
+    /// Resource cache for <see cref="Texture2D"/>
+    /// </summary>
+    public class Texture2DCache : ResourceCache<Texture2D>
+    {
+
+    }
+    
+    /// <summary>
+    /// Resource cache for <see cref="AnimationClip"/>
+    /// </summary>
+    public class AnimationClipCache : ResourceCache<AnimationClip>
+    {
+
+    }
+    
+    /// <summary>
+    /// Resource cache for <see cref="RuntimeAnimatorController"/>
+    /// </summary>
+    public class RuntimeAnimatorControllerCache : ResourceCache<RuntimeAnimatorController>
+    {
+
+    }
+    
+    /// <summary>
+    /// Resource cache for <see cref="TextAsset"/>
+    /// </summary>
+    public class TextAssetCache : ResourceCache<TextAsset>
+    {
+
+    }
+
+    #endregion
 }

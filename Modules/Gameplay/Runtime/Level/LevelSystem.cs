@@ -24,29 +24,9 @@ namespace Chris.Gameplay.Level
         {
         }
 
-        protected override async UniTask Initialize(bool sync)
+        protected override UniTask Initialize(bool sync)
         {
-            try
-            {
-                if (sync)
-                {
-                    ResourceSystem.CheckAsset<DataTable>(TableKey);
-                    ResourceSystem.LoadAssetAsync<DataTable>(TableKey, (x) =>
-                    {
-                        RegisterDataTable(TableKey, x);
-                    }).WaitForCompletion();
-                    return;
-                }
-                await ResourceSystem.CheckAssetAsync<DataTable>(TableKey);
-                await ResourceSystem.LoadAssetAsync<DataTable>(TableKey, (x) =>
-                {
-                    RegisterDataTable(TableKey, x);
-                });
-            }
-            catch (InvalidResourceRequestException)
-            {
-
-            }
+            return InitializeSingleTable(TableKey, sync);
         }
         
         private LevelReference[] _references;
