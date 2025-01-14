@@ -13,6 +13,7 @@ namespace Chris.Gameplay.Flow.Utilities
     /// Executable function library for Gameplay
     /// </summary>
     [Preserve]
+    [CeresGroup("Gameplay")]
     public class GameplayExecutableLibrary: ExecutableFunctionLibrary
     {
         #region Subsystem

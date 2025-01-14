@@ -8,7 +8,7 @@ using UObject = UnityEngine.Object;
 namespace Chris.Gameplay.Flow
 {
     [Serializable]
-    [NodeGroup("Utilities")]
+    [CeresGroup("Utilities")]
     [CeresLabel("Load {0} Async")]
     public class FlowNode_SoftAssetReferenceTLoadAssetAsync<TObject>: FlowNode where TObject: UObject
     {
@@ -25,7 +25,7 @@ namespace Chris.Gameplay.Flow
     }
     
     [Serializable]
-    [NodeGroup("Utilities")]
+    [CeresGroup("Utilities")]
     [CeresLabel("Load Asset Async")]
     [RequirePort(typeof(SoftAssetReference))]
     public class FlowNode_SoftAssetReferenceLoadAssetAsync: FlowNode

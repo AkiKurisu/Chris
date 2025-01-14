@@ -13,30 +13,31 @@ namespace Chris.Gameplay.Flow.Utilities
     /// Executable function library for Chris.Resource
     /// </summary>
     [Preserve]
+    [CeresGroup("Resource")]
     public class ResourceExecutableLibrary: ExecutableFunctionLibrary
     {
-        [ExecutableFunction(IsScriptMethod = true, IsSelfTarget = true), CeresLabel("Load Asset Synchronous")]
-        public static UObject Flow_GameObjectLoadAssetSynchronous([HideInGraphEditor] GameObject gameObject, string address)
+        [ExecutableFunction, CeresLabel("Load Asset Synchronous")]
+        public static UObject Flow_LoadAssetSynchronous(string address)
         {
-            return ResourceSystem.LoadAssetAsync<UObject>(address).AddTo(gameObject).WaitForCompletion();
+            return ResourceSystem.LoadAssetAsync<UObject>(address).AddTo(GameWorld.Get()).WaitForCompletion();
         }
         
-        [ExecutableFunction(IsScriptMethod = true, IsSelfTarget = true), CeresLabel("Load Asset Async")]
-        public static void Flow_GameObjectLoadAssetAsync([HideInGraphEditor] GameObject gameObject, string address, EventDelegate<UObject> onComplete)
+        [ExecutableFunction, CeresLabel("Load Asset Async")]
+        public static void Flow_LoadAssetAsync(string address, EventDelegate<UObject> onComplete)
         {
-            ResourceSystem.LoadAssetAsync<UObject>(address, onComplete).AddTo(gameObject);
+            ResourceSystem.LoadAssetAsync<UObject>(address, onComplete).AddTo(GameWorld.Get());
         }
         
-        [ExecutableFunction(IsScriptMethod = true, IsSelfTarget = true), CeresLabel("Load Asset Synchronous")]
-        public static UObject Flow_ComponentLoadAssetSynchronous([HideInGraphEditor] Component component, string address)
+        [ExecutableFunction, CeresLabel("Instantiate Synchronous")]
+        public static GameObject Flow_InstantiateAsync(string address, Transform parent)
         {
-            return ResourceSystem.LoadAssetAsync<UObject>(address).AddTo(component).WaitForCompletion();
+           return ResourceSystem.InstantiateAsync(address, parent).AddTo(GameWorld.Get()).WaitForCompletion();
         }
         
-        [ExecutableFunction(IsScriptMethod = true, IsSelfTarget = true), CeresLabel("Load Asset Async")]
-        public static void Flow_ComponentLoadAssetAsync([HideInGraphEditor] Component component, string address, EventDelegate<UObject> onComplete)
+        [ExecutableFunction, CeresLabel("Instantiate Async")]
+        public static void Flow_InstantiateAsync(string address, Transform parent, EventDelegate<GameObject> onComplete)
         {
-            ResourceSystem.LoadAssetAsync<UObject>(address, onComplete).AddTo(component);
+            ResourceSystem.InstantiateAsync(address, parent, onComplete).AddTo(GameWorld.Get());
         }
     }
 }

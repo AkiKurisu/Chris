@@ -10,6 +10,7 @@ namespace Chris.Gameplay.Flow.Utilities
     /// Executable function library for Chris.Schedulers
     /// </summary>
     [Preserve]
+    [CeresGroup("Scheduler")]
     public class SchedulerExecutableLibrary: ExecutableFunctionLibrary
     {
         #region Scheduler
