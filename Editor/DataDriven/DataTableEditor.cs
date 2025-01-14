@@ -97,7 +97,6 @@ namespace Chris.DataDriven.Editor
             Table.Cleanup();
             /* Trigger save assets to force cleanup editor cache */
             EditorUtility.SetDirty(Table);
-            AssetDatabase.SaveAssetIfDirty(Table);
             /* Auto register table if it has AddressableDataTableAttribute */
             DataTableEditorUtils.RegisterTableToAssetGroup(Table);
         }
