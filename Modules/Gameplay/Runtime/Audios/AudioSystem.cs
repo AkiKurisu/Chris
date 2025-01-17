@@ -1,7 +1,7 @@
 using Cysharp.Threading.Tasks;
-using Chris.React;
 using UnityEngine;
 using R3;
+using R3.Chris;
 using System;
 using UnityEngine.Assertions;
 using System.Collections.Generic;

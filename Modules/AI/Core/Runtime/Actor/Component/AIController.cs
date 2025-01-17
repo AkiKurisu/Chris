@@ -12,8 +12,11 @@ namespace Chris.AI
     {
         [SerializeField]
         private BehaviorTask[] behaviorTasks;
+        
         protected Dictionary<string, TaskBase> TaskMap { get; } = new();
+        
         public bool IsAIEnabled { get; protected set; }
+        
         public BlackBoard BlackBoard { get; private set; }
         
         [ImplementableEvent]

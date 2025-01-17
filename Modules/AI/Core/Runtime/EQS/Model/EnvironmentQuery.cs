@@ -42,7 +42,7 @@ namespace Chris.AI.EQS
             [BurstCompile]
             public void Execute(int index)
             {
-                ActorData actor = Actors[index];
+                var actor = Actors[index];
                 if (MathUtils.IsInLayerMask(actor.Layer, LayerMask)
                 && actor.Handle != Ignored
                 && math.distance(Center, actor.Position) <= Radius
@@ -52,6 +52,7 @@ namespace Chris.AI.EQS
                 }
             }
         }
+        
         /// <summary>
         /// Query actors overlap in field of view immediately
         /// </summary>

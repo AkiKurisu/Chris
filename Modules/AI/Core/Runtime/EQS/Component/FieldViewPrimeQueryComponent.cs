@@ -10,43 +10,50 @@ namespace Chris.AI.EQS
     public class FieldViewPrimeQueryComponent : FieldViewQueryComponentBase
     {
         [Header("Data")]
-        public FieldViewPrime FieldView = new()
+        public FieldViewPrime fieldView = new()
         {
             radius = 20,
             angle = 120,
             sides = 8,
             blend = 0.5f
         };
-        public LayerMask QueryLayerMask;
-        private FieldViewPrimeQuerySystem system;
+        
+        public LayerMask queryLayerMask;
+        
+        private FieldViewPrimeQuerySystem _system;
+        
         [Header("Gizmos")]
-        public Vector3 Offset;
+        public Vector3 offset;
+        
         private void Start()
         {
-            system = WorldSubsystem.GetOrCreate<FieldViewPrimeQuerySystem>();
-            if (system == null)
+            _system = WorldSubsystem.GetOrCreate<FieldViewPrimeQuerySystem>();
+            if (_system == null)
             {
                 Debug.LogError($"[FieldViewPrimeQueryComponent] Can not get FieldViewPrimeQuerySystem dynamically.");
             }
         }
+        
         public override bool RequestFieldViewQuery()
         {
-            if (system == null)
+            if (_system == null)
             {
                 return false;
             }
-            system.EnqueueCommand(new FieldViewPrimeQueryCommand()
+            _system.EnqueueCommand(new FieldViewPrimeQueryCommand()
             {
                 self = GetActor().GetActorHandle(),
-                fieldView = FieldView,
-                layerMask = QueryLayerMask
+                fieldView = fieldView,
+                layerMask = queryLayerMask
             });
             return true;
         }
+        
         public override void CollectViewActors(List<Actor> actors)
         {
-            system.GetActorsInFieldView(GetActor().GetActorHandle(), actors);
+            _system.GetActorsInFieldView(GetActor().GetActorHandle(), actors);
         }
+        
         public override void CollectViewActors<T>(List<T> actors)
         {
             var list = ListPool<Actor>.Get();
@@ -57,13 +64,15 @@ namespace Chris.AI.EQS
             }
             ListPool<Actor>.Release(list);
         }
+        
         public override bool Detect(Vector3 target, Vector3 fromPosition, Quaternion fromRotation, string[] filterTags = null)
         {
-            return FieldView.Detect(target, fromPosition, fromRotation, QueryLayerMask, filterTags);
+            return fieldView.Detect(target, fromPosition, fromRotation, queryLayerMask, filterTags);
         }
+        
         private void OnDrawGizmos()
         {
-            FieldView.DrawGizmos(transform.position + Offset, transform.rotation);
+            fieldView.DrawGizmos(transform.position + offset, transform.rotation);
         }
     }
 }

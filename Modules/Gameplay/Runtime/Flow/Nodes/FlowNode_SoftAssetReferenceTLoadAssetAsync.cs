@@ -2,7 +2,7 @@ using System;
 using Ceres.Annotations;
 using Ceres.Graph;
 using Ceres.Graph.Flow;
-using Chris.React;
+using R3.Chris;
 using Chris.Resource;
 using UObject = UnityEngine.Object;
 namespace Chris.Gameplay.Flow
@@ -20,7 +20,7 @@ namespace Chris.Gameplay.Flow
 
         protected override void LocalExecute(ExecutionContext executionContext)
         {
-            reference.Value.LoadAsync().AddTo(executionContext.Graph).RegisterCallBack(onComplete.Value);
+            reference.Value.LoadAsync().AddTo(executionContext.Graph).RegisterCallback(onComplete.Value);
         }
     }
     
@@ -38,7 +38,7 @@ namespace Chris.Gameplay.Flow
 
         protected override void LocalExecute(ExecutionContext executionContext)
         {
-            reference.Value.LoadAsync().AddTo(executionContext.Graph).RegisterCallBack(onComplete.Value);
+            reference.Value.LoadAsync().AddTo(executionContext.Graph).RegisterCallback(onComplete.Value);
         }
     }
 }

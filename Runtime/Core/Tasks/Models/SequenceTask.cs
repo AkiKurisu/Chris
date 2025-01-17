@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 namespace Chris.Tasks
@@ -8,31 +7,20 @@ namespace Chris.Tasks
     /// </summary>
     public class SequenceTask : PooledTaskBase<SequenceTask>, IEnumerable<TaskBase>
     {
-        public event Action OnCompleted;
-        
         private readonly Queue<TaskBase> _tasks = new();
         
         private TaskBase _runningTask;
         
-        public static SequenceTask GetPooled(Action callBack)
+        public static SequenceTask GetPooled(TaskBase firstTask)
         {
             var task = GetPooled();
-            task.OnCompleted = callBack;
-            return task;
-        }
-        
-        public static SequenceTask GetPooled(TaskBase firstTask, Action callBack)
-        {
-            var task = GetPooled();
-            task.OnCompleted = callBack;
             task.Append(firstTask);
             return task;
         }
         
-        public static SequenceTask GetPooled(IReadOnlyList<TaskBase> sequence, Action callBack)
+        public static SequenceTask GetPooled(IReadOnlyList<TaskBase> sequence)
         {
             var task = GetPooled();
-            task.OnCompleted = callBack;
             foreach (var tb in sequence)
                 task.Append(tb);
             return task;
@@ -43,7 +31,6 @@ namespace Chris.Tasks
             base.Reset();
             _runningTask = null;
             Status = TaskStatus.Stopped;
-            OnCompleted = null;
             _tasks.Clear();
         }
         
@@ -91,8 +78,7 @@ namespace Chris.Tasks
 
                         if (_tasks.Count == 0)
                         {
-                            Status = TaskStatus.Completed;
-                            CompleteWithEvent();
+                            CompleteTask();
                         }
                         else
                         {
@@ -102,18 +88,11 @@ namespace Chris.Tasks
                 }
                 else
                 {
-                    Status = TaskStatus.Completed;
-                    CompleteWithEvent();
+                    CompleteTask();
                 }
 
                 break;
             }
-        }
-
-        private void CompleteWithEvent()
-        {
-            OnCompleted?.Invoke();
-            OnCompleted = null;
         }
 
         public IEnumerator<TaskBase> GetEnumerator()
@@ -124,16 +103,6 @@ namespace Chris.Tasks
         IEnumerator IEnumerable.GetEnumerator()
         {
             return _tasks.GetEnumerator();
-        }
-        
-        /// <summary>
-        /// Append a call back after current last action in the sequence
-        /// </summary>
-        /// <param name="callback"></param>
-        /// <returns></returns>
-        public SequenceTask AppendCallback(Action callback)
-        {
-            return Append(CallBackTask.GetPooled(callback));
         }
     }
 }

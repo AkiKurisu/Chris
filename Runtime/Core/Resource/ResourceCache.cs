@@ -91,10 +91,8 @@ namespace Chris.Resource
                     callBack?.Invoke(internalHandle.Result);
                     return internalHandle;
                 }
-                else
-                {
-                    internalHandle.RegisterCallBack(callBack);
-                }
+
+                internalHandle.RegisterCallback(callBack);
                 return internalHandle;
             }
             //Create a new resource load call, also track it's handle

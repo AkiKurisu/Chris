@@ -149,9 +149,9 @@ namespace Chris.Resource
         /// <returns></returns>
         public static ResourceHandle<T> LoadAssetAsync<T>(string address, Action<T> callBack = null)
         {
-            AsyncOperationHandle<T> handle = Addressables.LoadAssetAsync<T>(address);
+            var handle = Addressables.LoadAssetAsync<T>(address);
             if (callBack != null)
-                handle.Completed += (h) => callBack.Invoke(h.Result);
+                handle.Completed += (h) => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
         #endregion
@@ -167,11 +167,11 @@ namespace Chris.Resource
         /// <returns></returns>
         public static ResourceHandle<GameObject> InstantiateAsync(string address, Transform parent, Action<GameObject> callBack = null)
         {
-            AsyncOperationHandle<GameObject> handle = Addressables.InstantiateAsync(address, parent);
+            var handle = Addressables.InstantiateAsync(address, parent);
             var resourceHandle = CreateHandle(handle, InstantiateOperation);
             handle.Completed += h => InstanceIDMap.Add(h.Result.GetInstanceID(), resourceHandle);
             if (callBack != null)
-                handle.Completed += h => callBack.Invoke(h.Result);
+                handle.Completed += h => callBack(h.Result);
             return resourceHandle;
         }
         #endregion
@@ -243,17 +243,17 @@ namespace Chris.Resource
         #region  Multi Assets Load
         public static ResourceHandle<IList<T>> LoadAssetsAsync<T>(object key, Action<IList<T>> callBack = null)
         {
-            AsyncOperationHandle<IList<T>> handle = Addressables.LoadAssetsAsync<T>(key, null);
+            var handle = Addressables.LoadAssetsAsync<T>(key, null);
             if (callBack != null)
-                handle.Completed += (h) => callBack.Invoke(h.Result);
+                handle.Completed += h => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
         
         public static ResourceHandle<IList<T>> LoadAssetsAsync<T>(IEnumerable key, MergeMode mode, Action<IList<T>> callBack = null)
         {
-            AsyncOperationHandle<IList<T>> handle = Addressables.LoadAssetsAsync<T>(key, null, (Addressables.MergeMode)mode);
+            var handle = Addressables.LoadAssetsAsync<T>(key, null, (Addressables.MergeMode)mode);
             if (callBack != null)
-                handle.Completed += (h) => callBack.Invoke(h.Result);
+                handle.Completed += h => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
         #endregion

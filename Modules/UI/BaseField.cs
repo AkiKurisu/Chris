@@ -5,9 +5,9 @@ using UnityEngine;
 using UnityEngine.Pool;
 using UObject = UnityEngine.Object;
 using Chris.Events;
-using Chris.React;
 using Chris.Resource;
 using R3;
+using R3.Chris;
 namespace Chris.UI
 {
     public static class UIEntry
@@ -217,7 +217,7 @@ namespace Chris.UI
             _disposables.Add(disposable);
         }
 
-        public override IEventCoordinator Root => EventSystem.Instance;
+        public override IEventCoordinator Coordinator => EventSystem.Instance;
         #endregion
     }
     /// <summary>

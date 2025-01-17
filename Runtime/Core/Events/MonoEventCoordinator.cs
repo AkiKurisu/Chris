@@ -16,15 +16,22 @@ namespace Chris.Events
     public abstract class MonoEventCoordinator : MonoBehaviour, IEventCoordinator
     {
         public virtual EventDispatcher EventDispatcher { get; protected set; }
+        
         public MonoDispatchType DispatchStatus { get; private set; }
-        private readonly HashSet<ICoordinatorDebugger> m_Debuggers = new();
-        private readonly Queue<EventBase> updateQueue = new();
-        private readonly Queue<EventBase> lateUpdateQueue = new();
-        private readonly Queue<EventBase> fixedUpdateQueue = new();
+        
+        private readonly HashSet<ICoordinatorDebugger> _debuggers = new();
+        
+        private readonly Queue<EventBase> _updateQueue = new();
+        
+        private readonly Queue<EventBase> _lateUpdateQueue = new();
+        
+        private readonly Queue<EventBase> _fixedUpdateQueue = new();
+        
         protected virtual void Awake()
         {
             EventDispatcher = EventDispatcher.CreateDefault();
         }
+        
         protected virtual void Update()
         {
             DispatchStatus = MonoDispatchType.Update;
@@ -32,6 +39,7 @@ namespace Chris.Events
             EventDispatcher.PushDispatcherContext();
             EventDispatcher.PopDispatcherContext();
         }
+        
         protected virtual void FixedUpdate()
         {
             DispatchStatus = MonoDispatchType.FixedUpdate;
@@ -39,6 +47,7 @@ namespace Chris.Events
             EventDispatcher.PushDispatcherContext();
             EventDispatcher.PopDispatcherContext();
         }
+        
         protected virtual void LateUpdate()
         {
             DispatchStatus = MonoDispatchType.LateUpdate;
@@ -46,10 +55,12 @@ namespace Chris.Events
             EventDispatcher.PushDispatcherContext();
             EventDispatcher.PopDispatcherContext();
         }
+        
         protected virtual void OnDestroy()
         {
             DetachAllDebuggers();
         }
+        
         public void Dispatch(EventBase evt, DispatchMode dispatchMode, MonoDispatchType monoDispatchType)
         {
             if (dispatchMode == DispatchMode.Immediate || monoDispatchType == DispatchStatus)
@@ -64,6 +75,7 @@ namespace Chris.Events
                 GetDispatchQueue(monoDispatchType).Enqueue(evt);
             }
         }
+        
         private void DrainQueue(MonoDispatchType monoDispatchType)
         {
             var queue = GetDispatchQueue(monoDispatchType);
@@ -82,54 +94,61 @@ namespace Chris.Events
             queue.Clear();
             Refresh();
         }
+        
         private Queue<EventBase> GetDispatchQueue(MonoDispatchType monoDispatchType)
         {
             return monoDispatchType switch
             {
-                MonoDispatchType.Update => updateQueue,
-                MonoDispatchType.FixedUpdate => fixedUpdateQueue,
-                MonoDispatchType.LateUpdate => lateUpdateQueue,
+                MonoDispatchType.Update => _updateQueue,
+                MonoDispatchType.FixedUpdate => _fixedUpdateQueue,
+                MonoDispatchType.LateUpdate => _lateUpdateQueue,
                 _ => throw new ArgumentOutOfRangeException(nameof(monoDispatchType)),
             };
         }
+        
         internal void AttachDebugger(ICoordinatorDebugger debugger)
         {
-            if (debugger != null && m_Debuggers.Add(debugger))
+            if (debugger != null && _debuggers.Add(debugger))
             {
                 debugger.CoordinatorDebug = this;
             }
         }
+        
         internal void DetachDebugger(ICoordinatorDebugger debugger)
         {
             if (debugger != null)
             {
                 debugger.CoordinatorDebug = null;
-                m_Debuggers.Remove(debugger);
+                _debuggers.Remove(debugger);
             }
         }
+        
         internal void DetachAllDebuggers()
         {
-            foreach (var debugger in m_Debuggers)
+            foreach (var debugger in _debuggers)
             {
                 debugger.CoordinatorDebug = null;
                 debugger.Disconnect();
             }
         }
+        
         internal IEnumerable<ICoordinatorDebugger> GetAttachedDebuggers()
         {
-            return m_Debuggers;
+            return _debuggers;
         }
+        
         public void Refresh()
         {
-            foreach (var debugger in m_Debuggers)
+            foreach (var debugger in _debuggers)
             {
                 debugger.Refresh();
             }
         }
+        
         public bool InterceptEvent(EventBase ev)
         {
             bool intercepted = false;
-            foreach (var debugger in m_Debuggers)
+            foreach (var debugger in _debuggers)
             {
                 intercepted |= debugger.InterceptEvent(ev);
             }
@@ -138,7 +157,7 @@ namespace Chris.Events
 
         public void PostProcessEvent(EventBase ev)
         {
-            foreach (var debugger in m_Debuggers)
+            foreach (var debugger in _debuggers)
             {
                 debugger.PostProcessEvent(ev);
             }

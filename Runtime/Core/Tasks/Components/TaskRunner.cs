@@ -1,12 +1,28 @@
 using System.Collections.Generic;
 using Chris.Events;
-using Chris.React;
 using UnityEngine;
 using R3;
+using R3.Chris;
 namespace Chris.Tasks
 {
     internal class TaskRunner : MonoBehaviour
     {
+        private class TaskCallbackEventHandler: CallbackEventHandler
+        {
+            public override IEventCoordinator Coordinator => EventSystem.Instance;
+
+            public TaskCallbackEventHandler()
+            {
+                Parent = EventSystem.EventHandler;
+            }
+            
+            public override void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default)
+            {
+                e.Target = this;
+                EventSystem.Instance.Dispatch(e, dispatchMode, MonoDispatchType.Update);
+            }
+        }
+        
         internal readonly List<TaskBase> Tasks = new();
         
         private readonly List<TaskBase> _tasksToAdd = new();
@@ -25,6 +41,8 @@ namespace Chris.Tasks
             }
             return _instance;
         }
+
+        private TaskCallbackEventHandler _eventHandler;
         
         public static void RegisterTask(TaskBase task)
         {
@@ -33,24 +51,30 @@ namespace Chris.Tasks
             {
                 if (instance.Tasks.Contains(task))
                 {
-                    Debug.LogWarning($"[TaskRunner] Registered a Task {task.InternalGetTaskName()} that has already been registered!");
+                    Debug.LogWarning($"[TaskRunner] Task {task.InternalGetTaskName()} has already been registered!");
                     return;
                 }
                 task.Acquire();
+                task.SetParentEventHandler(instance.GetEventHandler());
                 instance._tasksToAdd.Add(task);
             }
         }
         
         private void Awake()
         {
-            EventSystem.EventHandler.AsObservable<TaskCompleteEvent>()
-                                    .SubscribeSafe(OnTaskComplete)
-                                    .RegisterTo(destroyCancellationToken);
+            GetEventHandler().AsObservable<TaskCompleteEvent>()
+                             .SubscribeSafe(OnTaskComplete)
+                             .RegisterTo(destroyCancellationToken);
         }
         
         private void Update()
         {
             UpdateAllTasks();
+        }
+
+        public CallbackEventHandler GetEventHandler()
+        {
+            return _eventHandler ??= new TaskCallbackEventHandler();
         }
         
         private void UpdateAllTasks()
@@ -75,14 +99,16 @@ namespace Chris.Tasks
                 if (status is TaskStatus.Completed or TaskStatus.Stopped)
                 {
                     if (status == TaskStatus.Completed)
+                    {
                         Tasks[i].PostComplete();
+                    }
                     Tasks[i].Dispose();
                     Tasks.RemoveAt(i);
                 }
             }
         }
         
-        private void OnTaskComplete(TaskCompleteEvent evt)
+        private static void OnTaskComplete(TaskCompleteEvent evt)
         {
             foreach (var task in evt.Listeners)
             {

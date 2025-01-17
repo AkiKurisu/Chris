@@ -14,47 +14,59 @@ namespace Chris.AI
     {
         [SerializeField, TaskID]
         private string taskID;
+        
         [SerializeField, Tooltip("Start this task automatically when controller is enabled")]
         private bool startOnEnabled;
+        
         [SerializeField]
         private BehaviorTreeAsset behaviorTreeAsset;
+        
         public BehaviorTree InstanceTree { get; private set; }
+        
         Object IBehaviorTreeContainer.Object => host;
+        
         private AIController host;
-        public BehaviorTask() : base()
+        
+        public BehaviorTask()
         {
             // pause on cctor, manually start by controller
             Status = TaskStatus.Paused;
         }
-        public void SetController(AIController host)
+        
+        public void SetController(AIController hostController)
         {
-            this.host = host;
+            host = hostController;
             InstanceTree = behaviorTreeAsset.GetBehaviorTree();
             InstanceTree.InitVariables();
-            InstanceTree.BlackBoard.MapTo(host.BlackBoard);
-            InstanceTree.Run(host.gameObject);
+            InstanceTree.BlackBoard.MapTo(hostController.BlackBoard);
+            InstanceTree.Run(hostController.gameObject);
             InstanceTree.Awake();
             InstanceTree.Start();
         }
+        
         public override void Tick()
         {
             InstanceTree.Tick();
         }
+        
         public override void Stop()
         {
             base.Stop();
             InstanceTree.Abort();
         }
+        
         public override void Pause()
         {
             base.Pause();
             InstanceTree.Abort();
         }
+        
         public override void Dispose()
         {
             base.Dispose();
             InstanceTree.Dispose();
         }
+        
         public BehaviorTree GetBehaviorTree()
         {
             // get runtime instance tree only
@@ -64,7 +76,6 @@ namespace Chris.AI
         public void SetBehaviorTreeData(BehaviorTreeData behaviorTreeData)
         {
             // should not edit instance
-            return;
         }
 
         public override string GetTaskID()
@@ -76,6 +87,7 @@ namespace Chris.AI
         {
             return startOnEnabled;
         }
+        
         protected override string GetTaskName()
         {
             return $"BehaviorTask [{host.gameObject.name}>>{behaviorTreeAsset.name}]";

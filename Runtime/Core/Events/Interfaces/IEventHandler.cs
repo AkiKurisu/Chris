@@ -11,7 +11,7 @@ namespace Chris.Events
         /// </summary>
         /// <param name="e">The event to send.</param>
         /// <param name="dispatchMode">The event dispatch mode.</param>
-        public abstract void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default);
+        void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default);
 
         /// <summary>
         /// Handle an event.

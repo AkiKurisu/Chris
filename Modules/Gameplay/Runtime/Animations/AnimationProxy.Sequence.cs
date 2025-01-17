@@ -124,14 +124,14 @@ namespace Chris.Gameplay.Animations
             /// Append animation sequence after an existed sequence
             /// </summary>
             /// <param name="sequenceTask"></param>
-            public void Build(SequenceTask sequenceTask)
+            public SequenceTask Build(SequenceTask sequenceTask)
             {
                 if (!IsValid())
                 {
                     Debug.LogWarning("Builder is invalid, rebuild is not allowed");
-                    return;
+                    return null;
                 }
-                BuildInternal(sequenceTask);
+                return BuildInternal(sequenceTask);
             }
             
             private SequenceTask BuildInternal(SequenceTask sequenceTask)
@@ -141,8 +141,8 @@ namespace Chris.Gameplay.Animations
                     sequenceTask.Append(task);
                 }
                 float time = _blendOutTime;
-                AnimationProxy animProxy = _proxy;
-                sequenceTask.AppendCallback(() => animProxy.Stop(time));
+                var animProxy = _proxy;
+                sequenceTask.RegisterCallback<TaskCompleteEvent>(_ => animProxy.Stop(time));
                 _sequence = sequenceTask;
                 _taskBuffer.Clear();
                 _sequence.Acquire();

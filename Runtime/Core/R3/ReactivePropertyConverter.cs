@@ -1,9 +1,8 @@
 using System;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using R3;
 using UnityEngine;
-namespace Chris.React
+namespace R3.Chris
 {
     /// <summary>
     /// Serialization helper for <see cref="ReactiveProperty{T}"/> when use <see cref="JsonConverter"/>

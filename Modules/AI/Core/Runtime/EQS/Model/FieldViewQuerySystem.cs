@@ -12,9 +12,11 @@ namespace Chris.AI.EQS
 {
     public struct FieldViewQueryCommand
     {
-        public ActorHandle self;
-        public FieldView fieldView;
-        public LayerMask layerMask;
+        public ActorHandle Self;
+        
+        public FieldView FieldView;
+        
+        public LayerMask LayerMask;
     }
     
     public class FieldViewQuerySystem : WorldSubsystem
@@ -26,30 +28,34 @@ namespace Chris.AI.EQS
         private struct OverlapFieldViewBatchJob : IJobParallelFor
         {
             [ReadOnly]
-            public NativeArray<FieldViewQueryCommand> datas;
+            public NativeArray<FieldViewQueryCommand> Data;
+            
             [ReadOnly]
-            public NativeArray<ActorData> actors;
+            public NativeArray<ActorData> Actors;
+            
             [WriteOnly, NativeDisableParallelForRestriction]
-            public NativeParallelMultiHashMap<int, ActorHandle> resultActors;
+            public NativeParallelMultiHashMap<int, ActorHandle> ResultActors;
+            
             [BurstCompile]
             public void Execute(int index)
             {
-                FieldViewQueryCommand source = datas[index];
-                ActorData self = actors[source.self.GetIndex()];
-                float3 forward = math.mul(self.Rotation, new float3(0, 0, 1));
-                for (int i = 0; i < actors.Length; i++)
+                var source = Data[index];
+                var self = Actors[source.Self.GetIndex()];
+                var forward = math.mul(self.Rotation, new float3(0, 0, 1));
+                for (int i = 0; i < Actors.Length; i++)
                 {
                     if (i == index) continue;
-                    ActorData actor = actors[i];
-                    if (MathUtils.IsInLayerMask(actor.Layer, source.layerMask)
-                    && math.distance(self.Position, actor.Position) <= source.fieldView.radius
-                    && MathUtils.InViewAngle(self.Position, actor.Position, forward, source.fieldView.angle))
+                    ActorData actor = Actors[i];
+                    if (MathUtils.IsInLayerMask(actor.Layer, source.LayerMask)
+                    && math.distance(self.Position, actor.Position) <= source.FieldView.radius
+                    && MathUtils.InViewAngle(self.Position, actor.Position, forward, source.FieldView.angle))
                     {
-                        resultActors.Add(index, actor.Handle);
+                        ResultActors.Add(index, actor.Handle);
                     }
                 }
             }
         }
+        
         private SchedulerHandle _updateTickHandle;
         
         private SchedulerHandle _lateUpdateTickHandle;
@@ -104,9 +110,9 @@ namespace Chris.AI.EQS
                 _execution = _commands.ToArray(Allocator.TempJob);
                 _jobHandle = new OverlapFieldViewBatchJob()
                 {
-                    actors = _actorData,
-                    datas = _execution,
-                    resultActors = _results
+                    Actors = _actorData,
+                    Data = _execution,
+                    ResultActors = _results
                 }.Schedule(_execution.Length, 32);
                 _lateUpdateTickHandle.Resume();
             }
@@ -136,14 +142,14 @@ namespace Chris.AI.EQS
         }
         public void EnqueueCommand(FieldViewQueryCommand command)
         {
-            if (_handleIndices.TryGetValue(command.self, out var index))
+            if (_handleIndices.TryGetValue(command.Self, out var index))
             {
                 _commands[index] = command;
             }
             else
             {
                 int length = _commands.Length;
-                _handleIndices[command.self] = length;
+                _handleIndices[command.Self] = length;
                 _commands.Add(command);
             }
         }

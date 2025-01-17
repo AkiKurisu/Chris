@@ -1,9 +1,9 @@
 using System;
 using System.Threading;
-using R3;
+using Chris;
 using R3.Triggers;
 using UnityEngine;
-namespace Chris.React
+namespace R3.Chris
 {
     /// <summary>
     /// Unregister scope interface for managing <see cref="IDisposable"/> 
@@ -16,30 +16,37 @@ namespace Chris.React
         /// <param name="disposable"></param>
         void Register(IDisposable disposable);
     }
+    
     public readonly struct ObservableDestroyTriggerUnregister : IDisposableUnregister
     {
-        private readonly ObservableDestroyTrigger trigger;
+        private readonly ObservableDestroyTrigger _trigger;
+        
         public ObservableDestroyTriggerUnregister(ObservableDestroyTrigger trigger)
         {
-            this.trigger = trigger;
+            _trigger = trigger;
         }
-        public readonly void Register(IDisposable disposable)
+        
+        public void Register(IDisposable disposable)
         {
-            trigger.AddDisposableOnDestroy(disposable);
+            _trigger.AddDisposableOnDestroy(disposable);
         }
     }
+    
     public readonly struct CancellationTokenUnregister : IDisposableUnregister
     {
-        private readonly CancellationToken cancellationToken;
+        private readonly CancellationToken _cancellationToken;
+        
         public CancellationTokenUnregister(CancellationToken cancellationToken)
         {
-            this.cancellationToken = cancellationToken;
+            _cancellationToken = cancellationToken;
         }
-        public readonly void Register(IDisposable disposable)
+        
+        public void Register(IDisposable disposable)
         {
-            disposable.RegisterTo(cancellationToken);
+            disposable.RegisterTo(_cancellationToken);
         }
     }
+    
     public static class DisposableExtensions
     {
         /// <summary>
@@ -51,6 +58,7 @@ namespace Chris.React
         {
             return new ObservableDestroyTriggerUnregister(gameObject.GetOrAddComponent<ObservableDestroyTrigger>());
         }
+        
         /// <summary>
         ///  Get or create an UnRegister from <see cref="MonoBehaviour"/>, listening OnDestroy event
         /// </summary>
@@ -60,7 +68,8 @@ namespace Chris.React
         {
             return new CancellationTokenUnregister(monoBehaviour.destroyCancellationToken);
         }
-        public static T AddTo<T, K>(this T disposable, K unRegister) where T : IDisposable where K : IDisposableUnregister
+        
+        public static T AddTo<T, TK>(this T disposable, TK unRegister) where T : IDisposable where TK : IDisposableUnregister
         {
             unRegister.Register(disposable);
             return disposable;

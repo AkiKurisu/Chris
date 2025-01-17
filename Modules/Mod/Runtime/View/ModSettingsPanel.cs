@@ -1,8 +1,8 @@
 using System.Linq;
 using Chris.Events;
 using Chris.UI;
-using Chris.React;
 using R3;
+using R3.Chris;
 using UnityEngine;
 using UnityEngine.UI;
 using Cysharp.Threading.Tasks;
@@ -27,6 +27,7 @@ namespace Chris.Mod.UI
             CreateFields();
         }
     }
+    
     public class ModPanelItem : IPanelItem
     {
         public void CreatePanelItem(UIPanel panel, ref PanelItem panelItem)
@@ -39,16 +40,17 @@ namespace Chris.Mod.UI
             }
         }
     }
+    
     public class ModConfigField : BaseField<int>
     {
-        private static readonly IUIFactory defaultFactory = new UIFactory();
+        private static readonly IUIFactory DefaultFactory = new UIFactory();
         
         public class UIFactory : UIFactory<ModConfigField>
         {
 
         }
         
-        public ModConfigField(string displayName, string[] optionNames = null, int initialValue = 0) : base(initialValue, defaultFactory)
+        public ModConfigField(string displayName, string[] optionNames = null, int initialValue = 0) : base(initialValue, DefaultFactory)
         {
             DisplayName = displayName;
             _optionNames = optionNames;
@@ -67,13 +69,13 @@ namespace Chris.Mod.UI
             GameObject tr = Instantiate(parent);
             _toggles = tr.GetComponentsInChildren<Toggle>();
             _deleteButton = tr.GetComponentInChildren<Button>();
-            (from item in _toggles.Select((Toggle val, int idx) => new { val, idx })
+            (from item in _toggles.Select((val, idx) => new { val, idx })
              where item.val != null
              select item).ToList().ForEach(item =>
             {
                 (from isOn in item.val.onValueChanged.AsObservable()
                  where isOn
-                 select isOn).Subscribe((_) =>
+                 select isOn).Subscribe(_ =>
                  {
                      SetValue(item.idx);
                  }).AddTo(this);
@@ -101,6 +103,7 @@ namespace Chris.Mod.UI
             text.text = DisplayName;
             return tr;
         }
+        
         public ModConfigField Bind(ModInfo modInfo)
         {
             this.AsObservable<ChangeEvent<int>>().Skip(1).SubscribeSafe(e =>

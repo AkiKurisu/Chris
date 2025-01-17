@@ -10,7 +10,7 @@ namespace Chris.Events
     /// The class implements IDisposable to ensure proper release of the event from the pool and of any unmanaged resources, when necessary.
     /// </summary>
     /// <remarks>
-    /// Simplified from <see cref="UnityEngine.UIElements.EventBase"/>.
+    /// Ported from <see cref="UnityEngine.UIElements.EventBase"/>.
     /// </remarks>
     public abstract class EventBase : IDisposable
     {
@@ -98,7 +98,7 @@ namespace Chris.Events
         [JsonIgnore]
         public bool Bubbles
         {
-            get { return (Propagation & EventPropagation.Bubbles) != 0; }
+            get => (Propagation & EventPropagation.Bubbles) != 0;
             protected set
             {
                 if (value)
@@ -136,7 +136,7 @@ namespace Chris.Events
             (Propagation & (EventPropagation.Bubbles | EventPropagation.TricklesDown)) != 0;
 
 
-        IEventHandler m_Target;
+        private IEventHandler m_Target;
 
         /// <summary>
         /// The target handler that received this event. 
@@ -145,16 +145,18 @@ namespace Chris.Events
         [JsonIgnore]
         public IEventHandler Target
         {
-            get { return m_Target; }
+            get => m_Target;
             set
             {
                 m_Target = value;
                 LeafTarget ??= value;
             }
         }
-        // Original target. May be different than 'target' when propagating event and 'target.isCompositeRoot' is true.
+        
+        // Original target. May be different from 'target' when propagating event and 'target.isCompositeRoot' is true.
         internal IEventHandler LeafTarget { get; private set; }
-        internal List<IEventHandler> SkipElements { get; } = new List<IEventHandler>();
+        
+        internal List<IEventHandler> SkipElements { get; } = new();
 
         internal bool Skip(IEventHandler h)
         {

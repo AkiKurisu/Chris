@@ -81,9 +81,9 @@ namespace Chris.AI.EQS
             }
             _system.EnqueueCommand(new FieldViewQueryCommand()
             {
-                self = GetActor().GetActorHandle(),
-                fieldView = fieldView,
-                layerMask = queryLayerMask
+                Self = GetActor().GetActorHandle(),
+                FieldView = fieldView,
+                LayerMask = queryLayerMask
             });
             return true;
         }
