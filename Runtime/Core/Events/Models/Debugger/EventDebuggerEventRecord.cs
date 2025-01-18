@@ -9,23 +9,32 @@ namespace Chris.Events
     {
         public List<EventDebuggerEventRecord> eventList;
     }
+    
     [Serializable]
     internal class EventDebuggerEventRecord
     {
         [field: SerializeField]
         public string EventBaseName { get; private set; }
+        
         [field: SerializeField]
         public long EventTypeId { get; private set; }
+        
         [field: SerializeField]
         public string EventType { get; private set; }
+        
         [field: SerializeField]
         public ulong EventId { get; private set; }
+        
         [field: SerializeField]
         internal long Timestamp { get; private set; }
+        
         public IEventHandler Target { get; set; }
+        
         public PropagationPhase PropagationPhase { get; private set; }
+        
         public string JsonData { get; set; }
-        void Init(EventBase evt)
+        
+        public void Init(EventBase evt)
         {
             var type = evt.GetType();
             EventBaseName = EventDebugger.GetTypeDisplayName(type);

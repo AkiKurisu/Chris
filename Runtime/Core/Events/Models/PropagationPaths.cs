@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Chris.Pool;
-
 namespace Chris.Events
 {
     internal class PropagationPaths
     {
-        static readonly _ObjectPool<PropagationPaths> s_Pool = new(() => new PropagationPaths());
+        private static readonly _ObjectPool<PropagationPaths> Pool = new(() => new PropagationPaths());
 
         [Flags]
         public enum Type
@@ -16,57 +15,60 @@ namespace Chris.Events
             BubbleUp = 2
         }
 
-        public readonly List<CallbackEventHandler> trickleDownPath;
-        public readonly List<CallbackEventHandler> targetElements;
-        public readonly List<CallbackEventHandler> bubbleUpPath;
+        public readonly List<CallbackEventHandler> TrickleDownPath;
+        
+        public readonly List<CallbackEventHandler> TargetElements;
+        
+        public readonly List<CallbackEventHandler> BubbleUpPath;
 
         private const int k_DefaultPropagationDepth = 16;
+        
         private const int k_DefaultTargetCount = 4;
 
         public PropagationPaths()
         {
-            trickleDownPath = new List<CallbackEventHandler>(k_DefaultPropagationDepth);
-            targetElements = new List<CallbackEventHandler>(k_DefaultTargetCount);
-            bubbleUpPath = new List<CallbackEventHandler>(k_DefaultPropagationDepth);
+            TrickleDownPath = new List<CallbackEventHandler>(k_DefaultPropagationDepth);
+            TargetElements = new List<CallbackEventHandler>(k_DefaultTargetCount);
+            BubbleUpPath = new List<CallbackEventHandler>(k_DefaultPropagationDepth);
         }
 
         public PropagationPaths(PropagationPaths paths)
         {
-            trickleDownPath = new List<CallbackEventHandler>(paths.trickleDownPath);
-            targetElements = new List<CallbackEventHandler>(paths.targetElements);
-            bubbleUpPath = new List<CallbackEventHandler>(paths.bubbleUpPath);
+            TrickleDownPath = new List<CallbackEventHandler>(paths.TrickleDownPath);
+            TargetElements = new List<CallbackEventHandler>(paths.TargetElements);
+            BubbleUpPath = new List<CallbackEventHandler>(paths.BubbleUpPath);
         }
 
         internal static PropagationPaths Copy(PropagationPaths paths)
         {
-            PropagationPaths copyPaths = s_Pool.Get();
-            copyPaths.trickleDownPath.AddRange(paths.trickleDownPath);
-            copyPaths.targetElements.AddRange(paths.targetElements);
-            copyPaths.bubbleUpPath.AddRange(paths.bubbleUpPath);
+            PropagationPaths copyPaths = Pool.Get();
+            copyPaths.TrickleDownPath.AddRange(paths.TrickleDownPath);
+            copyPaths.TargetElements.AddRange(paths.TargetElements);
+            copyPaths.BubbleUpPath.AddRange(paths.BubbleUpPath);
 
             return copyPaths;
         }
 
         public static PropagationPaths Build(CallbackEventHandler elem, EventBase evt)
         {
-            PropagationPaths paths = s_Pool.Get();
+            PropagationPaths paths = Pool.Get();
             // Go through the entire hierarchy.
             for (var ve = elem.Parent; ve != null; ve = ve.Parent)
             {
-                //Reach root
+                // Reach root
                 if (ve.IsCompositeRoot && !evt.SkipDisabledElements)
                 {
-                    paths.targetElements.Add(ve);
+                    paths.TargetElements.Add(ve);
                 }
                 else
                 {
                     if (evt.TricklesDown && ve.HasTrickleDownHandlers())
                     {
-                        paths.trickleDownPath.Add(ve);
+                        paths.TrickleDownPath.Add(ve);
                     }
                     if (evt.Bubbles && ve.HasBubbleUpHandlers())
                     {
-                        paths.bubbleUpPath.Add(ve);
+                        paths.BubbleUpPath.Add(ve);
                     }
                 }
             }
@@ -76,11 +78,11 @@ namespace Chris.Events
         public void Release()
         {
             // Empty paths to avoid leaking CallbackEventHandler.
-            bubbleUpPath.Clear();
-            targetElements.Clear();
-            trickleDownPath.Clear();
+            BubbleUpPath.Clear();
+            TargetElements.Clear();
+            TrickleDownPath.Clear();
 
-            s_Pool.Release(this);
+            Pool.Release(this);
         }
     }
 }

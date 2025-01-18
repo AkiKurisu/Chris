@@ -97,7 +97,7 @@ namespace Chris.Events
             evt.Path = path;
             EventDebugger.LogPropagationPaths(evt, path);
 
-            var coordinator = leafTarget.Root;
+            var coordinator = leafTarget.Coordinator;
 
             // Phase 1: TrickleDown phase
             // Propagate event from root to target.parent
@@ -105,13 +105,13 @@ namespace Chris.Events
             {
                 evt.PropagationPhase = PropagationPhase.TrickleDown;
 
-                for (int i = path.trickleDownPath.Count - 1; i >= 0; i--)
+                for (int i = path.TrickleDownPath.Count - 1; i >= 0; i--)
                 {
                     if (evt.IsPropagationStopped)
                         break;
 
-                    var element = path.trickleDownPath[i];
-                    if (evt.Skip(element) || element.Root != coordinator)
+                    var element = path.TrickleDownPath[i];
+                    if (evt.Skip(element) || element.Coordinator != coordinator)
                     {
                         continue;
                     }
@@ -126,9 +126,9 @@ namespace Chris.Events
 
             // Call HandleEvent() even if propagation is stopped, for the default actions at target.
             evt.PropagationPhase = PropagationPhase.AtTarget;
-            foreach (var element in path.targetElements)
+            foreach (var element in path.TargetElements)
             {
-                if (evt.Skip(element) || element.Root != coordinator)
+                if (evt.Skip(element) || element.Coordinator != coordinator)
                 {
                     continue;
                 }
@@ -140,9 +140,9 @@ namespace Chris.Events
 
             // Call ExecuteDefaultActionAtTarget
             evt.PropagationPhase = PropagationPhase.DefaultActionAtTarget;
-            foreach (var element in path.targetElements)
+            foreach (var element in path.TargetElements)
             {
-                if (evt.Skip(element) || element.Root != coordinator)
+                if (evt.Skip(element) || element.Coordinator != coordinator)
                 {
                     continue;
                 }
@@ -161,9 +161,9 @@ namespace Chris.Events
             {
                 evt.PropagationPhase = PropagationPhase.BubbleUp;
 
-                foreach (var element in path.bubbleUpPath)
+                foreach (var element in path.BubbleUpPath)
                 {
-                    if (evt.Skip(element) || element.Root != coordinator)
+                    if (evt.Skip(element) || element.Coordinator != coordinator)
                     {
                         continue;
                     }

@@ -49,7 +49,7 @@ namespace Chris.AI.EQS
             {
                 var direction = math.normalize(Source.Position - Target.Position);
 
-                float angle = Command.Parameters.Angle / 2;
+                float angle = Command.Parameters.angle / 2;
 
                 quaternion rot = quaternion.RotateY(math.radians(math.lerp(-angle, angle, (float)index / Length)));
 
@@ -57,7 +57,7 @@ namespace Chris.AI.EQS
                 {
                     from = Target.Position + Command.Offset,
                     direction = math.rotate(rot, direction),
-                    distance = Command.Parameters.Distance,
+                    distance = Command.Parameters.distance,
                     queryParameters = new QueryParameters() { layerMask = Command.LayerMask }
                 };
             }
@@ -92,7 +92,7 @@ namespace Chris.AI.EQS
             {
                 HasPendingCommand = false;
                 IsRunning = true;
-                int length = command.Parameters.Step * command.Parameters.Depth;
+                int length = command.Parameters.step * command.Parameters.depth;
                 _raycastCommands.DisposeSafe();
                 _raycastCommands = new(length, Allocator.TempJob);
                 _hits.DisposeSafe();

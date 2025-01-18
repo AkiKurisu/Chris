@@ -7,7 +7,7 @@ namespace Chris.Tasks.Editor
     public class TaskRunnerEditor : UEditor
     {
         private TaskRunner Manager => target as TaskRunner;
-        private int ManagedTaskCount => Manager._tasks.Count;
+        private int ManagedTaskCount => Manager.Tasks.Count;
         private void OnEnable()
         {
             if (!Application.isPlaying) return;
@@ -28,7 +28,7 @@ namespace Chris.Tasks.Editor
             var style = new GUIStyle(GUI.skin.label) { richText = true };
             GUILayout.BeginVertical(GUI.skin.box);
             GUILayout.Label($"Managed task count: {ManagedTaskCount}");
-            foreach (var task in Manager._tasks)
+            foreach (var task in Manager.Tasks)
             {
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(task.InternalGetTaskName());

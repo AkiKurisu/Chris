@@ -1,6 +1,7 @@
 using System;
-using Cysharp.Threading.Tasks;
+using UnityEngine.Assertions;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UObject = UnityEngine.Object;
 namespace Chris.Resource
 {
     /// <summary>
@@ -18,8 +19,6 @@ namespace Chris.Resource
         
         public object Result => InternalHandle.Result;
         
-        public UniTask Task => InternalHandle.ToUniTask();
-        
         public ResourceHandle(uint version, int index, byte operationType)
         {
             Version = version;
@@ -30,19 +29,20 @@ namespace Chris.Resource
         /// <summary>
         /// Register completed result callback, no need to unregister since delegate list is clear after fire event
         /// </summary>
-        /// <param name="callBack"></param>
-        public void RegisterCallBack(Action callBack)
+        /// <param name="callback"></param>
+        public void RegisterCallback(Action<UObject> callback)
         {
-            InternalHandle.Completed += (h) => callBack?.Invoke();
+            Assert.IsNotNull(callback);
+            InternalHandle.Completed += h => callback((UObject)h.Result);
         }
         
         /// <summary>
         /// Register completed result callback, no need to unregister since delegate list is clear after fire event
         /// </summary>
         /// <returns></returns>
-        public object WaitForCompletion()
+        public UObject WaitForCompletion()
         {
-            return InternalHandle.WaitForCompletion();
+            return InternalHandle.WaitForCompletion() as UObject;
         }
         
         /// <summary>
@@ -82,8 +82,6 @@ namespace Chris.Resource
         
         public T Result => InternalHandle.Result;
         
-        public UniTask<T> Task => InternalHandle.ToUniTask();
-        
         public ResourceHandle(uint version, int index, byte operationType)
         {
             Version = version;
@@ -104,19 +102,21 @@ namespace Chris.Resource
         /// <summary>
         /// Register completed result callback, no need to unregister since delegate list is clear after fire event
         /// </summary>
-        /// <param name="callBack"></param>
-        public void RegisterCallBack(Action<T> callBack)
+        /// <param name="callback"></param>
+        public void RegisterCallback(Action<T> callback)
         {
-            InternalHandle.Completed += (h) => callBack?.Invoke(h.Result);
+            Assert.IsNotNull(callback);
+            InternalHandle.Completed += h => callback(h.Result);
         }
         
         /// <summary>
         /// Register completed result callback, no need to unregister since delegate list is clear after fire event
         /// </summary>
-        /// <param name="callBack"></param>
-        public void RegisterCallBack(Action callBack)
+        /// <param name="callback"></param>
+        public void RegisterCallback(Action callback)
         {
-            InternalHandle.Completed += (h) => callBack?.Invoke();
+            Assert.IsNotNull(callback);
+            InternalHandle.Completed += _ => callback();
         }
         
         public T WaitForCompletion()

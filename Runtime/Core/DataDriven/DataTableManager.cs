@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Chris.Resource;
 using Cysharp.Threading.Tasks;
 namespace Chris.DataDriven
 {
@@ -74,6 +75,36 @@ namespace Chris.DataDriven
         /// <param name="sync">Whether initialize in sync, useful when need blocking loading</param>
         /// <returns></returns>
         protected abstract UniTask Initialize(bool sync);
+
+        /// <summary>
+        /// Initialize with loading a single table
+        /// </summary>
+        /// <param name="tableKey"></param>
+        /// <param name="sync"></param>
+        protected async UniTask InitializeSingleTable(string tableKey, bool sync)
+        {
+            try
+            {
+                if (sync)
+                {
+                    ResourceSystem.CheckAsset<DataTable>(tableKey);
+                    ResourceSystem.LoadAssetAsync<DataTable>(tableKey, (x) =>
+                    {
+                        RegisterDataTable(tableKey, x);
+                    }).WaitForCompletion();
+                    return;
+                }
+                await ResourceSystem.CheckAssetAsync<DataTable>(tableKey);
+                await ResourceSystem.LoadAssetAsync<DataTable>(tableKey, (x) =>
+                {
+                    RegisterDataTable(tableKey, x);
+                });
+            }
+            catch (InvalidResourceRequestException)
+            {
+
+            }
+        }
     }
     
     public abstract class DataTableManager<TManager> : DataTableManager where TManager : DataTableManager<TManager>

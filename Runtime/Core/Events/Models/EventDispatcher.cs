@@ -8,15 +8,19 @@ namespace Chris.Events
     public enum DispatchMode
     {
         Default = Queued,
+        
         Queued = 1,
+        
         Immediate = 2,
     }
+    
     /// <summary>
     /// Gates control when the dispatcher processes events.
     /// </summary>
     public readonly struct EventDispatcherGate : IDisposable, IEquatable<EventDispatcherGate>
     {
         private readonly EventDispatcher m_Dispatcher;
+        
         /// <summary>
         /// Constructor.
         /// </summary>
@@ -245,9 +249,9 @@ namespace Chris.Events
 
                 if (path != null)
                 {
-                    foreach (var element in path.targetElements)
+                    foreach (var element in path.TargetElements)
                     {
-                        if (element.Root == coordinator)
+                        if (element.Coordinator == coordinator)
                         {
                             evt.Target = element;
                             EventDispatchUtilities.ExecuteDefaultAction(evt);
@@ -265,7 +269,7 @@ namespace Chris.Events
                         evt.Target = target = coordinator.GetCallbackEventHandler();
                     }
 
-                    if (target?.Root == coordinator)
+                    if (target?.Coordinator == coordinator)
                     {
                         EventDispatchUtilities.ExecuteDefaultAction(evt);
                     }
@@ -292,14 +296,16 @@ namespace Chris.Events
                 }
             }
         }
+        
         public TListener GetEventDispatchingListener<TListener>() where TListener : IEventDispatchingListener
         {
             foreach (var listener in dispatchingListeners)
             {
-                if (listener is TListener tlistener) return tlistener;
+                if (listener is TListener dispatchingListener) return dispatchingListener;
             }
             return default;
         }
+        
         public void AddEventDispatchingListener(IEventDispatchingListener listener)
         {
             dispatchingListeners.Add(listener);

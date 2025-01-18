@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 namespace Chris.Tasks
@@ -8,110 +7,102 @@ namespace Chris.Tasks
     /// </summary>
     public class SequenceTask : PooledTaskBase<SequenceTask>, IEnumerable<TaskBase>
     {
-        public event Action OnCompleted;
-        private readonly Queue<TaskBase> tasks = new();
-        private TaskBase runningTask;
-        public static SequenceTask GetPooled(Action callBack)
+        private readonly Queue<TaskBase> _tasks = new();
+        
+        private TaskBase _runningTask;
+        
+        public static SequenceTask GetPooled(TaskBase firstTask)
         {
             var task = GetPooled();
-            task.OnCompleted = callBack;
-            return task;
-        }
-        public static SequenceTask GetPooled(TaskBase firstTask, Action callBack)
-        {
-            var task = GetPooled();
-            task.OnCompleted = callBack;
             task.Append(firstTask);
             return task;
         }
-        public static SequenceTask GetPooled(IReadOnlyList<TaskBase> sequence, Action callBack)
+        
+        public static SequenceTask GetPooled(IReadOnlyList<TaskBase> sequence)
         {
             var task = GetPooled();
-            task.OnCompleted = callBack;
             foreach (var tb in sequence)
                 task.Append(tb);
             return task;
         }
+        
         protected override void Reset()
         {
             base.Reset();
-            runningTask = null;
-            mStatus = TaskStatus.Stopped;
-            OnCompleted = null;
-            tasks.Clear();
+            _runningTask = null;
+            Status = TaskStatus.Stopped;
+            _tasks.Clear();
         }
+        
         /// <summary>
         /// Append a task to the end of sequence
         /// </summary>
         /// <param name="task"></param>
         public SequenceTask Append(TaskBase task)
         {
-            tasks.Enqueue(task);
+            _tasks.Enqueue(task);
             task.Acquire();
             return this;
         }
+        
         public SequenceTask AppendRange(IEnumerable<TaskBase> enumerable)
         {
             foreach (var task in enumerable)
                 Append(task);
             return this;
         }
+
         public override void Tick()
         {
-            if (runningTask == null)
+            while (true)
             {
-                tasks.TryPeek(out runningTask);
-                runningTask.Start();
-            }
-
-            if (runningTask != null)
-            {
-                runningTask.Tick();
-                var status = runningTask.GetStatus();
-                if (status is TaskStatus.Completed or TaskStatus.Stopped)
+                if (_runningTask == null)
                 {
-                    if (status == TaskStatus.Completed)
-                    {
-                        runningTask.PostComplete();
-                    }
-                    tasks.Dequeue().Dispose();
-                    runningTask = null;
+                    _tasks.TryPeek(out _runningTask);
+                    _runningTask.Start();
+                }
 
-                    if (tasks.Count == 0)
+                if (_runningTask != null)
+                {
+                    _runningTask.Tick();
+                    var status = _runningTask.GetStatus();
+                    if (status is TaskStatus.Completed or TaskStatus.Stopped)
                     {
-                        mStatus = TaskStatus.Completed;
-                        OnCompleted?.Invoke();
-                        OnCompleted = null;
-                    }
-                    else
-                    {
-                        Tick();
+                        if (status == TaskStatus.Completed)
+                        {
+                            _runningTask.PostComplete();
+                        }
+
+                        _tasks.Dequeue().Dispose();
+                        _runningTask = null;
+
+                        if (_tasks.Count == 0)
+                        {
+                            CompleteTask();
+                        }
+                        else
+                        {
+                            continue;
+                        }
                     }
                 }
-            }
-            else
-            {
-                mStatus = TaskStatus.Completed;
-                OnCompleted?.Invoke();
-                OnCompleted = null;
+                else
+                {
+                    CompleteTask();
+                }
+
+                break;
             }
         }
+
         public IEnumerator<TaskBase> GetEnumerator()
         {
-            return tasks.GetEnumerator();
+            return _tasks.GetEnumerator();
         }
+        
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return tasks.GetEnumerator();
-        }
-        /// <summary>
-        /// Append a call back after current last action in the sequence
-        /// </summary>
-        /// <param name="callBack"></param>
-        /// <returns></returns>
-        public SequenceTask AppendCallBack(Action callBack)
-        {
-            return Append(CallBackTask.GetPooled(callBack));
+            return _tasks.GetEnumerator();
         }
     }
 }

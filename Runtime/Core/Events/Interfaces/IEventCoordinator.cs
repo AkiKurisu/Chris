@@ -10,6 +10,7 @@ namespace Chris.Events
         /// </summary>
         /// <value></value>
         CallbackEventHandler GetCallbackEventHandler();
+        
         /// <summary>
         /// Get coordinator's dispatcher
         /// </summary>

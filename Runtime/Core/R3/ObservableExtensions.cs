@@ -1,14 +1,14 @@
 using System;
 using System.Threading;
+using Chris;
 using Chris.Events;
-using Chris.Schedulers;
-using R3;
 using UnityEngine.UI;
-namespace Chris.React
+namespace R3.Chris
 {
     public static class ObservableExtensions
     {
         #region CallbackEventHandler
+        
         /// <summary>
         /// Create Observable for <see cref="CallbackEventHandler"/>
         /// </summary>
@@ -20,6 +20,7 @@ namespace Chris.React
         {
             return handler.AsObservable<TEventType>(TrickleDown.NoTrickleDown);
         }
+        
         /// <summary>
         /// Create Observable for <see cref="CallbackEventHandler"/>
         /// </summary>
@@ -48,13 +49,15 @@ namespace Chris.React
         public static IDisposable SubscribeSafe<TEventType>(this Observable<TEventType> source, EventCallback<TEventType> onNext) where TEventType : EventBase<TEventType>, new()
         {
             var action = new Action<TEventType>(OnNext);
+            return source.Subscribe(action);
+
             void OnNext(TEventType evt)
             {
                 onNext(evt);
                 evt.Dispose();
             }
-            return source.Subscribe(action);
         }
+        
         /// <summary>
         /// Bind <see cref="ReactiveProperty{float}"/> to slider
         /// </summary>
@@ -65,9 +68,10 @@ namespace Chris.React
         public static void BindProperty<T>(this Slider slider, ReactiveProperty<float> property, T unRegister) where T : IDisposableUnregister
         {
             slider.onValueChanged.AsObservable().Subscribe(e => property.Value = e).AddTo(unRegister);
-            property.Subscribe(e => slider.SetValueWithoutNotify(e)).AddTo(unRegister);
+            property.Subscribe(slider.SetValueWithoutNotify).AddTo(unRegister);
             slider.SetValueWithoutNotify(property.Value);
         }
+        
         /// <summary>
         /// Bind <see cref="ReactiveProperty{int}"/> to slider
         /// </summary>
@@ -81,6 +85,7 @@ namespace Chris.React
             property.Subscribe(e => slider.SetValueWithoutNotify(e)).AddTo(unRegister);
             slider.SetValueWithoutNotify(property.Value);
         }
+        
         /// <summary>
         /// Bind <see cref="ReactiveProperty{bool}"/> to toggle
         /// </summary>
@@ -91,7 +96,7 @@ namespace Chris.React
         public static void BindProperty<T>(this Toggle toggle, ReactiveProperty<bool> property, T unRegister) where T : IDisposableUnregister
         {
             toggle.onValueChanged.AsObservable().Subscribe(e => property.Value = e).AddTo(unRegister);
-            property.Subscribe(e => toggle.SetIsOnWithoutNotify(e)).AddTo(unRegister);
+            property.Subscribe(toggle.SetIsOnWithoutNotify).AddTo(unRegister);
             toggle.SetIsOnWithoutNotify(property.Value);
         }
     }

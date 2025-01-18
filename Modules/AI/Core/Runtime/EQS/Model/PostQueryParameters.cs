@@ -10,27 +10,39 @@ namespace Chris.AI.EQS
     [Serializable]
     public struct PostQueryParameters
     {
-        [Range(0, 360), Tooltip("Post query angle, can only see target within angle")]
-        public float Angle;
+       [Range(0, 360), Tooltip("Post query angle, can only see target within angle")]
+        public float angle;
+        
         [Range(0, 500), Tooltip("Post query max distance")]
-        public float Distance;
+        public float distance;
+        
         [Range(2, 36), Tooltip("Post query iterate step, decrease step to increase performance but loss diversity")]
-        public int Step;
+        public int step;
+        
         [Range(1, 6), Tooltip("Post query sampling depth, decrease depth to increase performance but loss precision")]
-        public int Depth;
+        public int depth;
+        
         private struct RaycastPair
         {
             public bool isHitL;
+            
             public bool isHitR;
+            
             public RaycastHit hitL;
+            
             public RaycastHit hitR;
+            
             public Vector3 left;
+            
             public Vector3 right;
+            
             public readonly Vector3 Half => ((left + right) / 2).normalized;
         }
+        
         private static readonly ProfilerMarker m_ProfilerMarker = new("PostQuerier.QueryPosts");
+        
         /// <summary>
-        /// Query posts in source viuew using a Fan-Shaped Binary Search immediately.
+        /// Query posts in source view using a Fan-Shaped Binary Search immediately.
         /// </summary>
         /// <param name="posts">Store results</param>
         /// <param name="source">View source transform</param>
@@ -41,11 +53,11 @@ namespace Chris.AI.EQS
         {
             using (m_ProfilerMarker.Auto())
             {
-                float angleInRadians = Angle * Mathf.Deg2Rad;
+                float angleInRadians = angle * Mathf.Deg2Rad;
                 Vector3 left = Vector3.RotateTowards(direction, -source.right, angleInRadians / 2, float.MaxValue);
                 Vector3 right = Vector3.RotateTowards(direction, source.right, angleInRadians / 2, float.MaxValue);
-                float anglePerStep = angleInRadians / Step;
-                for (int i = 0; i < Step - 1; ++i)
+                float anglePerStep = angleInRadians / step;
+                for (int i = 0; i < step - 1; ++i)
                 {
                     RaycastPair pair = new()
                     {
@@ -54,7 +66,7 @@ namespace Chris.AI.EQS
                     };
                     int d = 0;
                     RaycastHit hit = default;
-                    while (d < Depth)
+                    while (d < depth)
                     {
                         int count = DoubleRaycast(source.position, layerMask, ref pair, out var newHit);
                         if (count == 1)
@@ -62,7 +74,7 @@ namespace Chris.AI.EQS
                             d++;
                             hit = newHit;
                             // use the most closest hit
-                            if (d == Depth)
+                            if (d == depth)
                             {
                                 posts.Add(hit.point);
                                 break;
@@ -78,6 +90,7 @@ namespace Chris.AI.EQS
             }
             return posts.Count > 0;
         }
+        
         private readonly int DoubleRaycast(Vector3 from, LayerMask layer, ref RaycastPair rayPair, out RaycastHit hit)
         {
             if (!rayPair.isHitL)
@@ -106,9 +119,10 @@ namespace Chris.AI.EQS
             }
             return 0;
         }
+        
         private readonly bool Raycast(Vector3 from, Vector3 direction, LayerMask layer, out RaycastHit hit)
         {
-            return Physics.Raycast(from, direction, out hit, Distance, layer);
+            return Physics.Raycast(from, direction, out hit, distance, layer);
         }
     }
 }

@@ -10,18 +10,32 @@ namespace Chris.Resource
         {
             return handle.InternalHandle.GetAwaiter();
         }
+        
         public static UniTask.Awaiter GetAwaiter(this ResourceHandle handle)
         {
             return handle.InternalHandle.GetAwaiter();
         }
+        
+        public static UniTask<T> ToUniTask<T>(this ResourceHandle<T> handle)
+        {
+            return handle.InternalHandle.ToUniTask();
+        }
+        
+        public static UniTask ToUniTask(this ResourceHandle handle)
+        {
+            return handle.InternalHandle.ToUniTask();
+        }
+        
         public static UniTask<T> WithCancellation<T>(this ResourceHandle<T> handle, CancellationToken cancellationToken, bool cancelImmediately = false, bool autoReleaseWhenCanceled = false)
         {
             return handle.InternalHandle.WithCancellation(cancellationToken, cancelImmediately, autoReleaseWhenCanceled);
         }
+        
         public static UniTask WithCancellation(this ResourceHandle handle, CancellationToken cancellationToken, bool cancelImmediately = false, bool autoReleaseWhenCanceled = false)
         {
             return handle.InternalHandle.WithCancellation(cancellationToken, cancelImmediately, autoReleaseWhenCanceled);
         }
+        
         /// <summary>
         /// Whether internal operation is valid
         /// </summary>
@@ -31,6 +45,7 @@ namespace Chris.Resource
         {
             return ResourceSystem.IsValid(handle.Version, handle.Index);
         }
+        
         /// <summary>
         /// Whether internal operation is valid
         /// </summary>
@@ -40,6 +55,7 @@ namespace Chris.Resource
         {
             return ResourceSystem.IsValid(handle.Version, handle.Index);
         }
+        
         /// <summary>
         /// Whether internal operation is done
         /// </summary>
@@ -49,6 +65,7 @@ namespace Chris.Resource
         {
             return ResourceSystem.IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
         }
+        
         /// <summary>
         /// Whether internal operation is done
         /// </summary>
@@ -58,6 +75,7 @@ namespace Chris.Resource
         {
             return ResourceSystem.IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
         }
+        
         /// <summary>
         /// Load asset async by <see cref="AssetReferenceT{T}"/> and convert to <see cref="ResourceHandle{T}"/>
         /// </summary>

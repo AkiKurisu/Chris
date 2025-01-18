@@ -135,7 +135,7 @@ namespace Chris.Gameplay.Animations
         
         public class AnimationEventHandler : CallbackEventHandler
         {
-            public override IEventCoordinator Root => EventSystem.Instance;
+            public override IEventCoordinator Coordinator => EventSystem.Instance;
             
             public override void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default)
             {

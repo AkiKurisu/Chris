@@ -10,8 +10,7 @@ namespace Chris.Gameplay
     /// <summary>
     /// Actor is a MonoBehaviour to place GameObject in GamePlay level.
     /// </summary>
-    [GenerateFlow]
-    public partial class Actor : MonoBehaviour, IFlowGraphContainer
+    public class Actor : FlowGraphObject
     {
         private GameWorld _world;
         
@@ -69,7 +68,7 @@ namespace Chris.Gameplay
         {
             ProcessEvent();
             UnregisterActor(this);
-            _graph?.Dispose();
+            ReleaseGraph();
             _actorComponents.Clear();
         }
         

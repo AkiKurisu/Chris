@@ -1,6 +1,6 @@
 namespace Chris.Events
 {
-    class DebuggerEventDispatchingStrategy : IEventDispatchingStrategy
+    internal class DebuggerEventDispatchingStrategy : IEventDispatchingStrategy
     {
 
         public bool CanDispatchEvent(EventBase evt)
@@ -16,14 +16,12 @@ namespace Chris.Events
         {
 #if UNITY_EDITOR
             var panelDebug = coordinator as MonoEventCoordinator;
-            if (panelDebug != null)
+            if (panelDebug == null) return;
+            if (panelDebug.InterceptEvent(evt))
             {
-                if (panelDebug.InterceptEvent(evt))
-                {
-                    evt.StopPropagation();
-                    evt.PreventDefault();
-                    evt.StopDispatch = true;
-                }
+                evt.StopPropagation();
+                evt.PreventDefault();
+                evt.StopDispatch = true;
             }
 #endif
         }
@@ -31,7 +29,10 @@ namespace Chris.Events
         public void PostDispatch(EventBase evt, IEventCoordinator coordinator)
         {
 #if UNITY_EDITOR
-            if (coordinator is MonoEventCoordinator monoEventCoordinator) monoEventCoordinator.PostProcessEvent(evt);
+            if (coordinator is MonoEventCoordinator monoEventCoordinator)
+            {
+                monoEventCoordinator.PostProcessEvent(evt);
+            }
 #endif
         }
     }

@@ -9,7 +9,7 @@ namespace Chris.Events
 
         public void DispatchEvent(EventBase evt, IEventCoordinator coordinator)
         {
-            if (evt.Target is CallbackEventHandler ve && ve.Root == coordinator)
+            if (evt.Target is CallbackEventHandler ve && ve.Coordinator == coordinator)
             {
                 EventDispatchUtilities.PropagateEvent(evt);
             }

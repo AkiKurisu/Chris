@@ -2,8 +2,7 @@
 using System;
 using System.Threading;
 using Chris.Events;
-using R3;
-namespace Chris.React
+namespace R3.Chris
 {
     internal sealed class FromEventHandler<T> : Observable<T> where T : EventBase<T>, new()
     {

@@ -145,6 +145,20 @@ namespace Chris.Serialization
             return Type.GetType(data.typeName);
         }
 
+        public static string GetTypeName(string serializedTypeString)
+        {
+            if (string.IsNullOrEmpty(serializedTypeString))
+                return null;
+            /* Only support generic definition */
+            if (IsGeneric(serializedTypeString))
+            {
+                Debug.LogError("SerializedType not support unassigned generic type");
+                return null;
+            }
+            var data = SplitTypeString(serializedTypeString);
+            return data.typeName;
+        }
+
         public static bool IsGeneric(string serializedTypeString)
         {
             if (string.IsNullOrEmpty(serializedTypeString))

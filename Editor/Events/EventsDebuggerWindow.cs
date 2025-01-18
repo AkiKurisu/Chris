@@ -1003,7 +1003,7 @@ namespace Chris.Events.Editor
                     continue;
 
                 m_EventPropagationPaths.text += "Trickle Down Path:\n";
-                var pathsTrickleDownPath = propagationPath.Paths?.trickleDownPath;
+                var pathsTrickleDownPath = propagationPath.Paths?.TrickleDownPath;
                 if (pathsTrickleDownPath != null && pathsTrickleDownPath.Any())
                 {
                     foreach (var trickleDownPathElement in pathsTrickleDownPath)
@@ -1020,7 +1020,7 @@ namespace Chris.Events.Editor
                 }
 
                 m_EventPropagationPaths.text += "Target list:\n";
-                var targets = propagationPath.Paths.targetElements;
+                var targets = propagationPath.Paths.TargetElements;
                 if (targets != null && targets.Any())
                 {
                     foreach (var t in targets)
@@ -1037,7 +1037,7 @@ namespace Chris.Events.Editor
                 }
 
                 m_EventPropagationPaths.text += "Bubble Up Path:\n";
-                var pathsBubblePath = propagationPath.Paths.bubbleUpPath;
+                var pathsBubblePath = propagationPath.Paths.BubbleUpPath;
                 if (pathsBubblePath != null && pathsBubblePath.Any())
                 {
                     foreach (var bubblePathElement in pathsBubblePath)

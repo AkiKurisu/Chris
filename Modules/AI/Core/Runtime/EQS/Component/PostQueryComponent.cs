@@ -5,17 +5,17 @@ using UnityEngine;
 namespace Chris.AI.EQS
 {
     /// <summary>
-    /// Post Query data provider associated with an Actor as component
+    /// Post query data provider associated with an Actor as component
     /// </summary>
     public class PostQueryComponent : ActorComponent
     {
         [Header("Data")]
         public PostQueryParameters postQuery = new()
         {
-            Angle = 120,
-            Distance = 30,
-            Step = 6,
-            Depth = 3
+            angle = 120,
+            distance = 30,
+            step = 6,
+            depth = 3
         };
         
         public LayerMask raycastLayerMask;

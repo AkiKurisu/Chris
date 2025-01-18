@@ -14,7 +14,7 @@ namespace Chris.Resource
     public class InvalidResourceRequestException : Exception
     {
         public string InvalidAddress { get; }
-        public InvalidResourceRequestException() : base() { }
+        
         public InvalidResourceRequestException(string address, string message) : base(message) { InvalidAddress = address; }
     }
     
@@ -58,7 +58,9 @@ namespace Chris.Resource
             /// </summary>
             Intersection
         }
+        
         internal const byte AssetLoadOperation = 0;
+        
         internal const byte InstantiateOperation = 1;
 
         #region  Asset Load
@@ -79,6 +81,7 @@ namespace Chris.Resource
                 throw new InvalidResourceRequestException(stringValue, $"Address {stringValue} not valid for loading {typeof(TAsset)} asset");
             }
         }
+        
         /// <summary>
         /// Check resource location whether exists and throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
@@ -97,6 +100,7 @@ namespace Chris.Resource
                 throw new InvalidResourceRequestException(stringValue, $"Address {stringValue} not valid for loading {typeof(TAsset)} asset");
             }
         }
+        
         /// <summary>
         /// Check resource location whether exists and throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
@@ -115,6 +119,7 @@ namespace Chris.Resource
                 throw new InvalidResourceRequestException(stringValue, $"Address {stringValue} not valid for loading {typeof(TAsset)} asset");
             }
         }
+        
         /// <summary>
         /// Check resource location whether exists and throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
@@ -144,12 +149,13 @@ namespace Chris.Resource
         /// <returns></returns>
         public static ResourceHandle<T> LoadAssetAsync<T>(string address, Action<T> callBack = null)
         {
-            AsyncOperationHandle<T> handle = Addressables.LoadAssetAsync<T>(address);
+            var handle = Addressables.LoadAssetAsync<T>(address);
             if (callBack != null)
-                handle.Completed += (h) => callBack.Invoke(h.Result);
+                handle.Completed += (h) => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
         #endregion
+        
         #region Instantiate
 
         /// <summary>
@@ -161,11 +167,11 @@ namespace Chris.Resource
         /// <returns></returns>
         public static ResourceHandle<GameObject> InstantiateAsync(string address, Transform parent, Action<GameObject> callBack = null)
         {
-            AsyncOperationHandle<GameObject> handle = Addressables.InstantiateAsync(address, parent);
+            var handle = Addressables.InstantiateAsync(address, parent);
             var resourceHandle = CreateHandle(handle, InstantiateOperation);
-            handle.Completed += (h) => InstanceIDMap.Add(h.Result.GetInstanceID(), resourceHandle);
+            handle.Completed += h => InstanceIDMap.Add(h.Result.GetInstanceID(), resourceHandle);
             if (callBack != null)
-                handle.Completed += (h) => callBack.Invoke(h.Result);
+                handle.Completed += h => callBack(h.Result);
             return resourceHandle;
         }
         #endregion
@@ -184,6 +190,7 @@ namespace Chris.Resource
             else
                 ReleaseAsset(handle);
         }
+        
         /// <summary>
         /// Release resource
         /// </summary>
@@ -214,17 +221,18 @@ namespace Chris.Resource
         /// <summary>
         /// Release GameObject Instance, should align with <see cref="InstantiateAsync"/>
         /// </summary>
-        /// <param name="obj"></param>
-        public static void ReleaseInstance(GameObject obj)
+        /// <param name="gameObject"></param>
+        public static void ReleaseInstance(GameObject gameObject)
         {
-            if (InstanceIDMap.TryGetValue(obj.GetInstanceID(), out var handle))
+            if (InstanceIDMap.TryGetValue(gameObject.GetInstanceID(), out var handle))
             {
                 if (!handle.IsValid()) return;
                 ReleaseHandleInternal(handle);
             }
-            if (obj != null)
-                Addressables.ReleaseInstance(obj);
+            if (gameObject != null)
+                Addressables.ReleaseInstance(gameObject);
         }
+        
         private static void ReleaseHandleInternal(ResourceHandle handle)
         {
             Operations.RemoveAt(handle.Index);
@@ -235,17 +243,17 @@ namespace Chris.Resource
         #region  Multi Assets Load
         public static ResourceHandle<IList<T>> LoadAssetsAsync<T>(object key, Action<IList<T>> callBack = null)
         {
-            AsyncOperationHandle<IList<T>> handle = Addressables.LoadAssetsAsync<T>(key, null);
+            var handle = Addressables.LoadAssetsAsync<T>(key, null);
             if (callBack != null)
-                handle.Completed += (h) => callBack.Invoke(h.Result);
+                handle.Completed += h => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
         
         public static ResourceHandle<IList<T>> LoadAssetsAsync<T>(IEnumerable key, MergeMode mode, Action<IList<T>> callBack = null)
         {
-            AsyncOperationHandle<IList<T>> handle = Addressables.LoadAssetsAsync<T>(key, null, (Addressables.MergeMode)mode);
+            var handle = Addressables.LoadAssetsAsync<T>(key, null, (Addressables.MergeMode)mode);
             if (callBack != null)
-                handle.Completed += (h) => callBack.Invoke(h.Result);
+                handle.Completed += h => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
         #endregion
@@ -287,6 +295,7 @@ namespace Chris.Resource
 
             return default;
         }
+        
         public static bool IsValid(uint version, int index)
         {
             return Operations.IsAllocated(index) && Operations[index].ResourceHandle.Version == version;

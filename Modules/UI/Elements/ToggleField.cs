@@ -1,5 +1,5 @@
-using Chris.React;
 using R3;
+using R3.Chris;
 using UnityEngine;
 using UnityEngine.UI;
 namespace Chris.UI

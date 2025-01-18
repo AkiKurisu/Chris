@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Chris.Events;
 using Chris.Pool;
+using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Pool;
 namespace Chris.Tasks
@@ -12,29 +13,38 @@ namespace Chris.Tasks
         /// Task is enabled to run and can be updated
         /// </summary>
         Running,
+        
         /// <summary>
         /// Task is paused and will be ignored
         /// </summary>
         Paused,
+        
         /// <summary>
         /// Task is completed and wait to broadcast complete event
         /// </summary>
         Completed,
+        
         /// <summary>
         /// Task is stopped and will not broadcast complete event
         /// </summary>
         Stopped
     }
+    
     public interface ITaskEvent { }
+    
     public sealed class TaskCompleteEvent : EventBase<TaskCompleteEvent>, ITaskEvent
     {
+        [JsonIgnore]
         public TaskBase Task { get; private set; }
+        
         /// <summary>
         /// Soft reference to subtask, listener may be disposed before broadcast this event.
         /// So we check subtask's prerequisite whether contains this event to identify its lifetime version.
         /// </summary>
         /// <returns></returns>
+        [JsonIgnore]
         public readonly List<TaskBase> Listeners = new();
+        
         public static TaskCompleteEvent GetPooled(TaskBase task)
         {
             var evt = GetPooled();
@@ -42,26 +52,53 @@ namespace Chris.Tasks
             evt.Listeners.Clear();
             return evt;
         }
+
+        protected override void Init()
+        {
+            base.Init();
+            Propagation = EventPropagation.Bubbles | EventPropagation.TricklesDown;
+        }
+
         public void AddListenerTask(TaskBase taskBase)
         {
             Listeners.Add(taskBase);
         }
+        
         public void RemoveListenerTask(TaskBase taskBase)
         {
             Listeners.Remove(taskBase);
         }
     }
+    
     /// <summary>
     /// Base class for framework task
     /// </summary>
-    public abstract class TaskBase : IDisposable
+    public abstract class TaskBase : CallbackEventHandler, IDisposable
     {
-        protected TaskStatus mStatus;
+        protected TaskStatus Status;
+
+        private IEventCoordinator _coordinator;
+
+        public override IEventCoordinator Coordinator => _coordinator;
+
+        public override void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default)
+        {
+            e.Target = this;
+            EventSystem.Instance.Dispatch(e, dispatchMode, MonoDispatchType.Update);
+        }
+
+        internal void SetParentEventHandler(CallbackEventHandler eventHandler)
+        {
+            Parent = eventHandler;
+        }
+
         public virtual TaskStatus GetStatus()
         {
-            return mStatus;
+            return Status;
         }
+        
         public abstract string GetTaskID();
+        
         /// <summary>
         /// Debug usage
         /// </summary>
@@ -74,87 +111,108 @@ namespace Chris.Tasks
             return string.Empty;
 #endif
         }
+        
         internal string InternalGetTaskName() => GetTaskName();
+        
         #region Lifetime Cycle
+        
         protected virtual void Init()
         {
-            mStatus = TaskStatus.Stopped;
+            _completeEvent = TaskCompleteEvent.GetPooled(this);
+            _coordinator = EventSystem.Instance;
+            Status = TaskStatus.Stopped;
         }
+        
         public virtual void Stop()
         {
-            mStatus = TaskStatus.Stopped;
+            Status = TaskStatus.Stopped;
         }
+        
         public virtual void Start()
         {
-            mStatus = TaskStatus.Running;
+            Status = TaskStatus.Running;
         }
+        
         public virtual void Pause()
         {
-            mStatus = TaskStatus.Paused;
+            Status = TaskStatus.Paused;
         }
 
         public virtual void Tick()
         {
 
         }
+        
         protected void CompleteTask()
         {
-            mStatus = TaskStatus.Completed;
+            Status = TaskStatus.Completed;
         }
+        
         protected virtual void Reset()
         {
-            mStatus = TaskStatus.Stopped;
+            Status = TaskStatus.Stopped;
         }
+        
         public virtual void Acquire()
         {
 
         }
+        
         public virtual void Dispose()
         {
-            if (prerequisites != null)
+            if (_prerequisites != null)
             {
-                HashSetPool<TaskCompleteEvent>.Release(prerequisites);
-                prerequisites = null;
+                HashSetPool<TaskCompleteEvent>.Release(_prerequisites);
+                _prerequisites = null;
             }
-            if (completeEvent != null)
+            if (_completeEvent != null)
             {
-                completeEvent.Dispose();
-                completeEvent = null;
+                _completeEvent.Dispose();
+                _completeEvent = null;
             }
+
+            Parent = null;
         }
         #endregion
+        
         #region Prerequistes Management
-        private HashSet<TaskCompleteEvent> prerequisites;
-        private TaskCompleteEvent completeEvent;
+        
+        private HashSet<TaskCompleteEvent> _prerequisites;
+        
+        private TaskCompleteEvent _completeEvent;
+        
         internal void PostComplete()
         {
-            if (completeEvent == null) return;
-            EventSystem.EventHandler.SendEvent(completeEvent);
-            completeEvent.Dispose();
-            completeEvent = null;
+            SendEvent(_completeEvent);
+            HandleEventAtTargetPhase(_completeEvent);
+            _completeEvent.Dispose();
+            _completeEvent = null;
         }
+        
         /// <summary>
-        /// Release prerequistite if contains its reference
+        /// Release prerequisite if contains its reference
         /// </summary>
         /// <param name="evt"></param>
         /// <returns></returns>
-        internal bool ReleasePrerequistite(TaskCompleteEvent evt)
+        internal bool ReleasePrerequisite(TaskCompleteEvent evt)
         {
-            return prerequisites.Remove(evt);
+            return _prerequisites.Remove(evt);
         }
-        internal bool HasPrerequistites()
+        
+        internal bool HasPrerequisite()
         {
-            return prerequisites != null && prerequisites.Count > 0;
+            return _prerequisites != null && _prerequisites.Count > 0;
         }
+        
         /// <summary>
         /// Get task complete event
         /// </summary>
         /// <returns></returns>
         public TaskCompleteEvent GetCompleteEvent()
         {
-            completeEvent ??= TaskCompleteEvent.GetPooled(this);
-            return completeEvent;
+            return _completeEvent;
         }
+        
         /// <summary>
         /// Add a prerequisite task before this task run
         /// </summary>
@@ -163,78 +221,87 @@ namespace Chris.Tasks
         {
             var evt = taskBase.GetCompleteEvent();
             evt.AddListenerTask(this);
-            prerequisites ??= HashSetPool<TaskCompleteEvent>.Get();
-            prerequisites.Add(evt);
+            _prerequisites ??= HashSetPool<TaskCompleteEvent>.Get();
+            _prerequisites.Add(evt);
         }
+        
         /// <summary>
         /// Remove a prerequisite task if exist
         /// </summary>
         /// <param name="taskBase"></param>
         public bool UnregisterPrerequisite(TaskBase taskBase)
         {
-            if (prerequisites == null) return false;
+            if (_prerequisites == null) return false;
             var evt = taskBase.GetCompleteEvent();
             // should not edit collections when is being dispatched
             if (!evt.Dispatch)
                 evt.RemoveListenerTask(this);
-            return prerequisites.Remove(evt);
+            return _prerequisites.Remove(evt);
         }
+        
         #endregion
     }
+    
     public abstract class PooledTaskBase<T> : TaskBase where T : PooledTaskBase<T>, new()
     {
-        private int m_RefCount;
-        private bool pooled;
-        private static readonly _ObjectPool<T> s_Pool = new(() => new T());
-        private static readonly string defaultName;
+        private int _refCount;
+        
+        private bool _pooled;
+        
+        private static readonly _ObjectPool<T> Pool = new(() => new T());
+        
+        private static readonly string DefaultName;
+        
         static PooledTaskBase()
         {
-            defaultName = typeof(T).Name;
+            DefaultName = typeof(T).Name;
         }
-        protected PooledTaskBase() : base()
-        {
-            m_RefCount = 0;
-        }
+
         public sealed override void Dispose()
         {
-            if (--m_RefCount == 0)
+            if (--_refCount == 0)
             {
                 base.Dispose();
                 ReleasePooled((T)this);
             }
         }
+        
         private static void ReleasePooled(T evt)
         {
-            if (evt.pooled)
+            if (evt._pooled)
             {
                 evt.Reset();
-                s_Pool.Release(evt);
-                evt.pooled = false;
+                Pool.Release(evt);
+                evt._pooled = false;
             }
         }
+        
         public static T GetPooled()
         {
-            T t = s_Pool.Get();
+            T t = Pool.Get();
             t.Init();
-            t.pooled = true;
+            t._pooled = true;
             return t;
         }
+        
         protected override void Init()
         {
             base.Init();
-            if (m_RefCount != 0)
+            if (_refCount != 0)
             {
-                Debug.LogWarning($"Task improperly released, reference count {m_RefCount}.");
-                m_RefCount = 0;
+                Debug.LogWarning($"Task improperly released, reference count {_refCount}.");
+                _refCount = 0;
             }
         }
+        
         public override void Acquire()
         {
-            m_RefCount++;
+            _refCount++;
         }
+        
         public override string GetTaskID()
         {
-            return defaultName;
+            return DefaultName;
         }
     }
 }

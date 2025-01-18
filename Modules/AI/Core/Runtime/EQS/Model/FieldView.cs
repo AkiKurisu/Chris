@@ -20,6 +20,7 @@ namespace Chris.AI.EQS
             this.radius = radius;
             this.angle = angle;
         }
+        
         /// <summary>
         /// Collect actors in field of view
         /// </summary>
@@ -32,6 +33,7 @@ namespace Chris.AI.EQS
         {
             EnvironmentQuery.OverlapFieldView(actors, position, forward, radius, angle, targetMask, actorToIgnore);
         }
+        
         /// <summary>
         /// Collect actors in field of view with generic type filter
         /// </summary>
@@ -52,7 +54,7 @@ namespace Chris.AI.EQS
         }
 
         /// <summary>
-        /// Detect whether can see the target
+        /// Detect whether field view can see the target
         /// </summary>
         /// <param name="target"></param>
         /// <param name="fromPosition"></param>
@@ -86,14 +88,11 @@ namespace Chris.AI.EQS
                         Debug.DrawLine(hit.point, fromPosition, Color.cyan);
                         isVisible = false;
                     }
-                    else
-                    {
-                        isVisible = true;
-                    }
                 }
             }
             return isVisible;
         }
+        
         public readonly void DrawGizmos(Vector3 position, Vector3 forward)
         {
 #if UNITY_EDITOR
