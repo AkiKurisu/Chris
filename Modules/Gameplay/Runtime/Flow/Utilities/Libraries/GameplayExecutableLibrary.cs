@@ -1,5 +1,4 @@
 using Ceres.Annotations;
-using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using Ceres.Graph.Flow.Utilities;
 using Chris.Gameplay.Audios;
@@ -20,14 +19,14 @@ namespace Chris.Gameplay.Flow.Utilities
 
         [ExecutableFunction]
         public static SubsystemBase Flow_GetSubsystem(
-            [CeresMetadata(ExecutableFunction.RESOLVE_RETURN)] SerializedType<SubsystemBase> type)
+            [ResolveReturn] SerializedType<SubsystemBase> type)
         {
             return GameWorld.Get().GetSubsystem(type);
         }
         
         [ExecutableFunction]
         public static SubsystemBase Flow_GetOrCreateSubsystem(
-            [CeresMetadata(ExecutableFunction.RESOLVE_RETURN)] SerializedType<SubsystemBase> type)
+            [ResolveReturn] SerializedType<SubsystemBase> type)
         {
             return WorldSubsystem.GetOrCreate(type);
         }

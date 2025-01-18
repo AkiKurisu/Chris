@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Ceres.Annotations;
 using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using Chris.Serialization;
@@ -172,7 +171,7 @@ namespace Chris.Gameplay
         
         [ExecutableFunction]
         public ActorComponent GetActorComponent(
-            [CeresMetadata(ExecutableFunction.RESOLVE_RETURN)] SerializedType<ActorComponent> type)
+            [ResolveReturn] SerializedType<ActorComponent> type)
         {
             foreach (var component in _actorComponents)
             {
