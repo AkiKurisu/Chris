@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Chris.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
@@ -87,7 +88,11 @@ namespace Chris.Gameplay.Animations
             /// <returns></returns>
             public readonly AnimationSequenceBuilder AppendCallBack(AnimationProxyDelegate callBack)
             {
-                _taskBuffer.Add(AnimationProxyCallBackTask.GetPooled(_proxy, callBack));
+                var proxy = _proxy;
+                _taskBuffer.LastOrDefault()?.RegisterCallback<TaskCompleteEvent>(_ =>
+                {
+                    callBack(proxy);
+                });
                 return this;
             }
             
@@ -255,34 +260,6 @@ namespace Chris.Gameplay.Animations
                 base.Reset();
                 _proxy = null;
                 _animatorController = null;
-            }
-        }
-        
-        private sealed class AnimationProxyCallBackTask : PooledTaskBase<AnimationProxyCallBackTask>
-        {
-            private AnimationProxy _proxy;
-            
-            private AnimationProxyDelegate _callBack;
-            
-            public static AnimationProxyCallBackTask GetPooled(AnimationProxy proxy, AnimationProxyDelegate callBack)
-            {
-                var task = GetPooled();
-                task._callBack = callBack;
-                task._proxy = proxy;
-                return task;
-            }
-            
-            public override void Tick()
-            {
-                _callBack?.Invoke(_proxy);
-                CompleteTask();
-            }
-            
-            protected override void Reset()
-            {
-                base.Reset();
-                _proxy = null;
-                _callBack = null;
             }
         }
         
