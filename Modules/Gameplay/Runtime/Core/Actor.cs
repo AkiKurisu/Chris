@@ -23,49 +23,49 @@ namespace Chris.Gameplay
         protected virtual void Awake()
         {
             RegisterActor(this);
-            ProcessEvent();
+            this.ProcessEvent();
         }
         
         [ImplementableEvent]
         protected virtual void OnEnable()
         {
-            ProcessEvent();
+            this.ProcessEvent();
         }
 
         [ImplementableEvent]
         protected virtual void Start()
         {
-            ProcessEvent();
+            this.ProcessEvent();
         }
         
         [ImplementableEvent]
         protected virtual void OnDisable()
         {
-            ProcessEvent();
+            this.ProcessEvent();
         }
         
         [ImplementableEvent]
         protected virtual void Update()
         {
-            ProcessEvent();
+            this.ProcessEvent();
         }
         
         [ImplementableEvent]
         protected virtual void FixedUpdate()
         {
-            ProcessEvent();
+            this.ProcessEvent();
         }
         
         [ImplementableEvent]
         protected virtual void LateUpdate()
         {
-            ProcessEvent();
+            this.ProcessEvent();
         }
 
         [ImplementableEvent]
         protected virtual void OnDestroy()
         {
-            ProcessEvent();
+            this.ProcessEvent();
             UnregisterActor(this);
             ReleaseGraph();
             _actorComponents.Clear();
