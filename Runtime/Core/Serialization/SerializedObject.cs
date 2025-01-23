@@ -46,7 +46,7 @@ namespace Chris.Serialization
 #endif
         public SerializedObjectBase Clone()
         {
-            return new SerializedObjectBase()
+            return new SerializedObjectBase
             {
                 serializedTypeString = serializedTypeString,
                 isArray = isArray,
@@ -150,6 +150,17 @@ namespace Chris.Serialization
             }
             return JsonUtility.ToJson(@object);
         }
+        
+        public static SerializedObjectBase FromObject(object @object)
+        {
+            var type = @object.GetType();
+            return new SerializedObjectBase
+            {
+                serializedTypeString = SerializedType.ToString(type.IsArray ? type.GetElementType() : type),
+                jsonData = SerializeObject(@object, type),
+                isArray = type.IsArray
+            };
+        }
     }
     /// <summary>
     /// Serialized object that will serialize metadata and fields of object implementing T
@@ -159,6 +170,7 @@ namespace Chris.Serialization
     public sealed class SerializedObject<T> : SerializedObjectBase
     {
 #pragma warning disable CS8632
+        [NonSerialized]
         private T? _value;
 #pragma warning restore CS8632 
         
@@ -198,7 +210,7 @@ namespace Chris.Serialization
         /// </summary>
         /// <param name="object"></param>
         /// <returns></returns>
-        public static SerializedObject<T> FromObject(object @object)
+        public new static SerializedObject<T> FromObject(object @object)
         {
             var type = @object.GetType();
             return new SerializedObject<T>()
