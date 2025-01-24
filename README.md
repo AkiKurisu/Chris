@@ -6,6 +6,10 @@ A Unity game framework designed for efficient development.
 
 </div>
 
+## Install
+
+Use git URL to download package by Unity Package Manager ```https://github.com/AkiKurisu/Chris.git```
+
 ## Core Features
 
 [Events](./Docs/Events.md) 
@@ -41,6 +45,8 @@ A Unity game framework designed for efficient development.
 ## Modules
 
 Modules are based on core features.
+
+To install modules, use git URL to download package by Unity Package Manager ```https://github.com/AkiKurisu/Chris-Modules.git```
 
 [Gameplay](./Docs/Gameplay.md)
 >Based on Ceres to integrate visual scripting and C#. Also contains some tools that may be useful.
