@@ -4,33 +4,34 @@ namespace Chris.Events
     public class EventSystem : MonoEventCoordinator
     {
 #pragma warning disable IDE1006
+        // ReSharper disable once InconsistentNaming
         private sealed class _CallbackEventHandler : CallbackEventHandler, IBehaviourScope
 #pragma warning restore IDE1006
         {
             public override bool IsCompositeRoot => true;
             
-            private readonly EventSystem eventCoordinator;
+            private readonly EventSystem _eventCoordinator;
             
-            public override IEventCoordinator Coordinator => eventCoordinator;
+            public override IEventCoordinator Coordinator => _eventCoordinator;
             
             public MonoBehaviour Behaviour { get; }
             
             public _CallbackEventHandler(EventSystem eventCoordinator)
             {
                 Behaviour = eventCoordinator;
-                this.eventCoordinator = eventCoordinator;
+                _eventCoordinator = eventCoordinator;
             }
             
             public override void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default)
             {
                 e.Target = this;
-                eventCoordinator.Dispatch(e, dispatchMode, MonoDispatchType.Update);
+                _eventCoordinator.Dispatch(e, dispatchMode, MonoDispatchType.Update);
             }
             
             public void SendMonoEvent(EventBase e, DispatchMode dispatchMode, MonoDispatchType monoDispatchType)
             {
                 e.Target = this;
-                eventCoordinator.Dispatch(e, dispatchMode, monoDispatchType);
+                _eventCoordinator.Dispatch(e, dispatchMode, monoDispatchType);
             }
         }
         
