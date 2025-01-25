@@ -65,8 +65,6 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 
 [Unity Timer](https://github.com/akbiggs/UnityTimer)
 
-[Ceres](https://github.com/AkiKurisu/Ceres)
-
 ## License
 
 MIT
