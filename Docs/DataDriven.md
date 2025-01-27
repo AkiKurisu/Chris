@@ -10,9 +10,9 @@ Implement `IDataTableRow` and add `[Serializable]` attribute.
 
 ```C#
 using System;
-using Kurisu.Framework.DataDriven;
-using Kurisu.Framework.Resource;
-using Kurisu.Framework.Serialization;
+using Chris.DataDriven;
+using Chris.Resource;
+using Chris.Serialization;
 using UnityEngine;
 
 // Must add this attribute

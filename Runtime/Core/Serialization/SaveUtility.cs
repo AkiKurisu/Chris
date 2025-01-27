@@ -5,14 +5,16 @@ using Newtonsoft.Json;
 using UnityEngine;
 namespace Chris.Serialization
 {
-    public class SaveUtility
+    public static class SaveUtility
     {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
         private static readonly string SavePath = Path.Combine(Application.dataPath, "../Saved");
 #else
         private static readonly string SavePath = Path.Combine(Application.persistentDataPath, "Saved");
 #endif
-        private static readonly BinaryFormatter formatter = new();
+        
+        private static readonly BinaryFormatter Formatter = new();
+        
         /// <summary>
         /// Save object data to saving
         /// </summary>
@@ -27,8 +29,9 @@ namespace Chris.Serialization
                 jsonData = JsonConvert.SerializeObject(data);
             if (!Directory.Exists(SavePath)) Directory.CreateDirectory(SavePath);
             using FileStream file = File.Create($"{SavePath}/{key}.sav");
-            formatter.Serialize(file, jsonData);
+            Formatter.Serialize(file, jsonData);
         }
+        
         /// <summary>
         /// Save data to saving
         /// </summary>
@@ -44,8 +47,9 @@ namespace Chris.Serialization
                 jsonData = JsonConvert.SerializeObject(data);
             if (!Directory.Exists(SavePath)) Directory.CreateDirectory(SavePath);
             using FileStream file = File.Create($"{SavePath}/{key}.sav");
-            formatter.Serialize(file, jsonData);
+            Formatter.Serialize(file, jsonData);
         }
+        
         /// <summary>
         /// Save data to saving
         /// </summary>
@@ -55,11 +59,12 @@ namespace Chris.Serialization
         {
             Save(typeof(T).Name, data);
         }
+        
         /// <summary>
-        /// Delate saving
+        /// Delete saving
         /// </summary>
         /// <param name="key"></param>
-        public static void Delate(string key)
+        public static void Delete(string key)
         {
             if (!Directory.Exists(SavePath)) return;
             string path = $"{SavePath}/{key}.sav";
@@ -68,10 +73,11 @@ namespace Chris.Serialization
                 File.Delete(path);
             }
         }
+        
         /// <summary>
-        /// Delate saving
+        /// Delete all savings
         /// </summary>
-        public static void DelateAll()
+        public static void DeleteAll()
         {
             if (Directory.Exists(SavePath)) Directory.Delete(SavePath, true);
         }
@@ -85,12 +91,14 @@ namespace Chris.Serialization
         {
             if (!Directory.Exists(SavePath)) Directory.CreateDirectory(SavePath);
             using FileStream file = File.Create($"{SavePath}/{key}.sav");
-            formatter.Serialize(file, jsonData);
+            Formatter.Serialize(file, jsonData);
         }
+        
         public static bool SavingExists(string key)
         {
             return File.Exists($"{SavePath}/{key}.sav");
         }
+        
         /// <summary>
         /// Load json from saving
         /// </summary>
@@ -101,12 +109,13 @@ namespace Chris.Serialization
             if (File.Exists(path))
             {
                 using FileStream file = File.Open(path, FileMode.Open);
-                jsonData = (string)formatter.Deserialize(file);
+                jsonData = (string)Formatter.Deserialize(file);
                 return true;
             }
             jsonData = null;
             return false;
         }
+        
         /// <summary>
         /// Load json from saving and overwrite object
         /// </summary>
@@ -119,13 +128,14 @@ namespace Chris.Serialization
             {
                 using FileStream file = File.Open(path, FileMode.Open);
                 if (data.GetType().GetCustomAttribute<PreferJsonConvertAttribute>() == null)
-                    JsonUtility.FromJsonOverwrite((string)formatter.Deserialize(file), data);
+                    JsonUtility.FromJsonOverwrite((string)Formatter.Deserialize(file), data);
                 else
-                    JsonConvert.PopulateObject((string)formatter.Deserialize(file), data);
+                    JsonConvert.PopulateObject((string)Formatter.Deserialize(file), data);
                 return true;
             }
             return false;
         }
+        
         /// <summary>
         /// Load json from saving and overwrite object
         /// </summary>
@@ -140,13 +150,14 @@ namespace Chris.Serialization
             {
                 using FileStream file = File.Open(path, FileMode.Open);
                 if (typeof(T).GetCustomAttribute<PreferJsonConvertAttribute>() == null)
-                    JsonUtility.FromJsonOverwrite((string)formatter.Deserialize(file), data);
+                    JsonUtility.FromJsonOverwrite((string)Formatter.Deserialize(file), data);
                 else
-                    JsonConvert.PopulateObject((string)formatter.Deserialize(file), data);
+                    JsonConvert.PopulateObject((string)Formatter.Deserialize(file), data);
                 return true;
             }
             return false;
         }
+        
         /// <summary>
         /// Load json from saving and overwrite object
         /// </summary>
@@ -157,6 +168,7 @@ namespace Chris.Serialization
         {
             return Overwrite(typeof(T).Name, data);
         }
+        
         /// <summary>
         /// Load json from saving and parse to <see cref="T"/> object, if has no saving allocate new one
         /// </summary>
@@ -171,13 +183,14 @@ namespace Chris.Serialization
             {
                 using FileStream file = File.Open(path, FileMode.Open);
                 if (typeof(T).GetCustomAttribute<PreferJsonConvertAttribute>() == null)
-                    data = JsonUtility.FromJson<T>((string)formatter.Deserialize(file));
+                    data = JsonUtility.FromJson<T>((string)Formatter.Deserialize(file));
                 else
-                    data = JsonConvert.DeserializeObject<T>((string)formatter.Deserialize(file));
+                    data = JsonConvert.DeserializeObject<T>((string)Formatter.Deserialize(file));
             }
             data ??= new T();
             return data;
         }
+        
         /// <summary>
         /// Load json from saving and parse to <see cref="T"/> object, if has no saving allocate new one
         /// </summary>
