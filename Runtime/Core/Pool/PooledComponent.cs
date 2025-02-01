@@ -2,49 +2,59 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 namespace Chris.Pool
 {
-    public class PooledComponent<T, K> : PooledGameObject where K : Component where T : PooledComponent<T, K>, new()
+    public class PooledComponent<T, TComponent> : PooledGameObject where TComponent : Component where T : PooledComponent<T, TComponent>, new()
     {
         /// <summary>
         /// Cache component as meta data to reduce allocation
         /// </summary>
-        public class ComponentCache : IPooledMetaData
+        public class ComponentCache : IPooledMetadata
         {
-            public K component;
+            public TComponent Component;
         }
-        public K Component => Cache.component;
+        
+        public TComponent Component => Cache.Component;
+        
         protected ComponentCache Cache { get; set; }
-        private static readonly PoolKey componentName;
+        
+        private static readonly PoolKey ComponentKey;
+        
         static PooledComponent()
         {
-            componentName = new(typeof(T).FullName);
+            ComponentKey = new PoolKey(typeof(T).FullName);
         }
-        internal readonly static _ObjectPool<T> pool = new(() => new());
+        
+        internal static readonly _ObjectPool<T> Pool = new(() => new T());
+        
         public new static void SetMaxSize(int size)
         {
-            pool.MaxSize = size;
+            Pool.MaxSize = size;
         }
+
         /// <summary>
         /// Get or create empty pooled component
         /// </summary>
-        /// <param name="address"></param>
         /// <param name="parent"></param>
         /// <returns></returns>
         public static T Get(Transform parent = null)
         {
-            var pooledComponent = pool.Get();
-            pooledComponent.PoolKey = componentName;
-            pooledComponent.GameObject = GameObjectPoolManager.Get(componentName, out var metaData, parent);
-            pooledComponent.Cache = metaData as ComponentCache;
+            var pooledComponent = Pool.Get();
+            pooledComponent.PoolKey = ComponentKey;
+            pooledComponent.GameObject = GameObjectPoolManager.Get(ComponentKey, out var metadata, parent);
+            pooledComponent.Cache = metadata as ComponentCache;
             pooledComponent.Init();
             return pooledComponent;
         }
+        
         private const string Prefix = "Prefab";
-        private static IPooledMetaData metaData;
+        
+        private static IPooledMetadata _metadata;
+        
         public static PoolKey GetPooledKey(GameObject prefab)
         {
             // append instance id since prefabs may have same name
             return new PoolKey(Prefix, prefab.GetInstanceID());
         }
+        
         /// <summary>
         /// Instantiate pooled component by prefab, optimized version of <see cref="Object.Instantiate(Object, Transform)"/> 
         /// </summary>
@@ -53,19 +63,20 @@ namespace Chris.Pool
         /// <returns></returns>
         public static T Instantiate(GameObject prefab, Transform parent = null)
         {
-            var pooledComponent = pool.Get();
-            PoolKey key = GetPooledKey(prefab);
+            var pooledComponent = Pool.Get();
+            var key = GetPooledKey(prefab);
             pooledComponent.PoolKey = key;
-            var @object = GameObjectPoolManager.Get(key, out metaData, parent, createEmptyIfNotExist: false);
+            var @object = GameObjectPoolManager.Get(key, out _metadata, parent, createEmptyIfNotExist: false);
             if (!@object)
             {
                 @object = Object.Instantiate(prefab, parent);
             }
-            pooledComponent.Cache = metaData as ComponentCache;
+            pooledComponent.Cache = _metadata as ComponentCache;
             pooledComponent.GameObject = @object;
             pooledComponent.Init();
             return pooledComponent;
         }
+        
         /// <summary>
         /// Instantiate pooled component by prefab, optimized version of <see cref="Object.Instantiate(Object, Vector3, Quaternion, Transform)"/> 
         /// </summary>
@@ -84,18 +95,20 @@ namespace Chris.Pool
                 pooledComponent.GameObject.transform.SetPositionAndRotation(position, rotation);
             return pooledComponent;
         }
+        
         protected override void Init()
         {
             IsDisposed = false;
             InitDisposables();
             Transform = GameObject.transform;
             Cache ??= new ComponentCache();
-            if (!Cache.component)
+            if (!Cache.Component)
             {
                 // allocate few to get component from gameObject
-                Cache.component = GameObject.GetOrAddComponent<K>();
+                Cache.Component = GameObject.GetOrAddComponent<TComponent>();
             }
         }
+        
         public sealed override void Dispose()
         {
             if (IsDisposed) return;
@@ -104,8 +117,9 @@ namespace Chris.Pool
             if (GameObjectPoolManager.IsInstantiated)
                 GameObjectPoolManager.Release(GameObject, PoolKey, Cache);
             IsDisposed = true;
-            pool.Release((T)this);
+            Pool.Release((T)this);
         }
+        
         protected virtual void OnDispose() { }
     }
 }

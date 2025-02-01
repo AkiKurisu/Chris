@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+
 namespace Chris.Pool
 {
 #pragma warning disable IDE1006
@@ -8,53 +9,56 @@ namespace Chris.Pool
     /// Internal simple object pool
     /// </summary>
     /// <typeparam name="T"></typeparam>
+    // ReSharper disable once InconsistentNaming
     internal class _ObjectPool<T> where T : new()
 #pragma warning restore IDE1006 
     {
-        private readonly Stack<T> m_Stack = new();
-        private int m_MaxSize;
+        private readonly Stack<T> _stack = new();
+        
+        private int _maxSize;
+        
         internal Func<T> CreateFunc;
 
         public int MaxSize
         {
-            get { return m_MaxSize; }
+            get => _maxSize;
             set
             {
-                m_MaxSize = Math.Max(0, value);
-                while (Size() > m_MaxSize)
+                _maxSize = Math.Max(0, value);
+                while (Size() > _maxSize)
                 {
                     Get();
                 }
             }
         }
 
-        public _ObjectPool(Func<T> CreateFunc, int maxSize = 5000)
+        public _ObjectPool(Func<T> createFunc, int maxSize = 5000)
         {
             MaxSize = maxSize;
 
-            if (CreateFunc == null)
+            if (createFunc == null)
             {
-                this.CreateFunc = () => new T();
+                CreateFunc = () => new T();
             }
             else
             {
-                this.CreateFunc = CreateFunc;
+                CreateFunc = createFunc;
             }
         }
 
         public int Size()
         {
-            return m_Stack.Count;
+            return _stack.Count;
         }
 
         public void Clear()
         {
-            m_Stack.Clear();
+            _stack.Clear();
         }
 
         public T Get()
         {
-            T evt = m_Stack.Count == 0 ? CreateFunc() : m_Stack.Pop();
+            T evt = _stack.Count == 0 ? CreateFunc() : _stack.Pop();
             return evt;
         }
 
@@ -63,13 +67,13 @@ namespace Chris.Pool
 #if UNITY_DEBUG
             if (m_Stack.Contains(element)) //this is O(n) and will be come an issue when the pool size is large
 #else
-            if (m_Stack.Count > 0 && ReferenceEquals(m_Stack.Peek(), element))
+            if (_stack.Count > 0 && ReferenceEquals(_stack.Peek(), element))
 #endif
                 Debug.LogError("Internal error. Trying to destroy object that is already released to pool.");
 
-            if (m_Stack.Count < MaxSize)
+            if (_stack.Count < MaxSize)
             {
-                m_Stack.Push(element);
+                _stack.Push(element);
             }
 #if UNITY_EDITOR
             else

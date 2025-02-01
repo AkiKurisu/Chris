@@ -20,7 +20,6 @@ namespace Chris.Serialization.Editor
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
-            var totalHeight = position.height;
             position.height = EditorGUIUtility.singleLineHeight;
             var reference = property.FindPropertyRelative("serializedTypeString");
             Type type;
@@ -34,7 +33,6 @@ namespace Chris.Serialization.Editor
             }
             string id = type != null ? type.Name : NullType;
             float width = position.width;
-            float x = position.x;
             position.width = GUI.skin.label.CalcSize(label).x;
             GUI.Label(position, label);
             position.x += position.width + 10;
