@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Chris.Resource;
 using Cysharp.Threading.Tasks;
 namespace Chris.DataDriven
@@ -8,6 +9,8 @@ namespace Chris.DataDriven
     public abstract class DataTableManager
     {
         private static bool _isLoaded;
+
+        private static readonly Dictionary<Type, DataTableManager> DataTableManagers = new();
         
 #if AF_INITIALIZE_DATATABLE_MANAGER_ON_LOAD
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -105,6 +108,22 @@ namespace Chris.DataDriven
 
             }
         }
+
+        public static DataTableManager GetOrCreateDataTableManager(Type type)
+        {
+            if (DataTableManagers.TryGetValue(type, out var dataTableManager))
+            {
+                return dataTableManager;
+            }
+
+            var getMethod = type.GetMethod("Get", BindingFlags.Instance | BindingFlags.Public);
+            return (DataTableManager)getMethod!.Invoke(null, Array.Empty<object>());
+        }
+        
+        protected static void RegisterDataTableManager<TManager>(TManager dataTableManager) where TManager: DataTableManager
+        {
+            DataTableManagers.TryAdd(typeof(TManager), dataTableManager);
+        }
     }
     
     public abstract class DataTableManager<TManager> : DataTableManager where TManager : DataTableManager<TManager>
@@ -115,6 +134,7 @@ namespace Chris.DataDriven
         protected DataTableManager(object _)
         {
             _instance = (TManager)this;
+            RegisterDataTableManager(_instance);
         }
         
         /// <summary>
