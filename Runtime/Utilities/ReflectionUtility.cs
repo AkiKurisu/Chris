@@ -129,6 +129,32 @@ namespace Chris
             return type.GetGenericArguments()[0];
         }
         
+        public static bool IsInheritedFromGenericDefinition(Type type, Type genericDefinition)
+        {
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == genericDefinition)
+            {
+                return true;
+            }
+            
+            if (type.BaseType != null)
+            {
+                if (IsInheritedFromGenericDefinition(type.BaseType, genericDefinition))
+                {
+                    return true;
+                }
+            }
+            
+            foreach (var interfaceType in type.GetInterfaces())
+            {
+                if (IsInheritedFromGenericDefinition(interfaceType, genericDefinition))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        
          /// <summary>
         /// Get all field names of type that Unity can serialize
         /// </summary>
