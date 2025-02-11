@@ -82,6 +82,7 @@ namespace Chris.Resource
             }
             return asset;
         }
+        
         private ResourceHandle<TAsset> LoadNewAssetAsync(string address, Action<TAsset> callBack = null)
         {
             if (_internalHandles.TryGetValue(address, out var internalHandle))
@@ -95,7 +96,7 @@ namespace Chris.Resource
                 internalHandle.RegisterCallback(callBack);
                 return internalHandle;
             }
-            //Create a new resource load call, also track it's handle
+            // Create a new resource load call, also track it's handle
             internalHandle = ResourceSystem.LoadAssetAsync<TAsset>(address, (asset) =>
             {
                 _cacheMap.Add(address, asset);

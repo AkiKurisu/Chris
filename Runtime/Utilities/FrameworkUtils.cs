@@ -11,6 +11,7 @@ namespace Chris
         {
             return GetScreenPosition(Camera.main, width, height, target);
         }
+        
         public static Vector3 GetScreenPosition(Camera camera, float width, float height, Vector3 target)
         {
             Vector3 pos = camera.WorldToScreenPoint(target);
@@ -20,21 +21,7 @@ namespace Chris
             pos.y -= height * 0.5f;
             return pos;
         }
-        /// <summary>
-        /// Quadratic Bezier curve, dynamically draw a curve based on three points
-        /// </summary>
-        /// <param name="t">The arrival coefficient is 0 for the start and 1 for the arrival</param>
-        /// <param name="p0">Starting point</param>
-        /// <param name="p1">Middle point</param>
-        /// <param name="p2">End point</param>
-        /// <returns></returns>
-        public static Vector2 GetQuadraticCurvePoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)
-        {
-            float u = 1 - t;
-            float tt = t * t;
-            float uu = u * u;
-            return (uu * p0) + (2 * u * t * p1) + (tt * p2);
-        }
+
         public static bool CompareTags(Component target, string[] allowedTags)
         {
             if (target == null || allowedTags == null) return false;
@@ -46,10 +33,12 @@ namespace Chris
             }
             return match;
         }
+        
         public static string GetRelativePath(string path)
         {
             return path.Replace("\\", "/").Replace(Application.dataPath, "Assets/");
         }
+        
         public static string GetAbsolutePath(string path)
         {
             return Application.dataPath + path.Replace("\\", "/")[6..];
@@ -57,6 +46,7 @@ namespace Chris
         #endregion Public API
 
         #region Internal API
+        
         internal static MethodInfo GetStaticMethodWithNoParametersInBase(Type type, string methodName)
         {
             MethodInfo[] methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);

@@ -34,9 +34,10 @@ namespace R3.Chris
             CancellationToken cancellationToken = default;
             if (handler is IBehaviourScope behaviourScope && behaviourScope.Behaviour)
                 cancellationToken = behaviourScope.Behaviour.destroyCancellationToken;
-            return new FromEventHandler<TEventType>(static h => new(h),
-            h => handler.RegisterCallback(h, trickleDown), h => handler.UnregisterCallback(h, trickleDown), cancellationToken);
+            return new FromEventHandler<TEventType>(static action => new EventCallback<TEventType>(action),
+            callback => handler.RegisterCallback(callback, trickleDown), callback => handler.UnregisterCallback(callback, trickleDown), cancellationToken);
         }
+        
         #endregion
         /// <summary>
         /// Subscribe <see cref="Observable{TEventType}"/> and finally dispose event, better performance for <see cref="EventBase"/>
@@ -59,7 +60,7 @@ namespace R3.Chris
         }
         
         /// <summary>
-        /// Bind <see cref="ReactiveProperty{float}"/> to slider
+        /// Bind <see cref="ReactiveProperty{Single}"/> to slider
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="slider"></param>
@@ -73,7 +74,7 @@ namespace R3.Chris
         }
         
         /// <summary>
-        /// Bind <see cref="ReactiveProperty{int}"/> to slider
+        /// Bind <see cref="ReactiveProperty{Int32}"/> to slider
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="slider"></param>
@@ -87,7 +88,7 @@ namespace R3.Chris
         }
         
         /// <summary>
-        /// Bind <see cref="ReactiveProperty{bool}"/> to toggle
+        /// Bind <see cref="ReactiveProperty{Boolean}"/> to toggle
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="toggle"></param>

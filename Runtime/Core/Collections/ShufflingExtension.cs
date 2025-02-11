@@ -4,7 +4,7 @@ using System.Linq;
 namespace Chris.Collections
 {
     /// <summary>
-    /// Shuffling extension used for card game
+    /// Shuffling extension used for <see cref="IReadOnlyList{T}"/>
     /// </summary>
     public static class ShufflingExtension
     {

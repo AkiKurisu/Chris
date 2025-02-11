@@ -8,8 +8,11 @@ namespace Chris
     [Serializable]
     public struct Optional<T>
     {
-        [SerializeField] private bool enabled;
-        [SerializeField] private T value;
+        [SerializeField] 
+        private bool enabled;
+        
+        [SerializeField] 
+        private T value;
 
         public readonly bool Enabled => enabled;
         public readonly T Value => value;

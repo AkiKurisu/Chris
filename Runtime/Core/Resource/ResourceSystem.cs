@@ -265,7 +265,7 @@ namespace Chris.Resource
         
         private static readonly Dictionary<int, ResourceHandle> InstanceIDMap = new();
         
-        private static readonly SparseList<AsyncOperationStructure> Operations = new(10, int.MaxValue);
+        private static readonly SparseArray<AsyncOperationStructure> Operations = new(10, int.MaxValue);
         
         internal static ResourceHandle<T> CreateHandle<T>(AsyncOperationHandle<T> asyncOperationHandle, byte operation)
         {

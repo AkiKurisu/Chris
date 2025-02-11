@@ -1,5 +1,4 @@
 using UnityEngine;
-using System;
 using Chris.Pool;
 
 namespace Chris.Schedulers
@@ -12,9 +11,11 @@ namespace Chris.Schedulers
     /// </summary>
     internal class Timer : IScheduled
     {
-        private static readonly _ObjectPool<Timer> pool = new(() => new());
+        private static readonly _ObjectPool<Timer> Pool = new(() => new Timer());
+        
         #region Public Properties/Fields
         public SchedulerHandle Handle { get; private set; }
+        
         /// <summary>
         /// How long the timer takes to complete from start to finish.
         /// </summary>
@@ -26,39 +27,32 @@ namespace Chris.Schedulers
         public bool IsLooped { get; set; }
 
         /// <summary>
-        /// Whether or not the timer completed running. This is false if the timer was cancelled.
+        /// Whether the timer completed running. This is false if the timer was cancelled.
         /// </summary>
         public bool IsCompleted { get; private set; }
 
         /// <summary>
         /// Whether the timer uses real-time or game-time. Real time is unaffected by changes to the timescale
-        /// of the game(e.g. pausing, slow-mo), while game time is affected.
+        /// of the game(e.g. pausing, slo-mo), while game time is affected.
         /// </summary>
         public bool UsesRealTime { get; private set; }
 
         /// <summary>
         /// Whether the timer is currently paused.
         /// </summary>
-        public bool IsPaused
-        {
-            get { return _timeElapsedBeforePause.HasValue; }
-        }
+        public bool IsPaused => _timeElapsedBeforePause.HasValue;
 
         /// <summary>
-        /// Whether or not the timer was cancelled.
+        /// Whether the timer was cancelled.
         /// </summary>
-        public bool IsCancelled
-        {
-            get { return _timeElapsedBeforeCancel.HasValue; }
-        }
+        public bool IsCancelled => _timeElapsedBeforeCancel.HasValue;
 
-        public bool IsDone
-        {
-            get { return IsCompleted || IsCancelled; }
-        }
+        public bool IsDone => IsCompleted || IsCancelled;
 
         #endregion
+        
         #region Public Static Methods
+        
         /// <summary>
         /// Register a new timer that should fire an event after a certain amount of time
         /// has elapsed.
@@ -77,13 +71,15 @@ namespace Chris.Schedulers
         internal static Timer Register(float duration, SchedulerUnsafeBinding onComplete, SchedulerUnsafeBinding<float> onUpdate,
            TickFrame tickFrame = TickFrame.Update, bool isLooped = false, bool useRealTime = false)
         {
-            Timer timer = pool.Get();
+            Timer timer = Pool.Get();
             timer.Init(SchedulerRunner.Get().NewHandle(), duration, ref onComplete, ref onUpdate, isLooped, useRealTime);
             SchedulerRunner.Get().Register(timer, tickFrame, onComplete.IsValid() ? onComplete.GetDelegate() : onUpdate.GetDelegate());
             return timer;
         }
         #endregion
+        
         #region Public Methods
+        
         /// <summary>
         /// Stop a timer that is in-progress or paused. The timer's on completion callback will not be called.
         /// </summary>
@@ -93,13 +89,15 @@ namespace Chris.Schedulers
             _timeElapsedBeforeCancel = GetTimeElapsed();
             _timeElapsedBeforePause = null;
         }
+        
         public void Dispose()
         {
             SchedulerRunner.Get().Unregister(this, _onComplete.IsValid() ? _onComplete.GetDelegate() : _onUpdate.GetDelegate());
             _onUpdate = default;
             _onComplete = default;
-            pool.Release(this);
+            Pool.Release(this);
         }
+        
         /// <summary>
         /// Pause a running timer. A paused timer can be resumed from the same point it was paused.
         /// </summary>
@@ -178,10 +176,15 @@ namespace Chris.Schedulers
         }
 
         #endregion
+        
         #region Private Properties/Fields
+        
         private SchedulerUnsafeBinding _onComplete;
+        
         private SchedulerUnsafeBinding<float> _onUpdate;
+        
         private float _startTime;
+        
         private float _lastUpdateTime;
 
         // for pausing, we push the start time forward by the amount of time that has passed.
@@ -189,9 +192,11 @@ namespace Chris.Schedulers
         // check the start time versus the current world time, so we need to cache the time that was elapsed
         // before we paused/cancelled
         private float? _timeElapsedBeforeCancel;
+        
         private float? _timeElapsedBeforePause;
 
         #endregion
+        
         #region Private Constructor (use static Register method to create new timer)
 
         private void Init(SchedulerHandle handle, float duration, ref SchedulerUnsafeBinding onComplete, ref SchedulerUnsafeBinding<float> onUpdate,
@@ -214,7 +219,9 @@ namespace Chris.Schedulers
         }
 
         #endregion
+        
         #region Private Methods
+        
         private float GetWorldTime()
         {
             return UsesRealTime ? Time.realtimeSinceStartup : Time.time;
@@ -264,6 +271,5 @@ namespace Chris.Schedulers
         }
 
         #endregion
-
     }
 }
