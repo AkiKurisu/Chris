@@ -8,7 +8,7 @@ A Unity game framework designed for efficient development.
 
 ## Install
 
-Use git URL to download package by Unity Package Manager ```https://github.com/AkiKurisu/Chris.git```
+Use git URL to download package by Unity Package Manager ```https://github.com/AkiKurisu/Chris.git```.
 
 ## Core Features
 
@@ -46,7 +46,7 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 
 ```json
 "dependencies": {
-    "com.cysharp.unitask":"2.5.3",
+    "com.cysharp.unitask":"https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
     "com.unity.addressables": "1.21.0",
     "com.unity.nuget.newtonsoft-json": "3.2.1",
     "com.unity.collections": "2.2.1",
