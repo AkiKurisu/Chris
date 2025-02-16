@@ -79,7 +79,8 @@ namespace Chris.DataDriven.Editor
                 type = null;
             }
             string id = type != null ? type.Name : NullType;
-            GUILayout.Label(new GUIContent("Row Type", "Set DataTable Row Type"));
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(new GUIContent("Row Type", "Set DataTable Row Struct Type"), GUILayout.Width(80));
             if (EditorGUILayout.DropdownButton(new GUIContent(id), FocusType.Keyboard))
             {
                 var provider = CreateInstance<TypeSearchWindow>();
@@ -91,6 +92,7 @@ namespace Chris.DataDriven.Editor
                 });
                 SearchWindow.Open(new SearchWindowContext(GUIUtility.GUIToScreenPoint(Event.current.mousePosition)), provider);
             }
+            GUILayout.EndHorizontal();
         }
         
         #region Cleanup

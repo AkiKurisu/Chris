@@ -24,7 +24,7 @@ namespace Chris.DataDriven
                             .Where(x => typeof(DataTableManager).IsAssignableFrom(x) && !x.IsAbstract)
                             .ToArray();
 
-            var args = new object[1] { null };
+            var args = new object[] { null };
             foreach (var type in managerTypes)
             {
                 var manager = Activator.CreateInstance(type, args) as DataTableManager;
@@ -90,17 +90,18 @@ namespace Chris.DataDriven
             {
                 if (sync)
                 {
+                    // ReSharper disable once MethodHasAsyncOverload
                     ResourceSystem.CheckAsset<DataTable>(tableKey);
-                    ResourceSystem.LoadAssetAsync<DataTable>(tableKey, (x) =>
+                    ResourceSystem.LoadAssetAsync<DataTable>(tableKey, dataTable =>
                     {
-                        RegisterDataTable(tableKey, x);
+                        RegisterDataTable(tableKey, dataTable);
                     }).WaitForCompletion();
                     return;
                 }
                 await ResourceSystem.CheckAssetAsync<DataTable>(tableKey);
-                await ResourceSystem.LoadAssetAsync<DataTable>(tableKey, (x) =>
+                await ResourceSystem.LoadAssetAsync<DataTable>(tableKey, dataTable =>
                 {
-                    RegisterDataTable(tableKey, x);
+                    RegisterDataTable(tableKey, dataTable);
                 });
             }
             catch (InvalidResourceRequestException)
