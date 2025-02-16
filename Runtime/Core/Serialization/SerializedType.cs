@@ -62,7 +62,17 @@ namespace Chris.Serialization
 
             SerializedTypeData data;
             data.isGeneric = IsGeneric(serializedTypeString);
-            data.typeName = serializedTypeString[..serializedTypeString.IndexOf('#')];
+            int index = serializedTypeString.IndexOf('#');
+            
+            /* Case when type string is in invalid format */
+            if (index == -1)
+            {
+                data.typeName = string.Empty;
+                data.genericTypeName = string.Empty;
+                return data;
+            }
+
+            data.typeName = serializedTypeString[..index];
             data.genericTypeName = serializedTypeString.Substring(data.typeName.Length + 1,
                 serializedTypeString.IndexOf('#', data.typeName.Length + 1) - data.typeName.Length - 1);
             return data;
