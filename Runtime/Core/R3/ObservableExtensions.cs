@@ -10,7 +10,7 @@ namespace R3.Chris
         #region CallbackEventHandler
         
         /// <summary>
-        /// Create Observable for <see cref="CallbackEventHandler"/>
+        /// Create <see cref="Observable{TEventType}"/> for <see cref="CallbackEventHandler"/>
         /// </summary>
         /// <param name="handler"></param>
         /// <typeparam name="TEventType"></typeparam>
@@ -39,6 +39,7 @@ namespace R3.Chris
         }
         
         #endregion
+        
         /// <summary>
         /// Subscribe <see cref="Observable{TEventType}"/> and finally dispose event, better performance for <see cref="EventBase"/>
         /// </summary>

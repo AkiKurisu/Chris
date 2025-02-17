@@ -7,7 +7,8 @@ namespace Chris.Events
 {
     /// <summary>
     /// The base class for all events.  
-    /// The class implements IDisposable to ensure proper release of the event from the pool and of any unmanaged resources, when necessary.
+    /// The class implements IDisposable to ensure proper release of the event from the pool
+    /// and of any unmanaged resources, when necessary.
     /// </summary>
     /// <remarks>
     /// Ported from <see cref="UnityEngine.UIElements.EventBase"/>.
@@ -15,7 +16,7 @@ namespace Chris.Events
     public abstract class EventBase : IDisposable
     {
         [Flags]
-        enum LifeCycleStatus
+        private enum LifeCycleStatus
         {
             None = 0,
             PropagationStopped = 1,
@@ -27,8 +28,9 @@ namespace Chris.Events
             Dispatched = 64,
             Processed = 128,
         }
+        
         [Flags]
-        internal enum EventPropagation
+        public enum EventPropagation
         {
             None = 0,
             Bubbles = 1,
@@ -37,7 +39,9 @@ namespace Chris.Events
             SkipDisabledElements = 8,
             IgnoreCompositeRoots = 16,
         }
-        private static long s_LastTypeId = 0;
+        
+        // ReSharper disable once InconsistentNaming
+        private static long s_LastTypeId;
 
         /// <summary>
         /// Registers an event class to the event type system.
@@ -51,7 +55,8 @@ namespace Chris.Events
         [JsonIgnore]
         public virtual long EventTypeId => -1;
 
-        private static ulong s_NextEventId = 0;
+        // ReSharper disable once InconsistentNaming
+        private static ulong s_NextEventId;
 
         // Read-only state
         /// <summary>
@@ -62,15 +67,22 @@ namespace Chris.Events
         /// </remarks>
         [JsonIgnore]
         public long Timestamp { get; private set; }
+        
         internal ulong EventId { get; private set; }
+        
         internal ulong TriggerEventId { get; private set; }
+        
         internal PropagationPaths Path { get; set; }
-        internal EventPropagation Propagation { get; set; }
+        
+        public EventPropagation Propagation { get; protected set; }
+        
         internal void SetTriggerEventId(ulong id)
         {
             TriggerEventId = id;
         }
+        
         private LifeCycleStatus Status { get; set; }
+        
         /// <summary>
         /// The current propagation phase for this event. 
         /// </summary>
@@ -118,7 +130,7 @@ namespace Chris.Events
         [JsonIgnore]
         public bool TricklesDown
         {
-            get { return (Propagation & EventPropagation.TricklesDown) != 0; }
+            get => (Propagation & EventPropagation.TricklesDown) != 0;
             protected set
             {
                 if (value)
@@ -132,10 +144,9 @@ namespace Chris.Events
             }
         }
 
-        internal bool BubblesOrTricklesDown =>
-            (Propagation & (EventPropagation.Bubbles | EventPropagation.TricklesDown)) != 0;
-
-
+        internal bool BubblesOrTricklesDown => (Propagation & (EventPropagation.Bubbles | EventPropagation.TricklesDown)) != 0;
+        
+        // ReSharper disable once InconsistentNaming
         private IEventHandler m_Target;
 
         /// <summary>
@@ -164,7 +175,7 @@ namespace Chris.Events
         }
         internal bool SkipDisabledElements
         {
-            get { return (Propagation & EventPropagation.SkipDisabledElements) != 0; }
+            get => (Propagation & EventPropagation.SkipDisabledElements) != 0;
             set
             {
                 if (value)
@@ -177,6 +188,7 @@ namespace Chris.Events
                 }
             }
         }
+        
         internal bool IgnoreCompositeRoots
         {
             get { return (Propagation & EventPropagation.IgnoreCompositeRoots) != 0; }
@@ -192,13 +204,14 @@ namespace Chris.Events
                 }
             }
         }
+        
         /// <summary>
         /// Whether StopPropagation() was called for this event.
         /// </summary>
         [JsonIgnore]
         public bool IsPropagationStopped
         {
-            get { return (Status & LifeCycleStatus.PropagationStopped) != LifeCycleStatus.None; }
+            get => (Status & LifeCycleStatus.PropagationStopped) != LifeCycleStatus.None;
             internal set
             {
                 if (value)
@@ -211,6 +224,7 @@ namespace Chris.Events
                 }
             }
         }
+        
         /// <summary>
         /// Indicates whether the default actions are prevented from being executed for this event.
         /// </summary>
@@ -221,6 +235,7 @@ namespace Chris.Events
                 IsDefaultPrevented = true;
             }
         }
+        
         /// <summary>
         /// Stops propagating this event. The event is not sent to other elements along the propagation path. This method does not prevent other event handlers from executing on the current target.
         /// </summary>
@@ -235,7 +250,7 @@ namespace Chris.Events
         [JsonIgnore]
         public bool IsImmediatePropagationStopped
         {
-            get { return (Status & LifeCycleStatus.ImmediatePropagationStopped) != LifeCycleStatus.None; }
+            get => (Status & LifeCycleStatus.ImmediatePropagationStopped) != LifeCycleStatus.None;
             private set
             {
                 if (value)
@@ -250,7 +265,9 @@ namespace Chris.Events
         }
 
         /// <summary>
-        /// Immediately stops the propagation of the event. The event isn't sent to other elements along the propagation path. This method prevents other event handlers from executing on the current target.
+        /// Immediately stops the propagation of the event.
+        /// The event isn't sent to other elements along the propagation path.
+        /// This method prevents other event handlers from executing on the current target.
         /// </summary>
         public void StopImmediatePropagation()
         {
@@ -264,7 +281,7 @@ namespace Chris.Events
         [JsonIgnore]
         public bool IsDefaultPrevented
         {
-            get { return (Status & LifeCycleStatus.DefaultPrevented) != LifeCycleStatus.None; }
+            get => (Status & LifeCycleStatus.DefaultPrevented) != LifeCycleStatus.None;
             private set
             {
                 if (value)
@@ -278,6 +295,7 @@ namespace Chris.Events
             }
         }
 
+        // ReSharper disable once InconsistentNaming
         private IEventHandler m_CurrentTarget;
 
         /// <summary>
@@ -287,11 +305,8 @@ namespace Chris.Events
         [JsonIgnore]
         public virtual IEventHandler CurrentTarget
         {
-            get { return m_CurrentTarget; }
-            internal set
-            {
-                m_CurrentTarget = value;
-            }
+            get => m_CurrentTarget;
+            internal set => m_CurrentTarget = value;
         }
 
         /// <summary>
@@ -301,7 +316,7 @@ namespace Chris.Events
         [JsonIgnore]
         public bool Dispatch
         {
-            get { return (Status & LifeCycleStatus.Dispatching) != LifeCycleStatus.None; }
+            get => (Status & LifeCycleStatus.Dispatching) != LifeCycleStatus.None;
             internal set
             {
                 if (value)
@@ -324,7 +339,7 @@ namespace Chris.Events
 
         private bool Dispatched
         {
-            get { return (Status & LifeCycleStatus.Dispatched) != LifeCycleStatus.None; }
+            get => (Status & LifeCycleStatus.Dispatched) != LifeCycleStatus.None;
             set
             {
                 if (value)
@@ -340,7 +355,7 @@ namespace Chris.Events
 
         internal bool Processed
         {
-            get { return (Status & LifeCycleStatus.Processed) != LifeCycleStatus.None; }
+            get => (Status & LifeCycleStatus.Processed) != LifeCycleStatus.None;
             private set
             {
                 if (value)
@@ -353,7 +368,6 @@ namespace Chris.Events
                 }
             }
         }
-
 
         public bool StopDispatch
         {
@@ -376,8 +390,7 @@ namespace Chris.Events
 
         internal bool Log => EventLogger != null;
 #endif
-
-
+        
         /// <summary>
         /// Resets all event members to their initial values.
         /// </summary>
@@ -418,10 +431,12 @@ namespace Chris.Events
             EventLogger = null;
 #endif
         }
+        
         public static long TimeSinceStartupMs()
         {
             return (long)(Time.realtimeSinceStartup * 1000.0f);
         }
+        
         /// <summary>
         /// Constructor. Avoid creating new event instances. Instead, use GetPooled() to get an instance from a pool of reusable event instances.
         /// </summary>
@@ -435,7 +450,7 @@ namespace Chris.Events
         /// </summary>
         protected bool Pooled
         {
-            get { return (Status & LifeCycleStatus.Pooled) != LifeCycleStatus.None; }
+            get => (Status & LifeCycleStatus.Pooled) != LifeCycleStatus.None;
             set
             {
                 if (value)
@@ -450,6 +465,7 @@ namespace Chris.Events
         }
 
         public abstract void Acquire();
+        
         /// <summary>
         /// Implementation of <see cref="IDisposable"/>.
         /// </summary>
@@ -461,16 +477,22 @@ namespace Chris.Events
     /// </summary>
     public abstract class EventBase<T> : EventBase where T : EventBase<T>, new()
     {
+        // ReSharper disable once InconsistentNaming
         private static readonly long s_TypeId = RegisterEventType();
+        
+        // ReSharper disable once InconsistentNaming
         private static readonly _ObjectPool<T> s_Pool = new(() => new T());
 
         internal static void SetCreateFunction(Func<T> createMethod)
         {
             s_Pool.CreateFunc = createMethod;
         }
+        
+        // ReSharper disable once InconsistentNaming
         private int m_RefCount;
 
-        protected EventBase() : base()
+        // ReSharper disable once ConvertConstructorToMemberInitializers
+        protected EventBase()
         {
             m_RefCount = 0;
         }
