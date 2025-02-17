@@ -5,9 +5,19 @@ using Chris.Editor;
 using Chris.Resource.Editor;
 using UnityEditor;
 using UnityEngine;
-using Object = UnityEngine.Object;
+using UObject = UnityEngine.Object;
 namespace Chris.DataDriven.Editor
 {
+    /// <summary>
+    /// Delegate for draw editor toolbar
+    /// </summary>
+    public delegate void DrawToolBarDelegate(DataTableEditor tableEditor);
+    
+    /// <summary>
+    /// Delegate for observe DataTable update in editor
+    /// </summary>
+    public delegate void DataTableUpdateDelegate(DataTable tableEditor);
+    
     /// <summary>
     /// Utility for editing DataTable in editor script
     /// </summary>
@@ -164,10 +174,9 @@ namespace Chris.DataDriven.Editor
         /// <param name="dataTable"></param>
         public static void RegisterTableToAssetGroup(DataTable dataTable)
         {
-            var structType = dataTable.GetRowStruct()?.GetType() ?? null;
-            if (structType == null) return;
-            
-            var addressableAttribute = structType.GetCustomAttribute<AddressableDataTableAttribute>();
+            var structType = dataTable.GetRowStruct()?.GetType();
+
+            var addressableAttribute = structType?.GetCustomAttribute<AddressableDataTableAttribute>();
             if (addressableAttribute == null) return;
             
             string address = addressableAttribute.Address ?? dataTable.name;
@@ -179,6 +188,7 @@ namespace Chris.DataDriven.Editor
     public interface IDataTableJsonSerializer
     {
         string Serialize(DataTable dataTable);
+        
         void Deserialize(DataTable dataTable, string jsonData);
     }
     
@@ -189,7 +199,7 @@ namespace Chris.DataDriven.Editor
     {
         public string Serialize(DataTable dataTable)
         {
-            var instance = Object.Instantiate(dataTable);
+            var instance = UObject.Instantiate(dataTable);
             DataTableEditorUtils.Modify(instance);
             return JsonUtility.ToJson(instance);
         }

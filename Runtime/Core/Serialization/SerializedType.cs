@@ -62,7 +62,17 @@ namespace Chris.Serialization
 
             SerializedTypeData data;
             data.isGeneric = IsGeneric(serializedTypeString);
-            data.typeName = serializedTypeString[..serializedTypeString.IndexOf('#')];
+            int index = serializedTypeString.IndexOf('#');
+            
+            /* Case when type string is in invalid format */
+            if (index == -1)
+            {
+                data.typeName = string.Empty;
+                data.genericTypeName = string.Empty;
+                return data;
+            }
+
+            data.typeName = serializedTypeString[..index];
             data.genericTypeName = serializedTypeString.Substring(data.typeName.Length + 1,
                 serializedTypeString.IndexOf('#', data.typeName.Length + 1) - data.typeName.Length - 1);
             return data;
@@ -136,8 +146,12 @@ namespace Chris.Serialization
                 Debug.LogError("SerializedType not support unassigned generic type");
                 return null;
             }
+            if (SerializedTypeRedirector.TryRedirectSerializedType(serializedTypeString, out var type))
+            {
+                return type;
+            }
             var data = SplitTypeString(serializedTypeString);
-            if (SerializedTypeRedirector.TryRedirect(data.typeName, out var type))
+            if (SerializedTypeRedirector.TryRedirect_Internal(data.typeName, out type))
             {
                 return type;
             }
@@ -362,7 +376,14 @@ namespace Chris.Serialization
     
     public static class SerializedTypeRedirector
     {
+        public delegate Type RedirectSerializedTypeDelegate(string serializedType);
+        
         private static readonly Lazy<Dictionary<string, Type>> UpdatableType;
+
+        /// <summary>
+        /// Hook func before directing <see cref="SerializedType"/>
+        /// </summary>
+        public static event RedirectSerializedTypeDelegate RedirectSerializedType;
         
         static SerializedTypeRedirector()
         {
@@ -376,12 +397,24 @@ namespace Chris.Serialization
         }
         
         /// <summary>
-        /// Try get redirected type
+        /// Try get redirected type from <see cref="SerializedType"/>
+        /// </summary>
+        /// <param name="serializedType"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static bool TryRedirectSerializedType(string serializedType, out Type type)
+        {
+            type = RedirectSerializedType?.Invoke(serializedType);
+            return type != null;
+        }
+        
+        /// <summary>
+        /// Try get redirected type from <see cref="SerializedType.SerializedTypeData.typeName"/>
         /// </summary>
         /// <param name="typeName"></param>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static bool TryRedirect(string typeName, out Type type)
+        internal static bool TryRedirect_Internal(string typeName, out Type type)
         {
             return UpdatableType.Value.TryGetValue(typeName, out type);
         }

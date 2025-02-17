@@ -18,8 +18,8 @@ namespace Chris.Schedulers.Editor
                     return null;
             }
         }
-        private int ManagedScheduledCount => Manager == null ? 0 : Manager.scheduledItems.Count;
-        private int ManagedScheduledCapacity => Manager == null ? 0 : Manager.scheduledItems.InternalCapacity;
+        private int ManagedScheduledCount => Manager == null ? 0 : Manager.ScheduledItems.Count;
+        private int ManagedScheduledCapacity => Manager == null ? 0 : Manager.ScheduledItems.InternalCapacity;
         private static SchedulerDebuggerEditorWindow window;
 
         [MenuItem("Tools/Chris/Scheduler Debugger")]

@@ -8,24 +8,30 @@ namespace Chris.DataDriven
 {
     public interface IDataTableRow { }
     
-    [Serializable]
-    internal class DataTableRow
-    {
-        public string RowId;
-        public SerializedObject<IDataTableRow> RowData;
-        public DataTableRow(string rowId, IDataTableRow row)
-        {
-            RowId = rowId;
-            RowData = SerializedObject<IDataTableRow>.FromObject(row);
-        }
-    }
-    
     [CreateAssetMenu(fileName = "DataTable", menuName = "Chris/DataTable")]
     public class DataTable : ScriptableObject
     {
+        [Serializable]
+        private class DataTableRow
+        {
+            // ReSharper disable once InconsistentNaming
+            public string RowId;
+            
+            // ReSharper disable once InconsistentNaming
+            public SerializedObject<IDataTableRow> RowData;
+            
+            public DataTableRow(string rowId, IDataTableRow row)
+            {
+                RowId = rowId;
+                RowData = SerializedObject<IDataTableRow>.FromObject(row);
+            }
+        }
+        
+        // ReSharper disable once InconsistentNaming
         [SerializeField]
         private SerializedType<IDataTableRow> m_rowType;
         
+        // ReSharper disable once InconsistentNaming
         [SerializeField]
         private DataTableRow[] m_rows;
         
@@ -121,7 +127,7 @@ namespace Chris.DataDriven
         {
             foreach (var row in m_rows)
             {
-                if (row is T tRow && predicate(tRow))
+                if (row.RowData.GetObject() is T tRow && predicate(tRow))
                 {
                     return tRow;
                 }
@@ -171,7 +177,7 @@ namespace Chris.DataDriven
         /// <returns></returns>
         public bool UpdateRow(string rowId, IDataTableRow newRow)
         {
-            var internalMap = GetInternalRowMap();
+            var internalMap = GetEditableRowMap();
             if (!internalMap.TryGetValue(rowId, out var row))
             {
                 return false;
@@ -188,7 +194,7 @@ namespace Chris.DataDriven
         /// <returns></returns>
         public void AddOrUpdateRow(string rowId, IDataTableRow newRow)
         {
-            var internalMap = GetInternalRowMap();
+            var internalMap = GetEditableRowMap();
             if (!internalMap.TryGetValue(rowId, out var row))
             {
                 ArrayUtils.Add(ref m_rows, new DataTableRow(rowId, newRow));
@@ -252,22 +258,27 @@ namespace Chris.DataDriven
         }
         
         #region Internal API
+        
         /// <summary>
         /// Get editable row map
         /// </summary>
         /// <returns></returns>
-        internal Dictionary<string, DataTableRow> GetInternalRowMap()
+        private Dictionary<string, DataTableRow> GetEditableRowMap()
         {
             return m_rows.ToDictionary(x => x.RowId, x => x);
         }
         
         /// <summary>
-        /// Internal use only, since we should ensure incomming row type is valid
+        /// Internal use only, since we should ensure incoming row type is valid
         /// </summary>
         /// <param name="rowStructType"></param>
         internal void SetRowStruct(Type rowStructType)
         {
             m_rowType = SerializedType<IDataTableRow>.FromType(rowStructType);
+            foreach (var row in m_rows)
+            {
+                row.RowData.serializedTypeString = SerializedType.ToString(rowStructType);
+            }
         }
         
         /// <summary>

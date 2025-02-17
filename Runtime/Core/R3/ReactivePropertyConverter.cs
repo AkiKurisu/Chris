@@ -14,6 +14,7 @@ namespace R3.Chris
         {
             return objectType == typeof(ReactiveProperty<T>);
         }
+        
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             try
@@ -28,6 +29,7 @@ namespace R3.Chris
                 return new ReactiveProperty<T>();
             }
         }
+        
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
             serializer.Serialize(writer, (value as ReactiveProperty<T>)!.Value);

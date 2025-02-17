@@ -9,11 +9,8 @@ namespace Chris.Schedulers
     /// <summary>
     /// Manages updating all the <see cref="IScheduled"/> tasks that are running in the scene.
     /// This will be instantiated the first time you create a task.
-    /// You do not need to add it into the scene manually. Similar to Unreal's TimerManager.
+    /// You do not need to add it into the scene manually. Similar to TimerManager in Unreal.
     /// </summary>
-    /// <remarks>
-    /// Currently only work on Update().
-    /// </remarks>
     [DefaultExecutionOrder(-100)]
     internal class SchedulerRunner : MonoBehaviour
     {
@@ -22,44 +19,51 @@ namespace Chris.Schedulers
         /// </summary>
         internal class ScheduledItem : IDisposable
         {
-            private static readonly _ObjectPool<ScheduledItem> pool = new(() => new());
+            private static readonly _ObjectPool<ScheduledItem> Pool = new(() => new ScheduledItem());
+            
 #if UNITY_EDITOR
             public double Timestamp { get; private set; }
 #endif
             public IScheduled Value { get; private set; }
-            private bool delay;
+            
+            private bool _delay;
             public TickFrame TickFrame { get; private set; }
-            private static readonly ProfilerMarker profilerMarker = new("SchedulerRunner.UpdateAll.UpdateStep.UpdateItem");
+            
+            private static readonly ProfilerMarker ProfilerMarker = new("SchedulerRunner.UpdateAll.UpdateStep.UpdateItem");
+            
             public static ScheduledItem GetPooled(IScheduled scheduled, TickFrame tickFrame, bool delay)
             {
-                var item = pool.Get();
+                var item = Pool.Get();
                 item.Value = scheduled;
 #if UNITY_EDITOR
                 item.Timestamp = Time.timeSinceLevelLoadAsDouble;
 #endif
-                item.delay = delay;
+                item._delay = delay;
                 item.TickFrame = tickFrame;
                 return item;
             }
+            
             /// <summary>
             /// Whether internal scheduled task is done
             /// </summary>
             /// <returns></returns>
             public bool IsDone() => Value.IsDone;
+            
             public void Update(TickFrame tickFrame)
             {
-                using (profilerMarker.Auto())
+                using (ProfilerMarker.Auto())
                 {
                     if (Value.IsDone) return;
                     if (TickFrame != tickFrame) return;
-                    if (delay)
+                    if (_delay)
                     {
-                        delay = false;
+                        _delay = false;
                         return;
                     }
                     Value.Update();
                 }
             }
+            
             /// <summary>
             /// Cancel internal scheduled task
             /// </summary>
@@ -67,6 +71,7 @@ namespace Chris.Schedulers
             {
                 if (!Value.IsDone) Value.Cancel();
             }
+            
             /// <summary>
             /// Dispose self and internal scheduled task
             /// </summary>
@@ -77,30 +82,44 @@ namespace Chris.Schedulers
 #if UNITY_EDITOR
                 Timestamp = default;
 #endif
-                delay = default;
-                pool.Release(this);
+                _delay = default;
+                Pool.Release(this);
             }
+            
             public void Pause()
             {
                 Value.Pause();
             }
+            
             public void Resume()
             {
                 Value.Resume();
             }
         }
+        
         private const int InitialCapacity = 100;
-        internal SparseList<ScheduledItem> scheduledItems = new(InitialCapacity, SchedulerHandle.MaxIndex + 1);
-        private ulong serialNum = 1;
-        // buffer adding tasks so we don't edit a collection during iteration
-        private readonly List<SchedulerHandle> pendingHandles = new(InitialCapacity);
-        private readonly List<SchedulerHandle> activeHandles = new(InitialCapacity);
-        private bool isDestroyed;
-        private bool isGateOpen;
-        private int lastFrame;
-        public static bool IsInitialized => instance != null;
-        private static SchedulerRunner instance;
-        private static readonly ProfilerMarker UpdateStepPM = new("SchedulerRunner.UpdateAll.UpdateStep");
+        
+        internal readonly SparseArray<ScheduledItem> ScheduledItems = new(InitialCapacity, SchedulerHandle.MaxIndex + 1);
+       
+        private ulong _serialNum = 1;
+        
+        // buffer adding tasks, so we don't edit a collection during iteration
+        private readonly List<SchedulerHandle> _pendingHandles = new(InitialCapacity);
+        
+        private readonly List<SchedulerHandle> _activeHandles = new(InitialCapacity);
+        
+        private bool _isDestroyed;
+        
+        private bool _isGateOpen;
+        
+        private int _lastFrame;
+        
+        public static bool IsInitialized => _instance != null;
+        
+        private static SchedulerRunner _instance;
+        
+        private static readonly ProfilerMarker UpdateStepProfilerMarker = new("SchedulerRunner.UpdateAll.UpdateStep");
+        
         public static SchedulerRunner Get()
         {
 #if UNITY_EDITOR
@@ -110,25 +129,19 @@ namespace Chris.Schedulers
                 return null;
             }
 #endif
-            if (instance == null)
-            {
-                SchedulerRunner managerInScene = FindObjectOfType<SchedulerRunner>();
-                if (managerInScene != null)
-                {
-                    instance = managerInScene;
-                }
-                else
-                {
-                    instance = new GameObject(nameof(SchedulerRunner)).AddComponent<SchedulerRunner>();
-                }
-            }
-            return instance;
+            if (_instance != null) return _instance;
+            
+            var managerInScene = FindObjectOfType<SchedulerRunner>();
+            _instance = managerInScene != null ? managerInScene : new GameObject(nameof(SchedulerRunner)).AddComponent<SchedulerRunner>();
+            return _instance;
         }
+        
         private void Update()
         {
             UpdateAll(TickFrame.Update);
 
         }
+        
         private void FixedUpdate()
         {
             UpdateAll(TickFrame.FixedUpdate);
@@ -137,134 +150,144 @@ namespace Chris.Schedulers
         private void LateUpdate()
         {
             UpdateAll(TickFrame.LateUpdate);
-            lastFrame = Time.frameCount;
+            _lastFrame = Time.frameCount;
         }
 
         private void OnDestroy()
         {
-            isDestroyed = true;
-            foreach (ScheduledItem scheduled in scheduledItems)
+            _isDestroyed = true;
+            foreach (var scheduledItem in ScheduledItems)
             {
-                scheduled.Cancel();
-                scheduled.Dispose();
+                scheduledItem.Cancel();
+                scheduledItem.Dispose();
             }
             SchedulerRegistry.CleanListeners();
-            scheduledItems.Clear();
-            pendingHandles.Clear();
+            ScheduledItems.Clear();
+            _pendingHandles.Clear();
         }
+
         /// <summary>
         /// Register scheduled task to managed
         /// </summary>
         /// <param name="scheduled"></param>
+        /// <param name="tickFrame"></param>
+        /// <param name="delegate"></param>
         public void Register(IScheduled scheduled, TickFrame tickFrame, Delegate @delegate)
         {
-            if (isDestroyed)
+            if (_isDestroyed)
             {
                 Debug.LogWarning("[Scheduler] Can not schedule task when scene is destroying.");
                 scheduled.Dispose();
                 return;
             }
             // schedule one frame if register before runner update
-            bool needDelayFrame = lastFrame < Time.frameCount;
+            bool needDelayFrame = _lastFrame < Time.frameCount;
             int index = scheduled.Handle.GetIndex();
             var item = ScheduledItem.GetPooled(scheduled, tickFrame, needDelayFrame);
             // Assign item
-            scheduledItems[index] = item;
-            pendingHandles.Add(scheduled.Handle);
+            ScheduledItems[index] = item;
+            _pendingHandles.Add(scheduled.Handle);
 #if UNITY_EDITOR && !AF_SCHEDULER_STACK_TRACE_DISABLE
             SchedulerRegistry.RegisterListener(scheduled, @delegate);
 #endif
         }
+        
         public SchedulerHandle NewHandle()
         {
             // Allocate placement, not really add
-            return new SchedulerHandle(serialNum, scheduledItems.AddUninitialized());
+            return new SchedulerHandle(_serialNum, ScheduledItems.AddUninitialized());
         }
+
         /// <summary>
         ///  Unregister scheduled task from managed
         /// </summary>
         /// <param name="scheduled"></param>
+        /// <param name="delegate"></param>
         public void Unregister(IScheduled scheduled, Delegate @delegate)
         {
-            scheduledItems.RemoveAt(scheduled.Handle.GetIndex());
+            ScheduledItems.RemoveAt(scheduled.Handle.GetIndex());
 #if UNITY_EDITOR && !AF_SCHEDULER_STACK_TRACE_DISABLE
             SchedulerRegistry.UnregisterListener(scheduled, @delegate);
 #endif
         }
+        
         /// <summary>
         /// Cancel all scheduled task
         /// </summary>
         public void CancelAll()
         {
-            foreach (var handle in activeHandles)
+            foreach (var handle in _activeHandles)
             {
                 var item = FindItem(handle);
                 item.Cancel();
-                if (isGateOpen)
+                if (_isGateOpen)
                 {
                     item.Dispose();
                 }
             }
-            if (isGateOpen)
+            if (_isGateOpen)
             {
-                activeHandles.Clear();
+                _activeHandles.Clear();
             }
-            pendingHandles.Clear();
+            _pendingHandles.Clear();
         }
+        
         /// <summary>
         /// Pause all scheduled task
         /// </summary>
         public void PauseAll()
         {
-            foreach (var handle in pendingHandles)
+            foreach (var handle in _pendingHandles)
             {
                 var item = FindItem(handle);
                 item.Pause();
             }
-            foreach (var handle in activeHandles)
+            foreach (var handle in _activeHandles)
             {
                 var item = FindItem(handle);
                 item.Pause();
             }
         }
+        
         /// <summary>
         /// Resume all scheduled task
         /// </summary>
         public void ResumeAll()
         {
-            foreach (var handle in pendingHandles)
+            foreach (var handle in _pendingHandles)
             {
                 var item = FindItem(handle);
                 item.Resume();
             }
-            foreach (var handle in activeHandles)
+            foreach (var handle in _activeHandles)
             {
                 var item = FindItem(handle);
                 item.Resume();
             }
         }
+        
         private void UpdateAll(TickFrame tickFrame)
         {
-            isGateOpen = false;
+            _isGateOpen = false;
             // Add
-            if (pendingHandles.Count > 0)
+            if (_pendingHandles.Count > 0)
             {
-                activeHandles.AddRange(pendingHandles);
-                pendingHandles.Clear();
+                _activeHandles.AddRange(_pendingHandles);
+                _pendingHandles.Clear();
                 // increase serial
-                serialNum++;
+                _serialNum++;
             }
 
             // Update
-            using (UpdateStepPM.Auto())
+            using (UpdateStepProfilerMarker.Auto())
             {
-                for (int i = activeHandles.Count - 1; i >= 0; --i)
+                for (int i = _activeHandles.Count - 1; i >= 0; --i)
                 {
-                    var item = FindItem(activeHandles[i]);
+                    var item = FindItem(_activeHandles[i]);
                     item.Update(tickFrame);
                     if (item.IsDone())
                     {
-                        activeHandles.RemoveAt(i);
+                        _activeHandles.RemoveAt(i);
                         item.Dispose();
                     }
                 }
@@ -274,24 +297,26 @@ namespace Chris.Schedulers
             if (tickFrame == TickFrame.LateUpdate)
             {
                 // check match shrink threshold that capacity is more than initial capacity
-                bool canShrink = scheduledItems.InternalCapacity > 2 * InitialCapacity;
+                bool canShrink = ScheduledItems.InternalCapacity > 2 * InitialCapacity;
                 // shrink list when non-allocated elements are far more than allocated ones
-                bool overlapAllocated = scheduledItems.NumFreeIndices > 4 * scheduledItems.Count;
+                bool overlapAllocated = ScheduledItems.NumFreeIndices > 4 * ScheduledItems.Count;
                 if (canShrink && overlapAllocated)
                 {
-                    scheduledItems.Shrink();
+                    ScheduledItems.Shrink();
                 }
             }
-            isGateOpen = true;
+            _isGateOpen = true;
         }
+        
         private ScheduledItem FindItem(SchedulerHandle handle)
         {
             int handleIndex = handle.GetIndex();
             ulong handleSerial = handle.GetSerialNumber();
-            var scheduledItem = scheduledItems[handleIndex];
+            var scheduledItem = ScheduledItems[handleIndex];
             if (scheduledItem == null || scheduledItem.Value.Handle.GetSerialNumber() != handleSerial) return null;
             return scheduledItem;
         }
+        
         /// <summary>
         /// Whether internal scheduled task is done
         /// </summary>
@@ -300,9 +325,9 @@ namespace Chris.Schedulers
         public bool IsDone(SchedulerHandle handle)
         {
             var item = FindItem(handle);
-            if (item == null) return true;
-            return item.IsDone();
+            return item == null || item.IsDone();
         }
+        
         /// <summary>
         /// Cancel target scheduled task
         /// </summary>
@@ -313,16 +338,17 @@ namespace Chris.Schedulers
             if (item == null) return;
             item.Cancel();
             // ensure pending buffer also remove task
-            if (pendingHandles.Remove(handle))
+            if (_pendingHandles.Remove(handle))
             {
                 item.Dispose();
             }
-            else if (isGateOpen)
+            else if (_isGateOpen)
             {
-                activeHandles.Remove(handle);
+                _activeHandles.Remove(handle);
                 item.Dispose();
             }
         }
+        
         /// <summary>
         /// Pause target scheduled task
         /// </summary>
@@ -330,9 +356,9 @@ namespace Chris.Schedulers
         public void Pause(SchedulerHandle handle)
         {
             var item = FindItem(handle);
-            if (item == null) return;
-            item.Pause();
+            item?.Pause();
         }
+        
         /// <summary>
         /// Resume target scheduled task
         /// </summary>
@@ -340,8 +366,7 @@ namespace Chris.Schedulers
         public void Resume(SchedulerHandle handle)
         {
             var item = FindItem(handle);
-            if (item == null) return;
-            item.Resume();
+            item?.Resume();
         }
     }
 }

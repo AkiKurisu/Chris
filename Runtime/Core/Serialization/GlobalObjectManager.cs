@@ -34,7 +34,7 @@ namespace Chris.Serialization
             public SoftObjectHandle Handle;
         }
         private static ulong serialNum = 1;
-        private static readonly SparseList<ObjectStructure> GlobalObjects = new(10, SoftObjectHandle.MaxIndex);
+        private static readonly SparseArray<ObjectStructure> GlobalObjects = new(10, SoftObjectHandle.MaxIndex);
         private static bool isDirty;
         internal static void ForEach(Action<ObjectStructure> func)
         {

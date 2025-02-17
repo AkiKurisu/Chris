@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System;
 namespace Chris.Collections
 {
+    // ReSharper disable once InconsistentNaming
     internal class IOCContainer
     {
         private readonly Dictionary<Type, object> _instances = new();

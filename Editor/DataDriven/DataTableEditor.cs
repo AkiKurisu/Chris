@@ -1,28 +1,23 @@
+using System;
 using System.IO;
 using Chris.Editor;
 using Chris.Serialization;
+using Chris.Serialization.Editor;
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.Experimental.GraphView;
 using UEditor = UnityEditor.Editor;
 
 namespace Chris.DataDriven.Editor
 {
-    /// <summary>
-    /// Delegate for draw editor toolbar
-    /// </summary>
-    public delegate void DrawToolBarDelegate(DataTableEditor tableEditor);
-    
-    /// <summary>
-    /// Delegate for observe DataTable update in editor
-    /// </summary>
-    public delegate void DataTableUpdateDelegate(DataTable tableEditor);
-
     [CustomEditor(typeof(DataTable))]
     public class DataTableEditor : UEditor
     {
         public DataTable Table => target as DataTable;
         
         private DataTableRowView _dataTableRowView;
+        
+        private const string NullType = "Null";
         
         public DataTableRowView GetDataTableRowView()
         {
@@ -65,16 +60,39 @@ namespace Chris.DataDriven.Editor
         protected virtual void DrawRowView()
         {
             _dataTableRowView = GetDataTableRowView();
-            var typeProp = serializedObject.FindProperty("m_rowType");
-            EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(typeProp, new GUIContent("Row Type", "Set DataTable Row Type"));
-            if (EditorGUI.EndChangeCheck())
-            {
-                serializedObject.ApplyModifiedProperties();
-                RequestDataTableUpdate();
-            }
+            DrawRowTypeSelector();
             GUILayout.Space(5);
             _dataTableRowView.DrawGUI(serializedObject);
+        }
+
+        private void DrawRowTypeSelector()
+        {
+            var typeProp = serializedObject.FindProperty("m_rowType");
+            var reference = typeProp.FindPropertyRelative("serializedTypeString");
+            Type type;
+            try
+            {
+                type = SerializedType.FromString(reference.stringValue);
+            }
+            catch
+            {
+                type = null;
+            }
+            string id = type != null ? type.Name : NullType;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(new GUIContent("Row Type", "Set DataTable Row Struct Type"), GUILayout.Width(80));
+            if (EditorGUILayout.DropdownButton(new GUIContent(id), FocusType.Keyboard))
+            {
+                var provider = CreateInstance<TypeSearchWindow>();
+                provider.Initialize(typeof(IDataTableRow), selectType =>
+                {
+                    reference.stringValue = selectType != null ? SerializedType.ToString(selectType) : NullType;
+                    serializedObject.ApplyModifiedProperties();
+                    RequestDataTableUpdate();
+                });
+                SearchWindow.Open(new SearchWindowContext(GUIUtility.GUIToScreenPoint(Event.current.mousePosition)), provider);
+            }
+            GUILayout.EndHorizontal();
         }
         
         #region Cleanup
@@ -131,9 +149,9 @@ namespace Chris.DataDriven.Editor
                 {
                     var data = File.ReadAllText(path);
                     DataTableEditorUtils.ImportJson(Table, data);
+                    RequestDataTableUpdate();
                     EditorUtility.SetDirty(Table);
                     AssetDatabase.SaveAssets();
-                    RequestDataTableUpdate();
                     GUIUtility.ExitGUI();
                 }
             }
@@ -162,7 +180,7 @@ namespace Chris.DataDriven.Editor
         
         protected virtual void OnUndo(in UndoRedoInfo undo)
         {
-            // Manually fresh row view after undo
+            // Manually rebuild row view after undo
             RebuildEditorView();
         }
     }

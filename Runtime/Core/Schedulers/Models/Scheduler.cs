@@ -30,7 +30,7 @@ namespace Chris.Schedulers
         
         private readonly Action _mDelegate;
         
-        internal readonly Action GetDelegate() => _mDelegate;
+        internal Action GetDelegate() => _mDelegate;
         
         public SchedulerUnsafeBinding(object instance, delegate* managed<object, void> mPtr)
         {
@@ -110,7 +110,7 @@ namespace Chris.Schedulers
         
         private readonly Action<T> _mDelegate;
         
-        internal readonly Action<T> GetDelegate() => _mDelegate;
+        internal Action<T> GetDelegate() => _mDelegate;
         
         public SchedulerUnsafeBinding(object instance, delegate* managed<object, T, void> mPtr)
         {

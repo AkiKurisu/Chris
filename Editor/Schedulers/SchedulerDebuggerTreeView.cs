@@ -100,7 +100,7 @@ namespace Chris.Schedulers.Editor
 
             if (Application.isPlaying)
             {
-                foreach (var scheduled in SchedulerRunner.Get().scheduledItems)
+                foreach (var scheduled in SchedulerRunner.Get().ScheduledItems)
                 {
                     string taskName = string.Empty;
                     if (SchedulerRegistry.TryGetListener(scheduled.Value, out var listener))

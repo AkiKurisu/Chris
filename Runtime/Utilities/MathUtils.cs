@@ -7,18 +7,35 @@ namespace Chris
     /// <summary>
     /// Utils for Mathematics
     /// </summary>
+    /// <remarks>Methods should be annotated with <see cref="MethodImplOptions.AggressiveInlining"/>
+    /// which allows the burst compiler to optimize the method while optimizing the method's caller.</remarks>
     public static class MathUtils
     {
+        /// <summary>
+        /// <see cref="Matrix4x4.MultiplyVector"/> for <see cref="float4x4"/>
+        /// </summary>
+        /// <param name="worldMatrix"></param>
+        /// <param name="point"></param>
+        /// <param name="result"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void MultiplyVector(ref this float4x4 worldMatrix, in float3 point, ref float3 result)
         {
             result = math.mul(worldMatrix, new float4(point, 0.0f)).xyz;
         }
+        
+        // ReSharper disable once InconsistentNaming
+        /// <summary>
+        /// <see cref="Matrix4x4.MultiplyPoint3x4"/> for <see cref="float4x4"/>
+        /// </summary>
+        /// <param name="worldMatrix"></param>
+        /// <param name="point"></param>
+        /// <param name="result"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void MultiplyPoint3x4(ref this float4x4 worldMatrix, in float3 point, ref float3 result)
         {
             result = math.mul(worldMatrix, new float4(point, 1.0f)).xyz;
         }
+        
         // thanks to https://discussions.unity.com/t/rotate-towards-c-jobs/778453/5
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static quaternion RotateTowards(in quaternion from, in quaternion to, in float maxDegreesDelta)
@@ -33,6 +50,7 @@ namespace Chris
             var dot = math.dot(q1, q2);
             return !(dot > 0.999998986721039) ? (float)(math.acos(math.min(math.abs(dot), 1f)) * 2.0) : 0.0f;
         }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool InViewAngle(in float3 center, in float3 position, in float3 forward, in float angle)
         {
@@ -43,6 +61,7 @@ namespace Chris
 
             return Angle(forward, directionToTarget) <= angle / 2;
         }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Angle(in float3 from, in float3 to)
         {
@@ -54,11 +73,13 @@ namespace Chris
             float num2 = math.clamp(math.dot(from, to) / num, -1f, 1f);
             return (float)math.acos(num2) * 57.29578f;
         }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsInLayerMask(in int layer, in LayerMask mask)
         {
             return (mask.value & (1 << layer)) != 0;
         }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPointInPolygon(in NativeArray<float3> polygonCorners, in float3 p)
         {
@@ -73,6 +94,23 @@ namespace Chris
                     inside = !inside;
             }
             return inside;
+        }
+        
+        /// <summary>
+        /// Quadratic Bézier curve, dynamically draw a curve based on three points
+        /// </summary>
+        /// <param name="t">The arrival coefficient is 0 for the start and 1 for the arrival</param>
+        /// <param name="p0">Starting point</param>
+        /// <param name="p1">Middle point</param>
+        /// <param name="p2">End point</param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 GetQuadraticCurvePoint(in float t, in float3 p0, in float3 p1, in float3 p2)
+        {
+            float u = 1 - t;
+            float tt = t * t;
+            float uu = u * u;
+            return uu * p0 + 2 * u * t * p1 + tt * p2;
         }
     }
 }

@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
 using UnityEditor;
 using UnityEditorInternal;
 using System.Collections.ObjectModel;
 using Chris.Serialization;
 using Chris.Serialization.Editor;
-using Chris.Editor;
 
 namespace Chris.DataDriven.Editor
 {
@@ -36,16 +34,9 @@ namespace Chris.DataDriven.Editor
             Table = dataTable;
         }
         
-        public void DrawGUI()
-        {
-            _serializedObject = new SerializedObject(Table);
-            DrawGUI(_serializedObject);
-            _serializedObject.Dispose();
-        }
-        
         public void DrawGUI(SerializedObject serializedObject)
         {
-            this._serializedObject = serializedObject;
+            _serializedObject = serializedObject;
             var rowsProp = serializedObject.FindProperty("m_rows");
             bool canEdit = true;
             EditorGUI.BeginChangeCheck();
@@ -154,7 +145,7 @@ namespace Chris.DataDriven.Editor
         /// <returns></returns>
         public IDataTableRow[] GetSelectedRows()
         {
-            if (_reorderableList == null) return new IDataTableRow[0];
+            if (_reorderableList == null) return Array.Empty<IDataTableRow>();
             var rows = Table.GetAllRows();
             return _reorderableList.selectedIndices.Select(x => rows[x]).ToArray();
         }
@@ -165,12 +156,11 @@ namespace Chris.DataDriven.Editor
         /// <returns></returns>
         public SerializedProperty[] GetSelectedRowProperties(SerializedObject serializedObject)
         {
-            var rows = Table.GetAllRows();
             var rowsProp = serializedObject.FindProperty("m_rows");
             return _reorderableList.selectedIndices.Select(x => rowsProp.GetArrayElementAtIndex(x)).ToArray();
         }
-        
-        protected void RequestDataTableUpdate()
+
+        private void RequestDataTableUpdate()
         {
             DataTableEditorUtils.OnDataTablePreUpdate?.Invoke(Table);
             Rebuild();
@@ -202,7 +192,7 @@ namespace Chris.DataDriven.Editor
             Table.InternalUpdate();
             // rebuild reorderable list next editor frame
             _reorderableList = null;
-            _serializedObject.Update();
+            _serializedObject?.Update();
         }
 
         private void DrawDataTableRow(Rect rect, int columNum, Type elementType, SerializedProperty property)
@@ -245,6 +235,7 @@ namespace Chris.DataDriven.Editor
                 jsonProp.stringValue = JsonUtility.ToJson(wrapper.Value);
             }
         }
+        
         private void DrawReadOnlyDataTableRow(Rect rect, int columNum, Type elementType, SerializedProperty property)
         {
             rect.width /= columNum;
@@ -280,6 +271,7 @@ namespace Chris.DataDriven.Editor
             }
             SerializedObjectWrapperDrawer.DrawReadOnlyGUIHorizontal(rect, ColumSpace, wrapper);
         }
+        
         private void DrawDataTableHeader(Rect rect, List<string> header)
         {
             rect.width /= header.Count;
@@ -290,6 +282,7 @@ namespace Chris.DataDriven.Editor
                 rect.x += rect.width + ColumSpace;
             }
         }
+        
         private float GetDataTableRowHeight(Type elementType, SerializedProperty property)
         {
             property = property.FindPropertyRelative("RowData");

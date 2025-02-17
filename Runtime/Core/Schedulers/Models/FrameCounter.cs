@@ -1,51 +1,46 @@
 using UnityEngine;
-using System;
 using Chris.Pool;
 
 namespace Chris.Schedulers
 {
     internal class FrameCounter : IScheduled
     {
-        private static readonly _ObjectPool<FrameCounter> pool = new(() => new());
+        private static readonly _ObjectPool<FrameCounter> Pool = new(() => new FrameCounter());
+        
         #region Public Properties/Fields
         public SchedulerHandle Handle { get; private set; }
+        
         /// <summary>
         /// How many frame the counter takes to complete from start to finish.
         /// </summary>
         public int Frame { get; private set; }
-        private int count;
+        
+        private int _count;
+        
         /// <summary>
         /// Whether the counter will run again after completion.
         /// </summary>
         public bool IsLooped { get; set; }
 
         /// <summary>
-        /// Whether or not the counter completed running. This is false if the counter was cancelled.
+        /// Whether the counter completed running. This is false if the counter was cancelled.
         /// </summary>
         public bool IsCompleted { get; private set; }
 
         /// <summary>
         /// Whether the counter is currently paused.
         /// </summary>
-        public bool IsPaused
-        {
-            get { return _timeElapsedBeforePause.HasValue; }
-        }
+        public bool IsPaused => _timeElapsedBeforePause.HasValue;
 
         /// <summary>
-        /// Whether or not the counter was cancelled.
+        /// Whether the counter was cancelled.
         /// </summary>
-        public bool IsCancelled
-        {
-            get { return _timeElapsedBeforeCancel.HasValue; }
-        }
+        public bool IsCancelled => _timeElapsedBeforeCancel.HasValue;
 
-        public bool IsDone
-        {
-            get { return IsCompleted || IsCancelled; }
-        }
+        public bool IsDone => IsCompleted || IsCancelled;
 
         #endregion
+        
         #region Public Static Methods
         /// <summary>
         /// Register a new counter that should fire an event after a certain amount of frame
@@ -60,12 +55,13 @@ namespace Chris.Schedulers
         internal static FrameCounter Register(int frame, SchedulerUnsafeBinding onComplete, SchedulerUnsafeBinding<int> onUpdate,
          TickFrame tickFrame = TickFrame.Update, bool isLooped = false)
         {
-            FrameCounter timer = pool.Get();
+            FrameCounter timer = Pool.Get();
             timer.Init(SchedulerRunner.Get().NewHandle(), frame, ref onComplete, ref onUpdate, isLooped);
             SchedulerRunner.Get().Register(timer, tickFrame, onComplete.IsValid() ? onComplete.GetDelegate() : onUpdate.GetDelegate());
             return timer;
         }
         #endregion
+        
         #region Public Methods
         /// <summary>
         /// Stop a counter that is in-progress or paused. The counter's on completion callback will not be called.
@@ -76,13 +72,15 @@ namespace Chris.Schedulers
             _timeElapsedBeforeCancel = Time.time;
             _timeElapsedBeforePause = null;
         }
+        
         public void Dispose()
         {
             SchedulerRunner.Get().Unregister(this, _onComplete.IsValid() ? _onComplete.GetDelegate() : _onUpdate.GetDelegate());
             _onUpdate = default;
             _onComplete = default;
-            pool.Release(this);
+            Pool.Release(this);
         }
+        
         /// <summary>
         /// Pause a running counter. A paused counter can be resumed from the same point it was paused.
         /// </summary>
@@ -115,17 +113,25 @@ namespace Chris.Schedulers
         /// <returns></returns>
         public float GetFrameRemaining()
         {
-            return Frame - count;
+            return Frame - _count;
         }
 
         #endregion
+        
         #region Private Properties/Fields
+        
         private SchedulerUnsafeBinding _onComplete;
+        
         private SchedulerUnsafeBinding<int> _onUpdate;
+        
         private float? _timeElapsedBeforeCancel;
+        
         private float? _timeElapsedBeforePause;
+        
         #endregion
+        
         #region Private Constructor
+        
         private void Init(SchedulerHandle handle, int frame, ref SchedulerUnsafeBinding onComplete, ref SchedulerUnsafeBinding<int> onUpdate, bool isLooped)
         {
             Handle = handle;
@@ -135,7 +141,7 @@ namespace Chris.Schedulers
 
             IsLooped = isLooped;
 
-            count = 0;
+            _count = 0;
 
             IsCompleted = false;
             _timeElapsedBeforeCancel = null;
@@ -156,17 +162,17 @@ namespace Chris.Schedulers
                 return;
             }
 
-            ++count;
+            ++_count;
 
-            _onUpdate.Invoke(count);
+            _onUpdate.Invoke(_count);
 
-            if (count >= Frame)
+            if (_count >= Frame)
             {
                 _onComplete.Invoke();
 
                 if (IsLooped)
                 {
-                    count = 0;
+                    _count = 0;
                 }
                 else
                 {
@@ -174,6 +180,5 @@ namespace Chris.Schedulers
                 }
             }
         }
-
     }
 }
