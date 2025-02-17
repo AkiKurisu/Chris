@@ -1,6 +1,6 @@
 # Resource
 
-Resource module is based on Addressables. 
+Resource loading system based on Addressables.
 
 ## Features
 

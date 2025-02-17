@@ -20,7 +20,9 @@ using UnityEngine;
 public class MyDataRow : IDataTableRow
 {
     public int id;
+
     public SoftAssetReference reference;
+
     public string name;
 }
 ```
@@ -65,6 +67,7 @@ public class MyDataTableManager : DataTableManager<MyDataTableManager>
 
         }
     }
+    
     public DataTable GetDataTable()
     {
         return GetDataTable(TableKey);

@@ -12,11 +12,13 @@ public interface ICustomEvent { }
 public class MyCustomEvent : EventBase<MyCustomEvent>, ICustomEvent
 {
     public string Message { get; private set; }
+
     protected override void Init()
     {
         base.Init();
         Message = string.Empty;
     }
+
     public static MyCustomEvent GetPooled(string message)
     {
         var ce = GetPooled();
@@ -28,11 +30,13 @@ public class MyCustomEvent : EventBase<MyCustomEvent>, ICustomEvent
 public class MyCustom2Event : EventBase<MyCustom2Event>, ICustomEvent
 {
     public string Message { get; private set; }
+
     protected override void Init()
     {
         base.Init();
         Message = string.Empty;
     }
+
     public static MyCustom2Event GetPooled(string message)
     {
         var ce = GetPooled();
@@ -54,22 +58,26 @@ public class EventSystemExample : MonoBehaviour
         EventSystem.EventHandler.RegisterCallback<MyCustomEvent>(HandleEvent1);
         EventSystem.EventHandler.RegisterCallback<MyCustom2Event>(HandleEvent2);
     }
+
     private void Start()
     {
         using var ce1 = MyCustomEvent.GetPooled("Hello");
-        EventSystem.EventHandler.SendEvent(ce1);
+        EventSystem.SendEvent(ce1);
     }
+
     private void OnDestroy()
     {
         EventSystem.EventHandler.UnregisterCallback<MyCustomEvent>(HandleEvent1);
         EventSystem.EventHandler.UnregisterCallback<MyCustom2Event>(HandleEvent2);
     }
+
     private void HandleEvent1(MyCustomEvent e)
     {
         Debug.Log(e.Message);
         using var ce2 = MyCustom2Event.GetPooled("World");
-        EventSystem.EventHandler.SendEvent(ce2);
+        EventSystem.SendEvent(ce2);
     }
+
     private void HandleEvent2(MyCustom2Event e)
     {
         Debug.Log(e.Message);
@@ -78,7 +86,7 @@ public class EventSystemExample : MonoBehaviour
 ```
 ### Events Debugger
 
-Events can be tracked in a debugger `Windows/AkiFramework/Event Debugger`.
+Events can be tracked in a debugger `Tools/Chris/Event Debugger`.
 
 ![Debugger](./Images/debugger.png)
 
@@ -104,10 +112,12 @@ public class MonoDispatchExample : MonoBehaviour
         {
             Debug.Log(e.Message);
         });
+
         using var ce1 = MyCustomEvent.GetPooled("Hello");
-        EventSystem.LateUpdateHandler.SendEvent(ce1);
+        EventSystem.SendEvent(ce1, monoDispatchType: MonoDispatchType.LateUpdate);
+
         using var ce2 = MyCustomEvent.GetPooled("World");
-        EventSystem.UpdateHandler.SendEvent(ce2);
+        EventSystem.SendEvent(ce2, monoDispatchType: MonoDispatchType.Update);
     }
     // Will receive `World` first, then `Hello`
 }
@@ -115,4 +125,4 @@ public class MonoDispatchExample : MonoBehaviour
 
 ### Customize Dispatching Strategy
 
-Useful for GamePlay level event customization.
+Useful for Gameplay level event customization.

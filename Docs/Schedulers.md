@@ -57,6 +57,6 @@ public class SchedulerTest : MonoBehaviour
 
 ![Debugger](./Images/scheduler_debugger.png)
 
-To use debugger, need enable `Stack Trace` in `Project Settings/AkiFrameworkSettings`.
+To use debugger, need enable `Stack Trace` in `Project Settings/CeresSettings`.
 
 Notice that this will add GC allocation in Editor, which will disturb you when profiling.

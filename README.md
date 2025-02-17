@@ -33,7 +33,7 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 ![SerializedType](./Docs/Images/serializedtype.png)
 
 [Resource](./Docs/Resource.md) 
-> Resource loading system, effect system based on Addressables. 
+> Resource loading system based on Addressables. 
 
 ![SoftAssetReference](./Docs/Images/soft_asset_reference.png)
 

@@ -8,15 +8,21 @@ Zero allocation GameObject/Component pooling.
 public class PoolingPerformanceTest : MonoBehaviour
 {
     private class PooledAudioSource : PooledComponent<PooledAudioSource, AudioSource> { }
+
     public GameObject prefab;
+
     private const int maxCount = 1000;
+
     private readonly PooledGameObject[] list1 = new PooledGameObject[maxCount];
+
     private readonly GameObject[] list2 = new GameObject[maxCount];
+
     private void Update()
     {
         PooledCall();
         DirectCall();
     }
+
     private void PooledCall()
     {
         Profiler.BeginSample(nameof(PooledCall));
@@ -30,6 +36,7 @@ public class PoolingPerformanceTest : MonoBehaviour
         }
         Profiler.EndSample();
     }
+    
     private void DirectCall()
     {
         Profiler.BeginSample(nameof(DirectCall));

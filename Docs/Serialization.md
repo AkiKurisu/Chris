@@ -8,6 +8,7 @@ Serialize type of class implementing T and get new object from it at runtime.
 
 ```C#
 SerializedType<ICustomInterface> myType;
+
 ICustomInterface customInterface = myType.GetObject();
 ```
 
@@ -22,8 +23,9 @@ Serialize type and data of object implementing T and get template object from it
 You can edit all properties in the Insepector like `ScriptableObject` while finally serializing as a simple C# object.
 
 ```C#
-SerializedObject<ICustomInterface> myType;
-ICustomInterface customInterface = myType.GetObject();
+SerializedObject<ICustomInterface> myObject;
+
+ICustomInterface customInterface = myObject.GetObject();
 ```
 
 ### SerializedObject vs SerializeReference
@@ -44,4 +46,5 @@ See [Data Driven Document](./DataDriven.md)
 
 Since Unity's Editor need everything to be UnityEngine.Object, the framework emits IL to dynamically create ScriptableObject wrapper.
 
-However, those wrapper will not actually be serialized but need to be tracked in memory. So the framework use a soft object management like Unreal's SoftObjectPtr. See `GlobalObjectManager.cs`.
+However, those wrapper will not actually be serialized but need to be tracked in memory. 
+So the framework use a soft object management like Unreal's SoftObjectPtr, see `GlobalObjectManager.cs`.
