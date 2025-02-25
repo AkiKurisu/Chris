@@ -72,11 +72,12 @@ namespace Chris.Serialization.Editor
             _indentationIcon.SetPixel(0, 0, new Color(0, 0, 0, 0));
             _indentationIcon.Apply();
         }
+        
         List<SearchTreeEntry> ISearchWindowProvider.CreateSearchTree(SearchWindowContext context)
         {
             var entries = new List<SearchTreeEntry>
             {
-                new SearchTreeGroupEntry(new GUIContent("Select Type"), 0),
+                new SearchTreeGroupEntry(new GUIContent("Select Type")),
                 new(new GUIContent("<Null>", _indentationIcon)) { level = 1, userData = null }
             };
             List<Type> nodeTypes = FindSubClasses(_searchType).ToList();
@@ -117,11 +118,20 @@ namespace Chris.Serialization.Editor
         {
             return AppDomain.CurrentDomain.GetAssemblies()
                             .SelectMany(a => a.GetTypes())
-                            .Where(t =>
-                            {
-                                if (t.GetCustomAttribute<HideInSerializedTypeAttribute>() != null) return false;
-                                return father.IsAssignableFrom(t) && !t.IsAbstract && t.IsClass;
-                            });
+                            .Where(type => IsValidSerializedType(type) && father.IsAssignableFrom(type));
+        }
+        
+        private static bool IsValidSerializedType(Type type)
+        {
+            if (type.IsAbstract) return false;
+            if (!type.IsClass) return false;
+            if (type.IsGenericType) return false;
+
+            if (type.Name == "<>c")
+            {
+                return false;
+            }
+            return type.GetCustomAttribute<HideInSerializedTypeAttribute>() == null;
         }
     }
 }
