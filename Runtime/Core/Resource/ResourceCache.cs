@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Collections;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
 using UObject = UnityEngine.Object;
 namespace Chris.Resource
 {
@@ -109,7 +108,7 @@ namespace Chris.Resource
         /// <summary>
         /// Implementation of <see cref="IDisposable"/>, release all handles in cache.
         /// </summary>
-        public void Dispose()
+        public virtual void Dispose()
         {
             foreach (var handle in _internalHandles.Values)
             {
@@ -176,48 +175,4 @@ namespace Chris.Resource
             return _cacheMap.GetEnumerator();
         }
     }
-
-    #region Common Unity Assets
-    
-    /// <summary>
-    /// Resource cache for <see cref="AudioClip"/>
-    /// </summary>
-    public class AudioClipCache : ResourceCache<AudioClip>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="Texture2D"/>
-    /// </summary>
-    public class Texture2DCache : ResourceCache<Texture2D>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="AnimationClip"/>
-    /// </summary>
-    public class AnimationClipCache : ResourceCache<AnimationClip>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="RuntimeAnimatorController"/>
-    /// </summary>
-    public class RuntimeAnimatorControllerCache : ResourceCache<RuntimeAnimatorController>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="TextAsset"/>
-    /// </summary>
-    public class TextAssetCache : ResourceCache<TextAsset>
-    {
-
-    }
-
-    #endregion
 }

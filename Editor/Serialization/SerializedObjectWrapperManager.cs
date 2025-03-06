@@ -23,6 +23,7 @@ namespace Chris.Serialization.Editor
 
         private void OnValidate()
         {
+            // Hook IMGUI view model change
             ValueChange.OnNext(m_Value);
         }
     }
