@@ -12,35 +12,35 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 
 ## Core Features
 
-[Events](./Docs/Events.md) 
+[Events](./Documentation~/Events.md) 
 > A powerful event solution for dynamic and contextual event handling ported from UIElement.
 
-![Debugger](./Docs/Images/debugger.png)
+![Debugger](./Documentation~/Images/debugger.png)
 
-[Pool](./Docs/Pool.md) 
+[Pool](./Documentation~/Pool.md) 
 > Zero allocation GameObject/Component pooling. 
 
-![Pooling Performance](./Docs/Images/pooling-performance.png)
+![Pooling Performance](./Documentation~/Images/pooling-performance.png)
 
-[Schedulers](./Docs/Schedulers.md) 
+[Schedulers](./Documentation~/Schedulers.md) 
 > Zero allocation timer/frame counter. 
 
-![Debugger](./Docs/Images/scheduler_debugger.png)
+![Debugger](./Documentation~/Images/scheduler_debugger.png)
 
-[Serialization](./Docs/Serialization.md)
+[Serialization](./Documentation~/Serialization.md)
 > Powerful serialization tool for workflow.
 
-![SerializedType](./Docs/Images/serializedtype.png)
+![SerializedType](./Documentation~/Images/serializedtype.png)
 
-[Resource](./Docs/Resource.md) 
+[Resource](./Documentation~/Resource.md) 
 > Resource loading system based on Addressables. 
 
-![SoftAssetReference](./Docs/Images/soft_asset_reference.png)
+![SoftAssetReference](./Documentation~/Images/soft_asset_reference.png)
 
-[Data Driven](./Docs/DataDriven.md)
+[Data Driven](./Documentation~/DataDriven.md)
 >Use Unreal-like DataTable workflow in Unity.
 
-![DataTable](./Docs/Images/datatable_editor_window.png)
+![DataTable](./Documentation~/Images/datatable_editor_window.png)
 
 ## Dependencies
 

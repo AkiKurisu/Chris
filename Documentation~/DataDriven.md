@@ -15,7 +15,7 @@ using Chris.Resource;
 using Chris.Serialization;
 using UnityEngine;
 
-// Must add this attribute
+// Must mark as Serializable
 [Serializable]
 public class MyDataRow : IDataTableRow
 {
@@ -32,7 +32,7 @@ Recommend to implement `DataTableManager<T>` for managing DataTable.
 
 Use `await DataTableManager.InitializeAsync()` to initialize managers at start of your game.
 
-Or enable `Initialize Managers` in `AkiFrameworkSettings` to initialize managers before scene load automatically.
+Or enable `Initialize Managers` in `ChrisSettings` to initialize managers before scene load automatically.
 
 ### Example
 

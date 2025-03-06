@@ -2,19 +2,19 @@
 
 Powerful serialization tool for workflow.
 
-## SerializedType{T}
+## SerializedType\<T\>
 
 Serialize type of class implementing T and get new object from it at runtime.
 
 ```C#
 SerializedType<ICustomInterface> myType;
 
-ICustomInterface customInterface = myType.GetObject();
+ICustomInterface customInterface = myType.GetObjectType();
 ```
 
 ![SerializedType](./Images/serializedtype.png)
 
-## SerializedObject{T}
+## SerializedObject\<T\>
 
 More managable than Unity's `SerializeReference` attribute.
 
