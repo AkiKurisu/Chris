@@ -17,33 +17,34 @@ namespace R3.Chris
         void Register(IDisposable disposable);
     }
     
-    public readonly struct ObservableDestroyTriggerUnregister : IDisposableUnregister
+    public readonly struct DisposableUnregister
     {
         private readonly ObservableDestroyTrigger _trigger;
         
-        public ObservableDestroyTriggerUnregister(ObservableDestroyTrigger trigger)
-        {
-            _trigger = trigger;
-        }
-        
-        public void Register(IDisposable disposable)
-        {
-            _trigger.AddDisposableOnDestroy(disposable);
-        }
-    }
-    
-    public readonly struct CancellationTokenUnregister : IDisposableUnregister
-    {
         private readonly CancellationToken _cancellationToken;
         
-        public CancellationTokenUnregister(CancellationToken cancellationToken)
+        public DisposableUnregister(ObservableDestroyTrigger trigger)
         {
+            _trigger = trigger;
+            _cancellationToken = default;
+        }
+        
+        public DisposableUnregister(CancellationToken cancellationToken)
+        {
+            _trigger = null;
             _cancellationToken = cancellationToken;
         }
         
         public void Register(IDisposable disposable)
         {
-            disposable.RegisterTo(_cancellationToken);
+            if (_trigger)
+            {
+                _trigger.AddDisposableOnDestroy(disposable);
+            }
+            else
+            {
+                disposable.RegisterTo(_cancellationToken);
+            }
         }
     }
     
@@ -54,9 +55,9 @@ namespace R3.Chris
         /// </summary>
         /// <param name="gameObject"></param>
         /// <returns></returns>
-        public static ObservableDestroyTriggerUnregister GetUnregister(this GameObject gameObject)
+        public static DisposableUnregister GetUnregister(this GameObject gameObject)
         {
-            return new ObservableDestroyTriggerUnregister(gameObject.GetOrAddComponent<ObservableDestroyTrigger>());
+            return new DisposableUnregister(gameObject.GetOrAddComponent<ObservableDestroyTrigger>());
         }
         
         /// <summary>
@@ -64,12 +65,18 @@ namespace R3.Chris
         /// </summary>
         /// <param name="monoBehaviour"></param>
         /// <returns></returns>
-        public static CancellationTokenUnregister GetUnregister(this MonoBehaviour monoBehaviour)
+        public static DisposableUnregister GetUnregister(this MonoBehaviour monoBehaviour)
         {
-            return new CancellationTokenUnregister(monoBehaviour.destroyCancellationToken);
+            return new DisposableUnregister(monoBehaviour.destroyCancellationToken);
         }
         
-        public static T AddTo<T, TK>(this T disposable, TK unRegister) where T : IDisposable where TK : IDisposableUnregister
+        public static T AddTo<T>(this T disposable, IDisposableUnregister unRegister) where T : IDisposable
+        {
+            unRegister.Register(disposable);
+            return disposable;
+        }
+        
+        public static T AddTo<T>(this T disposable, DisposableUnregister unRegister) where T : IDisposable
         {
             unRegister.Register(disposable);
             return disposable;
