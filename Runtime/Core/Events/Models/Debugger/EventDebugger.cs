@@ -410,7 +410,7 @@ namespace Chris.Events
                 try
                 {
                     Type eventType = Type.GetType(eventBase.EventType);
-                    var getPooledMethod = FrameworkUtils.GetStaticMethodWithNoParametersInBase(eventType, "GetPooled");
+                    var getPooledMethod = eventType.GetStaticMethodWithNoParametersInBase("GetPooled");
                     Assert.IsTrue(getPooledMethod != null);
                     newEvent = (EventBase)getPooledMethod.Invoke(null, null);
                     JsonConvert.PopulateObject(eventBase.JsonData, newEvent);
