@@ -7,17 +7,21 @@ namespace Chris.Tasks.Editor
     public class TaskRunnerEditor : UEditor
     {
         private TaskRunner Manager => target as TaskRunner;
+        
         private int ManagedTaskCount => Manager.Tasks.Count;
+        
         private void OnEnable()
         {
             if (!Application.isPlaying) return;
             EditorApplication.update += Repaint;
         }
+        
         private void OnDisable()
         {
             if (!Application.isPlaying) return;
             EditorApplication.update -= Repaint;
         }
+        
         public override void OnInspectorGUI()
         {
             if (!Application.isPlaying)
@@ -32,15 +36,16 @@ namespace Chris.Tasks.Editor
             {
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(task.InternalGetTaskName());
-                GUILayout.Label($"Status: {TaskEditorUtils.StatusToString(task.GetStatus())}", style);
+                GUILayout.Label($"Status: {task.GetStatus().ToString()}", style);
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndVertical();
         }
     }
-    public static class TaskEditorUtils
+    
+    public static class TaskEditorExtensions
     {
-        public static string StatusToString(TaskStatus status)
+        public static string ToString(this TaskStatus status)
         {
             return status switch
             {

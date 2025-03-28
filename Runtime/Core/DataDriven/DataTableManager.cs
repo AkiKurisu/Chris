@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Chris.Pool;
 using Chris.Resource;
 using Cysharp.Threading.Tasks;
 namespace Chris.DataDriven

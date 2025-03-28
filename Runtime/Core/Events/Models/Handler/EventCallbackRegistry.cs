@@ -420,7 +420,7 @@ namespace Chris.Events
                 s_Listeners.Add(ceh, dict);
             }
 
-            string itemName = FrameworkUtils.GetDelegatePath(callback);
+            string itemName = DiagnosticsUtility.GetDelegatePath(callback);
 
             if (!dict.TryGetValue(typeof(TEventType), out List<ListenerRecord> callbackRecords))
             {
@@ -428,7 +428,7 @@ namespace Chris.Events
                 dict.Add(typeof(TEventType), callbackRecords);
             }
 
-            StackFrame frame = FrameworkUtils.GetCurrentStackFrame();
+            StackFrame frame = DiagnosticsUtility.GetCurrentStackFrame();
 
             callbackRecords.Add(new ListenerRecord
             {
@@ -446,7 +446,7 @@ namespace Chris.Events
             if (!s_Listeners.TryGetValue(ceh, out Dictionary<Type, List<ListenerRecord>> dict))
                 return;
 
-            string itemName = FrameworkUtils.GetDelegatePath(callback);
+            string itemName = DiagnosticsUtility.GetDelegatePath(callback);
 
             if (!dict.TryGetValue(typeof(TEventType), out List<ListenerRecord> callbackRecords))
                 return;

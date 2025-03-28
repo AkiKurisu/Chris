@@ -9,21 +9,30 @@ namespace Chris.Schedulers
         internal struct ListenerRecord
         {
             public int hashCode;
+            
             public string name;
+            
             public string fileName;
+            
             public int lineNumber;
         }
+        
         private const string MethodPtr = nameof(MethodPtr);
-        private static readonly ProfilerMarker RegisterListenerPM = new("SchedulerRegistry.RegisterListener");
-        private static readonly ProfilerMarker UnregisterListenerPM = new("SchedulerRegistry.UnregisterListener");
+        
+        private static readonly ProfilerMarker RegisterListenerProfilerMarker = new("SchedulerRegistry.RegisterListener");
+        
+        private static readonly ProfilerMarker UnregisterListenerProfilerMarker = new("SchedulerRegistry.UnregisterListener");
+        
         internal static readonly Dictionary<IScheduled, ListenerRecord> s_Listeners = new();
+        
         public static void CleanListeners()
         {
             s_Listeners.Clear();
         }
+        
         public static void RegisterListener(IScheduled scheduled, Delegate callback)
         {
-            using (RegisterListenerPM.Auto())
+            using (RegisterListenerProfilerMarker.Auto())
             {
                 int hashCode = default;
                 string itemName;
@@ -34,10 +43,10 @@ namespace Chris.Schedulers
                 else
                 {
                     hashCode = callback.GetHashCode();
-                    itemName = FrameworkUtils.GetDelegatePath(callback);
+                    itemName = DiagnosticsUtility.GetDelegatePath(callback);
                 }
 
-                StackFrame frame = FrameworkUtils.GetCurrentStackFrame();
+                StackFrame frame = DiagnosticsUtility.GetCurrentStackFrame();
 
                 s_Listeners.Add(scheduled, new ListenerRecord
                 {
@@ -56,7 +65,7 @@ namespace Chris.Schedulers
         }
         public static void UnregisterListener(IScheduled scheduled, Delegate callback)
         {
-            using (UnregisterListenerPM.Auto())
+            using (UnregisterListenerProfilerMarker.Auto())
             {
                 if (!s_Listeners.TryGetValue(scheduled, out ListenerRecord record))
                     return;
@@ -67,7 +76,7 @@ namespace Chris.Schedulers
                     return;
                 }
 
-                if (record.name == FrameworkUtils.GetDelegatePath(callback))
+                if (record.name == DiagnosticsUtility.GetDelegatePath(callback))
                 {
                     s_Listeners.Remove(scheduled);
                 }
