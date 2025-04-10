@@ -5,6 +5,7 @@ using System.Reflection;
 using Chris.Pool;
 using Chris.Resource;
 using Cysharp.Threading.Tasks;
+
 namespace Chris.DataDriven
 {
     public abstract class DataTableManager
@@ -13,9 +14,6 @@ namespace Chris.DataDriven
 
         private static readonly Dictionary<Type, DataTableManager> DataTableManagers = new();
         
-#if AF_INITIALIZE_DATATABLE_MANAGER_ON_LOAD
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-#endif
         public static void Initialize()
         {
             if (_isLoaded) return;
@@ -28,7 +26,7 @@ namespace Chris.DataDriven
             var args = new object[] { null };
             foreach (var type in managerTypes)
             {
-                var manager = Activator.CreateInstance(type, args) as DataTableManager;
+                var manager = (DataTableManager)Activator.CreateInstance(type, args);
                 manager!.Initialize(true).Forget();
             }
         }
