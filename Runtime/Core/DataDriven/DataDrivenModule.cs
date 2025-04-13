@@ -1,4 +1,6 @@
-﻿namespace Chris.DataDriven
+﻿using Chris.Modules;
+
+namespace Chris.DataDriven
 {
     public class DataDrivenModule: RuntimeModule
     {

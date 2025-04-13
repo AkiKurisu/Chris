@@ -1,44 +1,9 @@
-
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Linq;
-using Chris.Serialization;
 using UnityEngine;
 
-namespace Chris
+namespace Chris.Modules
 {
-    /// <summary>
-    /// RuntimeModule is a base class for implementing logic before scene loaded in order to initialize earlier.
-    /// </summary>
-    public abstract class RuntimeModule
-    {
-        public abstract void Initialize(ModuleConfig config);
-    }
-
-    /// <summary>
-    /// Config for <see cref="RuntimeModule"/>
-    /// </summary>
-    [PreferJsonConvert]
-    public class ModuleConfig
-    {
-        private static ModuleConfig _config;
-
-        /// <summary>
-        /// Contains module additional data that can be changed during runtime
-        /// </summary>
-        public Dictionary<string, string> MetaData = new();
-        
-        public static ModuleConfig Get()
-        {
-            return _config ??= SaveUtility.LoadOrNew<ModuleConfig>();
-        }
-
-        public void Save()
-        {
-            SaveUtility.Save(this);
-        }
-    }
-
     public static class ModuleLoader
     {
         private static bool _isLoaded;
@@ -59,6 +24,18 @@ namespace Chris
             _isLoaded = true;
             var config = ModuleConfig.Get();
             var managerTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(x =>
+                {
+#if UNITY_EDITOR
+                    if (x.GetName().Name.Contains(".Editor"))
+                    {
+                        return false;
+                    }
+#endif
+
+                    return x.GetReferencedAssemblies().Any(name => name.Name == nameof(Chris)) 
+                           || x.GetName().Name == nameof(Chris);
+                })
                 .SelectMany(x => x.GetTypes())
                 .Where(x => typeof(RuntimeModule).IsAssignableFrom(x) && !x.IsAbstract)
                 .ToArray();
