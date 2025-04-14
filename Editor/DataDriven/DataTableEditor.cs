@@ -33,7 +33,7 @@ namespace Chris.DataDriven.Editor
         protected virtual DataTableRowView CreateDataTableRowView(DataTable table)
         {
             var rowView = new DataTableRowView(table);
-            if (ChrisSettings.instance.InlineRowReadOnly)
+            if (ChrisSettings.instance.inlineRowReadOnly)
             {
                 rowView.ReadOnly = true;
             }

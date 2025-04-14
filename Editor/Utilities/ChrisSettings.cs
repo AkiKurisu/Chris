@@ -3,18 +3,19 @@ using Chris.Serialization;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+
 namespace Chris.Editor
 {
     [FilePath("ProjectSettings/ChrisSettings.asset", FilePathAttribute.Location.ProjectFolder)]
     public class ChrisSettings : ScriptableSingleton<ChrisSettings>
     {
-        public bool SchdulerStackTrace = true;
+        public bool schedulerStackTrace = true;
         
-        public SerializedType<IDataTableJsonSerializer> DataTableJsonSerializer = SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
+        public SerializedType<IDataTableJsonSerializer> dataTableJsonSerializer = SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
         
-        public bool InitializeDataTableManagerOnLoad = false;
+        public bool initializeDataTableManagerOnLoad;
         
-        public bool InlineRowReadOnly = false;
+        public bool inlineRowReadOnly;
 
         public static void SaveSettings()
         {
@@ -35,6 +36,7 @@ namespace Chris.Editor
             
             public static GUIContent s_InlineRowReadOnly = new("Inline Row ReadOnly", "Enable to let DataTableRow in inspector list view readonly");
         }
+        
         public ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
         
         private const string StackTraceSchedulerDisableSymbol = "AF_SCHEDULER_STACK_TRACE_DISABLE";
@@ -45,27 +47,29 @@ namespace Chris.Editor
         
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
-            if(!ChrisSettings.instance.DataTableJsonSerializer.IsValid())
+            if(!ChrisSettings.instance.dataTableJsonSerializer.IsValid())
             {
-                ChrisSettings.instance.DataTableJsonSerializer =
+                ChrisSettings.instance.dataTableJsonSerializer =
                     SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
                 ChrisSettings.SaveSettings();
             }  
             _settingsObject = new SerializedObject(_settings = ChrisSettings.instance);
         }
+        
         public override void OnGUI(string searchContext)
         {
             DrawSchedulerSettings();
             DrawDataTableSettings();
         }
+        
         private void DrawSchedulerSettings()
         {
             GUILayout.BeginVertical("Scheduler Settings", GUI.skin.box);
             GUILayout.Space(EditorGUIUtility.singleLineHeight);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.SchdulerStackTrace)), Styles.s_StackTraceScheduler);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.schedulerStackTrace)), Styles.s_StackTraceScheduler);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
-                if (_settings.SchdulerStackTrace)
+                if (_settings.schedulerStackTrace)
                     ScriptingSymbol.RemoveScriptingSymbol(StackTraceSchedulerDisableSymbol);
                 else
                     ScriptingSymbol.AddScriptingSymbol(StackTraceSchedulerDisableSymbol);
@@ -73,20 +77,21 @@ namespace Chris.Editor
             }
             GUILayout.EndVertical();
         }
+        
         private void DrawDataTableSettings()
         {
             GUILayout.BeginVertical("DataTable Settings", GUI.skin.box);
             GUILayout.Space(EditorGUIUtility.singleLineHeight);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.DataTableJsonSerializer)), Styles.s_DataTableJsonSerializer);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.InitializeDataTableManagerOnLoad)), Styles.s_InitializeDataTableManagerOnLoad);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.InlineRowReadOnly)), Styles.s_InlineRowReadOnly);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableJsonSerializer)), Styles.s_DataTableJsonSerializer);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.initializeDataTableManagerOnLoad)), Styles.s_InitializeDataTableManagerOnLoad);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.inlineRowReadOnly)), Styles.s_InlineRowReadOnly);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
-                if (!ChrisSettings.instance.DataTableJsonSerializer.IsValid())
+                if (!ChrisSettings.instance.dataTableJsonSerializer.IsValid())
                 {
-                    ChrisSettings.instance.DataTableJsonSerializer = SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
+                    ChrisSettings.instance.dataTableJsonSerializer = SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
                 }
-                if (_settings.InitializeDataTableManagerOnLoad)
+                if (_settings.initializeDataTableManagerOnLoad)
                     ScriptingSymbol.AddScriptingSymbol(InitializeDataTableManagerOnLoadSymbol);
                 else
                     ScriptingSymbol.RemoveScriptingSymbol(InitializeDataTableManagerOnLoadSymbol);

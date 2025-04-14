@@ -18,7 +18,8 @@
     "precompiledReferences": [
         "acilAddOns.dll",
         "R3.dll",
-        "Newtonsoft.Json.dll"
+        "Newtonsoft.Json.dll",
+        "ICSharpCode.SharpZipLib.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [

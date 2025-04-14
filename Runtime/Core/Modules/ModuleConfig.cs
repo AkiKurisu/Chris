@@ -1,13 +1,12 @@
 ﻿using System.Collections.Generic;
-using Chris.Serialization;
+using Chris.Configs;
 
 namespace Chris.Modules
 {
     /// <summary>
     /// Config for <see cref="RuntimeModule"/>
     /// </summary>
-    [PreferJsonConvert]
-    public class ModuleConfig
+    public class ModuleConfig: Config<ModuleConfig>
     {
         private static ModuleConfig _config;
 
@@ -18,12 +17,7 @@ namespace Chris.Modules
         
         public static ModuleConfig Get()
         {
-            return _config ??= SaveUtility.LoadOrNew<ModuleConfig>();
-        }
-
-        public void Save()
-        {
-            SaveUtility.Save(this);
+            return ConfigSystem.GetConfig<ModuleConfig>();
         }
     }
 
