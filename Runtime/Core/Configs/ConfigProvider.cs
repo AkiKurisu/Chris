@@ -12,16 +12,16 @@ namespace Chris.Configs
 #if UNITY_ANDROID && !UNITY_EDITOR
         private readonly SavSerializer _savSerializer = new(ConfigsModule.ConfigPersistentDirectory);
 #else
-        private readonly SavSerializer _savSerializer = new(ConfigsModule.ConfigStreamingDirectory);
+        private readonly SaveLoadSerializer _saveLoadSerializer = new(ConfigsModule.ConfigStreamingDirectory);
 #endif
         
         public bool TryGetConfig(IConfigLocation location, out Config config)
         {
             config = null;
-            if (location is not Config.Location globalLocation) return false;
-            if (_savSerializer.Exists(globalLocation.Name))
+            if (location is not Config.Location configLocation) return false;
+            if (_saveLoadSerializer.Exists(configLocation.Name))
             {
-                config = _savSerializer.Load(globalLocation.Name, globalLocation.Type, globalLocation.PreferJsonConvert) as Config;
+                config = _saveLoadSerializer.Load(configLocation.Name, configLocation.Type, configLocation.PreferJsonConvert) as Config;
             }
             return config != null;
         }

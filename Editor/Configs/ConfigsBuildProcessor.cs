@@ -19,7 +19,7 @@ namespace Chris.Configs.Editor
         /// <summary>
         /// Write config to persistent config
         /// </summary>
-        void BuildConfig(SavSerializer serializer);
+        void BuildConfig(SaveLoadSerializer serializer);
     }
     
     internal class ConfigsBuildProcessor : IPreprocessBuildWithReport
@@ -29,7 +29,7 @@ namespace Chris.Configs.Editor
         public void OnPreprocessBuild(BuildReport report)
         {
             // Collect all configs and export to streaming assets
-            var serializer = new SavSerializer(ConfigsModule.ConfigStreamingDirectory);
+            var serializer = new SaveLoadSerializer(ConfigsModule.ConfigStreamingDirectory, ConfigsModule.ConfigExtension);
             var baseGenericType = typeof(ScriptableSingleton<>);
             const string assemblyName = "Chris.Editor";
             

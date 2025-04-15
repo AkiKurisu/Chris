@@ -2,11 +2,8 @@
 using Chris.Modules;
 using Chris.Serialization;
 using UnityEngine;
-#if UNITY_ANDROID && !UNITY_EDITOR
 using System;
-using Cysharp.Threading.Tasks;
 using UnityEngine.Networking;
-#endif
 
 namespace Chris.Configs
 {
@@ -16,11 +13,13 @@ namespace Chris.Configs
         
         public static readonly string ConfigPersistentDirectory = Path.Combine(SaveUtility.SavePath, "Configs");
 
+        public const string ConfigExtension = "cfg";
+
 #if UNITY_EDITOR
         // In editor, we can just overwrite streaming config
-        public static readonly SavSerializer PersistentSerializer = new(ConfigStreamingDirectory);
+        public static readonly SaveLoadSerializer PersistentSerializer = new(ConfigStreamingDirectory, ConfigExtension);
 #else
-        public static readonly SavSerializer PersistentSerializer = new(ConfigPersistentDirectory);
+        public static readonly SavSerializer PersistentSerializer = new(ConfigPersistentDirectory, ConfigExtension);
 #endif
         
         
@@ -28,18 +27,21 @@ namespace Chris.Configs
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
             // Transfer streaming configs archive to persistent configs directory
-            ExtractStreamingConfigs().Forget();
+            ExtractStreamingConfigs();
 #endif
         }
-
-#if UNITY_ANDROID && !UNITY_EDITOR
-        private static async UniTask ExtractStreamingConfigs()
+        
+        // ReSharper disable once UnusedMember.Local
+        private static void ExtractStreamingConfigs()
         {
-            using UnityWebRequest request = UnityWebRequest.Get(new Uri(ConfigStreamingDirectory + ".zip").AbsoluteUri);
+            using var request = UnityWebRequest.Get(new Uri(ConfigStreamingDirectory + ".zip").AbsoluteUri);
             request.downloadHandler = new DownloadHandlerFile(ConfigPersistentDirectory);
-            await request.SendWebRequest().ToUniTask();
+            request.SendWebRequest();
+            while (request.isDone)
+            {
+                // Block main thread
+            }
             ZipWrapper.UnzipFile($"{ConfigPersistentDirectory}/Configs.zip", ConfigPersistentDirectory);
         }
-#endif
     }
 }

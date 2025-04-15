@@ -38,7 +38,7 @@ namespace Chris.Configs
 
         internal static readonly ulong ConfigTypeId;
 
-        internal static readonly Location ConfigLocation = new(ConfigName, typeof(TConfig), SavSerializer.TypeCache<TConfig>.PreferJsonConvert);
+        internal static readonly Location ConfigLocation = new(ConfigName, typeof(TConfig), SaveLoadSerializer.TypeCache<TConfig>.PreferJsonConvert);
 
         static Config()
         {

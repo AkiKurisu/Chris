@@ -8,9 +8,9 @@ using UnityEngine;
 namespace Chris.Serialization
 {
     /// <summary>
-    /// Serializer for read and write .sav files
+    /// Serializer for read and write saving files
     /// </summary>
-    public class SavSerializer
+    public class SaveLoadSerializer
     {
         public static class TypeCache<T>
         {
@@ -25,10 +25,15 @@ namespace Chris.Serialization
         private static readonly BinaryFormatter Formatter = new();
 
         private readonly string _savePath;
+        
+        private readonly string _extension;
 
-        public SavSerializer(string savePath)
+        private const string DefaultExtension = "sav";
+
+        public SaveLoadSerializer(string savePath, string extension = DefaultExtension)
         {
             _savePath = savePath;
+            _extension = extension;
         }
         
         public void Save<T>(string key, T data)
@@ -39,14 +44,14 @@ namespace Chris.Serialization
             else
                 jsonData = JsonUtility.ToJson(data);
             if (!Directory.Exists(_savePath)) Directory.CreateDirectory(_savePath);
-            using var file = File.Create($"{_savePath}/{key}.sav");
+            using var file = File.Create($"{_savePath}/{key}.{_extension}");
             Formatter.Serialize(file, jsonData);
         }
         
         public void Delete(string key)
         {
             if (!Directory.Exists(_savePath)) return;
-            var path = $"{_savePath}/{key}.sav";
+            var path = $"{_savePath}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 File.Delete(path);
@@ -61,18 +66,18 @@ namespace Chris.Serialization
         public void SaveJson(string key, string jsonData)
         {
             if (!Directory.Exists(_savePath)) Directory.CreateDirectory(_savePath);
-            using var file = File.Create($"{_savePath}/{key}.sav");
+            using var file = File.Create($"{_savePath}/{key}.{_extension}");
             Formatter.Serialize(file, jsonData);
         }
         
         public bool Exists(string key)
         {
-            return File.Exists($"{_savePath}/{key}.sav");
+            return File.Exists($"{_savePath}/{key}.{_extension}");
         }
         
         public bool TryLoadJson(string key, out string jsonData)
         {
-            var path = $"{_savePath}/{key}.sav";
+            var path = $"{_savePath}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 using var file = File.Open(path, FileMode.Open);
@@ -85,7 +90,7 @@ namespace Chris.Serialization
 
         public bool Overwrite<T>(string key, T data)
         {
-            var path = $"{_savePath}/{key}.sav";
+            var path = $"{_savePath}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 using var file = File.Open(path, FileMode.Open);
@@ -101,7 +106,7 @@ namespace Chris.Serialization
         public T LoadOrNew<T>(string key) where T : class, new()
         {
             T data = null;
-            var path = $"{_savePath}/{key}.sav";
+            var path = $"{_savePath}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 using var file = File.Open(path, FileMode.Open);
@@ -116,7 +121,7 @@ namespace Chris.Serialization
         
         public object Load(string key, Type type, bool preferJsonConvert)
         {
-            var path = $"{_savePath}/{key}.sav";
+            var path = $"{_savePath}/{key}.{_extension}";
             using var file = File.Open(path, FileMode.Open);
             if (preferJsonConvert)
                 return JsonConvert.DeserializeObject((string)Formatter.Deserialize(file), type);
@@ -137,7 +142,7 @@ namespace Chris.Serialization
         public static readonly string SavePath = Path.Combine(Application.persistentDataPath, "Saved");
 #endif
         
-        private static readonly SavSerializer Serializer = new(SavePath);
+        private static readonly SaveLoadSerializer Serializer = new(SavePath);
         
         /// <summary>
         /// Save data to saving
