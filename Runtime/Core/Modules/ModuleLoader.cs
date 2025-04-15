@@ -15,9 +15,6 @@ namespace Chris.Modules
         public static bool Enable { get; set; } = true;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-#if UNITY_EDITOR
-        [UnityEditor.InitializeOnLoadMethod]
-#endif
         public static void InitializeModules()
         {
             if (!Enable || _isLoaded) return;
@@ -45,6 +42,7 @@ namespace Chris.Modules
                 var manager = (RuntimeModule)Activator.CreateInstance(type);
                 manager.Initialize(config);
             }
+            config.Save();
         }
     }
 }

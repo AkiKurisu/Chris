@@ -34,7 +34,7 @@ namespace Chris.Configs
     public abstract class Config<TConfig>: Config 
         where TConfig: Config<TConfig>, new()
     {
-        private const string ConfigName = nameof(TConfig);
+        private static readonly string ConfigName = typeof(TConfig).Name;
 
         internal static readonly ulong ConfigTypeId;
 
@@ -43,6 +43,11 @@ namespace Chris.Configs
         static Config()
         {
             ConfigTypeId = ++NextConfigId;
+        }
+
+        public static TConfig Get()
+        {
+            return ConfigSystem.GetConfig<TConfig>();
         }
         
         /// <summary>

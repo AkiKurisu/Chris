@@ -1,8 +1,10 @@
 ﻿using Chris.Modules;
+using UnityEngine.Scripting;
 
 namespace Chris.DataDriven
 {
-    public class DataDrivenModule: RuntimeModule
+    [Preserve]
+    internal class DataDrivenModule: RuntimeModule
     {
         public override void Initialize(ModuleConfig config)
         {

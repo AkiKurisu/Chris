@@ -24,15 +24,15 @@ namespace Chris.Serialization
         
         private static readonly BinaryFormatter Formatter = new();
 
-        private readonly string _savePath;
+        private readonly string _path;
         
         private readonly string _extension;
 
         private const string DefaultExtension = "sav";
 
-        public SaveLoadSerializer(string savePath, string extension = DefaultExtension)
+        public SaveLoadSerializer(string path, string extension = DefaultExtension)
         {
-            _savePath = savePath;
+            _path = path;
             _extension = extension;
         }
         
@@ -43,15 +43,15 @@ namespace Chris.Serialization
                 jsonData = JsonConvert.SerializeObject(data);
             else
                 jsonData = JsonUtility.ToJson(data);
-            if (!Directory.Exists(_savePath)) Directory.CreateDirectory(_savePath);
-            using var file = File.Create($"{_savePath}/{key}.{_extension}");
+            if (!Directory.Exists(_path)) Directory.CreateDirectory(_path);
+            using var file = File.Create($"{_path}/{key}.{_extension}");
             Formatter.Serialize(file, jsonData);
         }
         
         public void Delete(string key)
         {
-            if (!Directory.Exists(_savePath)) return;
-            var path = $"{_savePath}/{key}.{_extension}";
+            if (!Directory.Exists(_path)) return;
+            var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 File.Delete(path);
@@ -60,24 +60,24 @@ namespace Chris.Serialization
         
         public void DeleteAll()
         {
-            if (Directory.Exists(_savePath)) Directory.Delete(_savePath, true);
+            if (Directory.Exists(_path)) Directory.Delete(_path, true);
         }
         
         public void SaveJson(string key, string jsonData)
         {
-            if (!Directory.Exists(_savePath)) Directory.CreateDirectory(_savePath);
-            using var file = File.Create($"{_savePath}/{key}.{_extension}");
+            if (!Directory.Exists(_path)) Directory.CreateDirectory(_path);
+            using var file = File.Create($"{_path}/{key}.{_extension}");
             Formatter.Serialize(file, jsonData);
         }
         
         public bool Exists(string key)
         {
-            return File.Exists($"{_savePath}/{key}.{_extension}");
+            return File.Exists($"{_path}/{key}.{_extension}");
         }
         
         public bool TryLoadJson(string key, out string jsonData)
         {
-            var path = $"{_savePath}/{key}.{_extension}";
+            var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 using var file = File.Open(path, FileMode.Open);
@@ -90,7 +90,7 @@ namespace Chris.Serialization
 
         public bool Overwrite<T>(string key, T data)
         {
-            var path = $"{_savePath}/{key}.{_extension}";
+            var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 using var file = File.Open(path, FileMode.Open);
@@ -106,7 +106,7 @@ namespace Chris.Serialization
         public T LoadOrNew<T>(string key) where T : class, new()
         {
             T data = null;
-            var path = $"{_savePath}/{key}.{_extension}";
+            var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
             {
                 using var file = File.Open(path, FileMode.Open);
@@ -121,7 +121,7 @@ namespace Chris.Serialization
         
         public object Load(string key, Type type, bool preferJsonConvert)
         {
-            var path = $"{_savePath}/{key}.{_extension}";
+            var path = $"{_path}/{key}.{_extension}";
             using var file = File.Open(path, FileMode.Open);
             if (preferJsonConvert)
                 return JsonConvert.DeserializeObject((string)Formatter.Deserialize(file), type);

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace Chris.Configs
 {
@@ -17,14 +18,16 @@ namespace Chris.Configs
             }
         }
         
-        
         private static readonly List<ConfigProviderStructure> ConfigProviders = new();
 
         private static readonly Dictionary<ulong, Config> GlobalConfigs = new();
 
         static ConfigSystem()
         {
-            RegisterConfigProvider(new DefaultConfigProvider(), 100);
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
+            RegisterConfigProvider(new StreamingConfigProvider(), 200);
+#endif
+            RegisterConfigProvider(new PersistentConfigProvider(), 100);
         }
         
         /// <summary>
@@ -57,9 +60,10 @@ namespace Chris.Configs
             {
                 if (provider.Provider.TryGetConfig(location, out var config))
                 {
-                    if (config is TConfig tConfig) return tConfig;
+                    return (TConfig)config;
                 }
             }
+            Debug.Log("New config " + typeof(TConfig).Name);
             // Return class default object
             return new TConfig();
         }
