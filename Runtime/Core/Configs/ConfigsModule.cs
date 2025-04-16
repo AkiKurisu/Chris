@@ -41,13 +41,14 @@ namespace Chris.Configs
                 }
             }
             // Do not exist, skip
-            catch (ArgumentException) 
+            catch
             {
-     
-            }
-            catch (Exception e) 
-            {
-                Debug.LogError(e);
+                // Remove invalid file
+                if (File.Exists(ConfigPersistentDirectory))
+                {
+                    File.Delete(ConfigPersistentDirectory);
+                }
+                return;
             }
             
             var zipPath = $"{ConfigPersistentDirectory}/Configs.zip";

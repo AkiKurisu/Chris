@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using UnityEngine;
 
 namespace Chris.Configs
 {
@@ -63,7 +62,7 @@ namespace Chris.Configs
                     return (TConfig)config;
                 }
             }
-            Debug.Log("New config " + typeof(TConfig).Name);
+
             // Return class default object
             return new TConfig();
         }
