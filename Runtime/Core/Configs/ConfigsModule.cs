@@ -43,12 +43,13 @@ namespace Chris.Configs
             // Do not exist, skip
             catch
             {
-                // Remove invalid file
-                if (File.Exists(ConfigPersistentDirectory))
-                {
-                    File.Delete(ConfigPersistentDirectory);
-                }
-                return;
+                // ignored
+            }
+
+            // Remove invalid file
+            if (File.Exists(ConfigPersistentDirectory))
+            {
+                File.Delete(ConfigPersistentDirectory);
             }
             
             var zipPath = $"{ConfigPersistentDirectory}/Configs.zip";
