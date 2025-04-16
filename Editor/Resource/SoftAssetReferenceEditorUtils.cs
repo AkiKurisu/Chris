@@ -41,7 +41,7 @@ namespace Chris.Resource.Editor
                 }
                 return null;
             }
-            var cacheObject = handle.GetObject();
+            var cacheObject = handle.GetObject() as UObject;
             if (cacheObject) return cacheObject;
 
             GlobalObjectManager.UnregisterObject(handle);

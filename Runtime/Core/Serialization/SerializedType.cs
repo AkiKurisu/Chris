@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+
 namespace Chris.Serialization
 {
     public static class SerializedType

@@ -162,6 +162,7 @@ namespace Chris.Serialization
             };
         }
     }
+    
     /// <summary>
     /// Serialized object that will serialize metadata and fields of object implementing T
     /// </summary>
@@ -213,7 +214,7 @@ namespace Chris.Serialization
         public new static SerializedObject<T> FromObject(object @object)
         {
             var type = @object.GetType();
-            return new SerializedObject<T>()
+            return new SerializedObject<T>
             {
                 serializedTypeString = SerializedType.ToString(type.IsArray ? type.GetElementType() : type),
                 jsonData = SerializeObject(@object, type),

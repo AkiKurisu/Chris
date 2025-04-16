@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 using UObject = UnityEngine.Object;
+
 namespace Chris.Serialization.Editor
 {
     public class SerializationDebuggerTreeView : TreeView
@@ -19,7 +20,8 @@ namespace Chris.Serialization.Editor
 
             }
         }
-        const string sortedColumnIndexStateKey = "SerializationDebuggerTreeView_sortedColumnIndex";
+
+        private const string SortedColumnIndexStateKey = "SerializationDebuggerTreeView_sortedColumnIndex";
 
         public IReadOnlyList<TreeViewItem> CurrentBindingItems;
 
@@ -44,7 +46,7 @@ namespace Chris.Serialization.Editor
             header.ResizeToFit();
             Reload();
 
-            header.sortedColumnIndex = SessionState.GetInt(sortedColumnIndexStateKey, 1);
+            header.sortedColumnIndex = SessionState.GetInt(SortedColumnIndexStateKey, 1);
         }
 
         public void ReloadAndSort()
@@ -57,7 +59,7 @@ namespace Chris.Serialization.Editor
 
         private void Header_sortingChanged(MultiColumnHeader multiColumnHeader)
         {
-            SessionState.SetInt(sortedColumnIndexStateKey, multiColumnHeader.sortedColumnIndex);
+            SessionState.SetInt(SortedColumnIndexStateKey, multiColumnHeader.sortedColumnIndex);
             var index = multiColumnHeader.sortedColumnIndex;
             var ascending = multiColumnHeader.IsSortedAscending(multiColumnHeader.sortedColumnIndex);
 
@@ -78,15 +80,15 @@ namespace Chris.Serialization.Editor
             var root = new TreeViewItem { depth = -1 };
 
             var children = new List<TreeViewItem>();
-
-            var now = DateTime.Now; // tracking state is using local Now.
+            
             GlobalObjectManager.ForEach(structure =>
             {
+                var uObject = structure.Object as UObject;
                 children.Add(new ViewItem(structure.Handle.GetIndex())
                 {
                     Handle = structure.Handle.Handle,
-                    Type = structure.Object != null ? GetObjectTypeName(structure.Object.GetType()) : "Null",
-                    Object = structure.Object
+                    Type = (bool)uObject ? GetObjectTypeName(structure.Object.GetType()) : "Null",
+                    Object = uObject
                 });
             });
 
@@ -107,7 +109,7 @@ namespace Chris.Serialization.Editor
 
         protected override void RowGUI(RowGUIArgs args)
         {
-            var item = args.item as ViewItem;
+            var item = (ViewItem)args.item;
 
             for (var visibleColumnIndex = 0; visibleColumnIndex < args.GetNumVisibleColumns(); visibleColumnIndex++)
             {
@@ -125,7 +127,7 @@ namespace Chris.Serialization.Editor
                         EditorGUI.LabelField(rect, item.Type, labelStyle);
                         break;
                     case 2:
-                        using (var scope = new EditorGUI.DisabledGroupScope(true))
+                        using (new EditorGUI.DisabledGroupScope(true))
                         {
                             EditorGUI.ObjectField(rect, item.Object, typeof(UObject), false);
                         }
