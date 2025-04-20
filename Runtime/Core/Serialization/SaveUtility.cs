@@ -119,6 +119,15 @@ namespace Chris.Serialization
             return data;
         }
         
+        public T Load<T>(string key)
+        {
+            var path = $"{_path}/{key}.{_extension}";
+            using var file = File.Open(path, FileMode.Open);
+            if (TypeCache<T>.PreferJsonConvert)
+                return JsonConvert.DeserializeObject<T>((string)Formatter.Deserialize(file));
+            return JsonUtility.FromJson<T>((string)Formatter.Deserialize(file));
+        }
+        
         public object Load(string key, Type type, bool preferJsonConvert)
         {
             var path = $"{_path}/{key}.{_extension}";
