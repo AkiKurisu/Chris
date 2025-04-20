@@ -36,25 +36,39 @@ namespace Chris.Resource
         }
     }
     
-    /// <summary>
-    /// A lightweight asset reference only use address as identifier
-    /// </summary>
     [Serializable]
-    public class SoftAssetReference<T> where T : Object
+    public class SoftAssetReferenceBase
     {
         // ReSharper disable once InconsistentNaming
         public string Address;
-        
+
 #if UNITY_EDITOR
         [SerializeField]
         // ReSharper disable once InconsistentNaming
         internal string Guid;
-        
+
         [SerializeField]
         // ReSharper disable once InconsistentNaming
         internal bool Locked = true;
 #endif
+        
+        public override string ToString()
+        {
+            return Address;
+        }
 
+        public bool IsValid()
+        {
+            return !string.IsNullOrEmpty(Address);
+        }
+    }
+
+    /// <summary>
+    /// A lightweight asset reference only use address as identifier
+    /// </summary>
+    [Serializable]
+    public class SoftAssetReference<T>: SoftAssetReferenceBase where T : Object
+    {
         /// <summary>
         /// Create asset reference from address
         /// </summary>
@@ -117,20 +131,8 @@ namespace Chris.Resource
     /// A lightweight asset reference only use address as identifier
     /// </summary>
     [Serializable]
-    public class SoftAssetReference
+    public class SoftAssetReference: SoftAssetReferenceBase
     {
-        // ReSharper disable once InconsistentNaming
-        public string Address;
-        
-#if UNITY_EDITOR
-        [SerializeField]
-        // ReSharper disable once InconsistentNaming
-        internal string Guid;
-        
-        [SerializeField]
-        // ReSharper disable once InconsistentNaming
-        internal bool Locked = true;
-#endif
         /// <summary>
         /// Create asset reference from address
         /// </summary>
@@ -162,16 +164,6 @@ namespace Chris.Resource
             {
                 Address = address
             };
-        }
-
-        public override string ToString()
-        {
-            return Address;
-        }
-
-        public bool IsValid()
-        {
-            return !string.IsNullOrEmpty(Address);
         }
     }
 }
