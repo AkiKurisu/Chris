@@ -75,7 +75,7 @@ namespace Chris.DataDriven.Editor
         /// <returns></returns>
         public static string ExportJson(DataTable dataTable)
         {
-            return ChrisSettings.instance.DataTableJsonSerializer.GetObject().Serialize(dataTable);
+            return ChrisSettings.instance.dataTableJsonSerializer.GetObject().Serialize(dataTable);
         }
         
         /// <summary>
@@ -86,7 +86,7 @@ namespace Chris.DataDriven.Editor
         public static void ImportJson(DataTable dataTable, string jsonData)
         {
             Undo.RecordObject(dataTable, "Overwrite DataTable from Json");
-            ChrisSettings.instance.DataTableJsonSerializer.GetObject().Deserialize(dataTable, jsonData);
+            ChrisSettings.instance.dataTableJsonSerializer.GetObject().Deserialize(dataTable, jsonData);
         }
         
         /// <summary>

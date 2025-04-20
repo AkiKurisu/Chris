@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Random = System.Random;
+
 namespace Chris.Collections
 {
     public class RandomList<T>: IReadOnlyList<T>
@@ -9,7 +11,7 @@ namespace Chris.Collections
         
         private readonly List<double> _weights;
         
-        private readonly System.Random _random;
+        private readonly Random _random;
         
         private T _lastSelected;
         
@@ -21,14 +23,14 @@ namespace Chris.Collections
         {
             _items = new List<T>(capacity);
             _weights = new List<double>(capacity);
-            _random = new System.Random();
+            _random = new Random();
         }
         
         public RandomList()
         {
             _items = new List<T>();
             _weights = new List<double>();
-            _random = new System.Random();
+            _random = new Random();
         }
         
         public void Add(T item, double weight = 1)

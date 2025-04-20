@@ -1,9 +1,9 @@
 using UnityEngine.Assertions;
-using UObject = UnityEngine.Object;
+
 namespace Chris.Serialization
 {
     /// <summary>
-    /// Soft Ptr for UnityEngine.Object
+    /// Soft Object Ptr
     /// </summary>
     public readonly struct SoftObjectHandle
     {
@@ -65,7 +65,7 @@ namespace Chris.Serialization
         /// Get object if has been loaded
         /// </summary>
         /// <returns></returns>
-        public UObject GetObject()
+        public object GetObject()
         {
             return GlobalObjectManager.GetObject(this);
         }
