@@ -26,15 +26,16 @@ namespace Chris.Editor
     internal class ChrisSettingsProvider : SettingsProvider
     {
         private SerializedObject _settingsObject;
+        
         private class Styles
         {
-            public static GUIContent s_StackTraceScheduler = new("Stack Trace", "Allow trace scheduled task in editor");
+            public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace", "Allow trace scheduled task in editor");
             
-            public static GUIContent s_DataTableJsonSerializer = new("Json Serializer", "Set DataTable json serializer type");
+            public static readonly GUIContent DataTableJsonSerializerLabel = new("Json Serializer", "Set DataTable json serializer type");
             
-            public static GUIContent s_InitializeDataTableManagerOnLoad = new("Initialize Managers", "Initialize all DataManager instances before scene loaded");
+            public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers", "Initialize all DataManager instances before scene loaded");
             
-            public static GUIContent s_InlineRowReadOnly = new("Inline Row ReadOnly", "Enable to let DataTableRow in inspector list view readonly");
+            public static readonly GUIContent InlineRowReadOnlyLabel = new("Inline Row ReadOnly", "Enable to let DataTableRow in inspector list view readonly");
         }
         
         public ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
@@ -66,7 +67,7 @@ namespace Chris.Editor
         {
             GUILayout.BeginVertical("Scheduler Settings", GUI.skin.box);
             GUILayout.Space(EditorGUIUtility.singleLineHeight);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.schedulerStackTrace)), Styles.s_StackTraceScheduler);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.schedulerStackTrace)), Styles.StackTraceSchedulerLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
                 if (_settings.schedulerStackTrace)
@@ -82,9 +83,9 @@ namespace Chris.Editor
         {
             GUILayout.BeginVertical("DataTable Settings", GUI.skin.box);
             GUILayout.Space(EditorGUIUtility.singleLineHeight);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableJsonSerializer)), Styles.s_DataTableJsonSerializer);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.initializeDataTableManagerOnLoad)), Styles.s_InitializeDataTableManagerOnLoad);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.inlineRowReadOnly)), Styles.s_InlineRowReadOnly);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableJsonSerializer)), Styles.DataTableJsonSerializerLabel);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.initializeDataTableManagerOnLoad)), Styles.InitializeDataTableManagerOnLoadLabel);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.inlineRowReadOnly)), Styles.InlineRowReadOnlyLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
                 if (!ChrisSettings.instance.dataTableJsonSerializer.IsValid())
@@ -102,7 +103,7 @@ namespace Chris.Editor
         [SettingsProvider]
         public static SettingsProvider CreateSettingsProvider()
         {
-            var provider = new ChrisSettingsProvider("Project/Chris Settings", SettingsScope.Project)
+            var provider = new ChrisSettingsProvider("Project/Chris", SettingsScope.Project)
             {
                 keywords = GetSearchKeywordsFromGUIContentProperties<Styles>()
             };
