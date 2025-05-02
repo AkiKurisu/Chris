@@ -4,9 +4,21 @@ using System.Linq;
 using Chris.Collections;
 using Chris.Serialization;
 using UnityEngine;
+
 namespace Chris.DataDriven
 {
+    /// <summary>
+    /// Implement this interface for custom DataTable Row struct
+    /// </summary>
     public interface IDataTableRow { }
+
+    /// <summary>
+    /// Implement this interface to validate DataTable Row before saving
+    /// </summary>
+    public interface IValidateRow
+    {
+        bool ValidateRow(string rowId, out string reason);
+    }
     
     [CreateAssetMenu(fileName = "DataTable", menuName = "Chris/DataTable")]
     public class DataTable : ScriptableObject
@@ -24,6 +36,18 @@ namespace Chris.DataDriven
             {
                 RowId = rowId;
                 RowData = SerializedObject<IDataTableRow>.FromObject(row);
+            }
+
+            public void InternalUpdate()
+            {
+                if (RowData.NewObject() is IValidateRow validateRowId)
+                {
+                    if (!validateRowId.ValidateRow(RowId, out var reason))
+                    {
+                        Debug.LogWarning($"[DataTable] Validate row {RowId} failed with reason {reason}");
+                    }
+                }
+                RowData.InternalUpdate();
             }
         }
         
@@ -306,7 +330,7 @@ namespace Chris.DataDriven
             for (int i = 0; i < m_rows.Length; ++i)
             {
                 m_rows[i].RowData.serializedTypeString = m_rowType.serializedTypeString;
-                m_rows[i].RowData.InternalUpdate();
+                m_rows[i].InternalUpdate();
             }
         }
         
