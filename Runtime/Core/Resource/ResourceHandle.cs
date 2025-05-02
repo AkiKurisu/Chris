@@ -5,7 +5,8 @@ using UObject = UnityEngine.Object;
 namespace Chris.Resource
 {
     /// <summary>
-    /// A lightweight encapsulation of <see cref="AsyncOperationHandle"/>
+    /// Handle for streaming resource.
+    /// A lightweight encapsulation of <see cref="AsyncOperationHandle"/>.
     /// </summary>
     public readonly struct ResourceHandle : IEquatable<ResourceHandle>, IDisposable
     {
@@ -68,7 +69,8 @@ namespace Chris.Resource
         }
     }
     /// <summary>
-    /// A lightweight replacement of <see cref="AsyncOperationHandle{T}"/>
+    /// Handle for streaming resource.
+    /// A lightweight replacement of <see cref="AsyncOperationHandle{T}"/>.
     /// </summary>
     public readonly struct ResourceHandle<T> : IEquatable<ResourceHandle<T>>, IDisposable
     {

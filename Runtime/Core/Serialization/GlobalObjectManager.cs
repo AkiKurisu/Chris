@@ -1,11 +1,10 @@
 using System;
 using Chris.Collections;
 using UnityEngine.Assertions;
-using UObject = UnityEngine.Object;
 namespace Chris.Serialization
 {
     /// <summary>
-    /// Class for managing dynamically load/created <see cref="UObject"/> 
+    /// Class for managing dynamically load/created <see cref="object"/> 
     /// </summary>
     public static class GlobalObjectManager
     {
@@ -92,15 +91,15 @@ namespace Chris.Serialization
         /// <summary>
         /// Register object to global object manager
         /// </summary>
-        /// <param name="uObject"></param>
+        /// <param name="object"></param>
         /// <param name="handle"></param>
-        public static void RegisterObject(UObject uObject, ref SoftObjectHandle handle)
+        public static void RegisterObject(object @object, ref SoftObjectHandle handle)
         {
             if (GetObject(handle) != null)
             {
                 return;
             }
-            var structure = new ObjectStructure { Object = uObject };
+            var structure = new ObjectStructure { Object = @object };
             int index = GlobalObjects.AddUninitialized();
             handle = new SoftObjectHandle(_serialNum, index);
             structure.Handle = handle;

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
-using Object = UnityEngine.Object;
+using UObject = UnityEngine.Object;
+
 namespace Chris.Resource
 {
     [AttributeUsage(AttributeTargets.Field)]
@@ -67,7 +68,7 @@ namespace Chris.Resource
     /// A lightweight asset reference only use address as identifier
     /// </summary>
     [Serializable]
-    public class SoftAssetReference<T>: SoftAssetReferenceBase where T : Object
+    public class SoftAssetReference<T>: SoftAssetReferenceBase where T : UObject
     {
         /// <summary>
         /// Create asset reference from address
@@ -87,11 +88,19 @@ namespace Chris.Resource
             
         }
 
-        public static readonly SoftAssetReference Empty = new();
-
+        /// <summary>
+        /// Cache asset handle for preventing duplicated request
+        /// </summary>
+        private ResourceHandle<T> _resourceHandle;
+        
+        /// <summary>
+        /// Load <see cref="T"/> async
+        /// </summary>
+        /// <returns>Handle of asset</returns>
         public ResourceHandle<T> LoadAsync()
         {
-            return ResourceSystem.LoadAssetAsync<T>(Address);
+            if (_resourceHandle.IsValid()) return _resourceHandle;
+            return _resourceHandle = ResourceSystem.LoadAssetAsync<T>(Address);
         }
 
         public static implicit operator SoftAssetReference<T>(string address)
@@ -151,11 +160,15 @@ namespace Chris.Resource
             
         }
         
-        public static readonly SoftAssetReference Empty = new();
-
+        /// <summary>
+        /// Cache asset handle for preventing duplicated request
+        /// </summary>
+        private ResourceHandle _resourceHandle;
+        
         public ResourceHandle LoadAsync()
         {
-            return ResourceSystem.LoadAssetAsync<Object>(Address);
+            if (_resourceHandle.IsValid()) return _resourceHandle;
+            return _resourceHandle = ResourceSystem.LoadAssetAsync<UObject>(Address);
         }
 
         public static implicit operator SoftAssetReference(string address)
