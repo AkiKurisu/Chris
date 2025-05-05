@@ -11,23 +11,23 @@ namespace Chris.Resource
         /// Asset type to select
         /// </summary>
         public Type AssetType { get; private set; }
-        
+
         /// <summary>
         /// Formatter method to get customized address
         /// </summary>
         public string Formatter { get; private set; }
-        
+
         /// <summary>
         /// Group to register referenced asset, default use AddressableAssetSettingsDefaultObject.Settings.DefaultGroup
         /// </summary>
         public string Group { get; private set; }
-        
+
         /// <summary>
         /// Enable to move asset entry to defined group if already in other asset group
         /// </summary>
         /// <value></value>
         public bool ForceGroup { get; private set; }
-        
+
         public AssetReferenceConstraintAttribute(Type assetType = null, string formatter = null, string group = null, bool forceGroup = false)
         {
             AssetType = assetType;
@@ -36,23 +36,20 @@ namespace Chris.Resource
             ForceGroup = forceGroup;
         }
     }
-    
+
     [Serializable]
     public class SoftAssetReferenceBase
     {
-        // ReSharper disable once InconsistentNaming
         public string Address;
 
 #if UNITY_EDITOR
         [SerializeField]
-        // ReSharper disable once InconsistentNaming
-        internal string Guid;
+                internal string Guid;
 
         [SerializeField]
-        // ReSharper disable once InconsistentNaming
-        internal bool Locked = true;
+                internal bool Locked = true;
 #endif
-        
+
         public override string ToString()
         {
             return Address;
@@ -68,7 +65,7 @@ namespace Chris.Resource
     /// A lightweight asset reference only use address as identifier
     /// </summary>
     [Serializable]
-    public class SoftAssetReference<T>: SoftAssetReferenceBase where T : UObject
+    public class SoftAssetReference<T> : SoftAssetReferenceBase where T : UObject
     {
         /// <summary>
         /// Create asset reference from address
@@ -85,14 +82,14 @@ namespace Chris.Resource
 
         public SoftAssetReference()
         {
-            
+
         }
 
         /// <summary>
         /// Cache asset handle for preventing duplicated request
         /// </summary>
         private ResourceHandle<T> _resourceHandle;
-        
+
         /// <summary>
         /// Load <see cref="T"/> async
         /// </summary>
@@ -135,12 +132,12 @@ namespace Chris.Resource
             };
         }
     }
-    
+
     /// <summary>
     /// A lightweight asset reference only use address as identifier
     /// </summary>
     [Serializable]
-    public class SoftAssetReference: SoftAssetReferenceBase
+    public class SoftAssetReference : SoftAssetReferenceBase
     {
         /// <summary>
         /// Create asset reference from address
@@ -154,17 +151,17 @@ namespace Chris.Resource
             Locked = false;
 #endif
         }
-        
+
         public SoftAssetReference()
         {
-            
+
         }
-        
+
         /// <summary>
         /// Cache asset handle for preventing duplicated request
         /// </summary>
         private ResourceHandle _resourceHandle;
-        
+
         public ResourceHandle LoadAsync()
         {
             if (_resourceHandle.IsValid()) return _resourceHandle;

@@ -28,7 +28,7 @@ namespace Chris.Events
             Dispatched = 64,
             Processed = 128,
         }
-        
+
         [Flags]
         public enum EventPropagation
         {
@@ -39,8 +39,7 @@ namespace Chris.Events
             SkipDisabledElements = 8,
             IgnoreCompositeRoots = 16,
         }
-        
-        // ReSharper disable once InconsistentNaming
+
         private static long s_LastTypeId;
 
         /// <summary>
@@ -55,7 +54,6 @@ namespace Chris.Events
         [JsonIgnore]
         public virtual long EventTypeId => -1;
 
-        // ReSharper disable once InconsistentNaming
         private static ulong s_NextEventId;
 
         // Read-only state
@@ -67,22 +65,22 @@ namespace Chris.Events
         /// </remarks>
         [JsonIgnore]
         public long Timestamp { get; private set; }
-        
+
         internal ulong EventId { get; private set; }
-        
+
         internal ulong TriggerEventId { get; private set; }
-        
+
         internal PropagationPaths Path { get; set; }
-        
+
         public EventPropagation Propagation { get; protected set; }
-        
+
         internal void SetTriggerEventId(ulong id)
         {
             TriggerEventId = id;
         }
-        
+
         private LifeCycleStatus Status { get; set; }
-        
+
         /// <summary>
         /// The current propagation phase for this event. 
         /// </summary>
@@ -145,8 +143,7 @@ namespace Chris.Events
         }
 
         internal bool BubblesOrTricklesDown => (Propagation & (EventPropagation.Bubbles | EventPropagation.TricklesDown)) != 0;
-        
-        // ReSharper disable once InconsistentNaming
+
         private IEventHandler m_Target;
 
         /// <summary>
@@ -163,10 +160,10 @@ namespace Chris.Events
                 LeafTarget ??= value;
             }
         }
-        
+
         // Original target. May be different from 'target' when propagating event and 'target.isCompositeRoot' is true.
         internal IEventHandler LeafTarget { get; private set; }
-        
+
         internal List<IEventHandler> SkipElements { get; } = new();
 
         internal bool Skip(IEventHandler h)
@@ -188,7 +185,7 @@ namespace Chris.Events
                 }
             }
         }
-        
+
         internal bool IgnoreCompositeRoots
         {
             get { return (Propagation & EventPropagation.IgnoreCompositeRoots) != 0; }
@@ -204,7 +201,7 @@ namespace Chris.Events
                 }
             }
         }
-        
+
         /// <summary>
         /// Whether StopPropagation() was called for this event.
         /// </summary>
@@ -224,7 +221,7 @@ namespace Chris.Events
                 }
             }
         }
-        
+
         /// <summary>
         /// Indicates whether the default actions are prevented from being executed for this event.
         /// </summary>
@@ -235,7 +232,7 @@ namespace Chris.Events
                 IsDefaultPrevented = true;
             }
         }
-        
+
         /// <summary>
         /// Stops propagating this event. The event is not sent to other elements along the propagation path. This method does not prevent other event handlers from executing on the current target.
         /// </summary>
@@ -295,7 +292,6 @@ namespace Chris.Events
             }
         }
 
-        // ReSharper disable once InconsistentNaming
         private IEventHandler m_CurrentTarget;
 
         /// <summary>
@@ -390,7 +386,7 @@ namespace Chris.Events
 
         internal bool Log => EventLogger != null;
 #endif
-        
+
         /// <summary>
         /// Resets all event members to their initial values.
         /// </summary>
@@ -431,12 +427,12 @@ namespace Chris.Events
             EventLogger = null;
 #endif
         }
-        
+
         public static long TimeSinceStartupMs()
         {
             return (long)(Time.realtimeSinceStartup * 1000.0f);
         }
-        
+
         /// <summary>
         /// Constructor. Avoid creating new event instances. Instead, use GetPooled() to get an instance from a pool of reusable event instances.
         /// </summary>
@@ -465,7 +461,7 @@ namespace Chris.Events
         }
 
         public abstract void Acquire();
-        
+
         /// <summary>
         /// Implementation of <see cref="IDisposable"/>.
         /// </summary>
@@ -477,18 +473,15 @@ namespace Chris.Events
     /// </summary>
     public abstract class EventBase<T> : EventBase where T : EventBase<T>, new()
     {
-        // ReSharper disable once InconsistentNaming
         private static readonly long s_TypeId = RegisterEventType();
-        
-        // ReSharper disable once InconsistentNaming
+
         private static readonly _ObjectPool<T> s_Pool = new(() => new T());
 
         internal static void SetCreateFunction(Func<T> createMethod)
         {
             s_Pool.CreateFunc = createMethod;
         }
-        
-        // ReSharper disable once InconsistentNaming
+
         private int m_RefCount;
 
         // ReSharper disable once ConvertConstructorToMemberInitializers
@@ -533,7 +526,7 @@ namespace Chris.Events
             t.Acquire();
             return t;
         }
-        
+
         internal static T GetPooled(EventBase e)
         {
             T t = GetPooled();

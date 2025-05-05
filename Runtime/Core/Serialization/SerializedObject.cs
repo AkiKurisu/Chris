@@ -9,34 +9,33 @@ namespace Chris.Serialization
         {
             public abstract object GetValue();
         }
-        
+
         [Serializable]
-        private class Box<T>: Box
+        private class Box<T> : Box
         {
-            // ReSharper disable once InconsistentNaming
             public T m_Value;
-            
+
             public override object GetValue()
             {
                 return m_Value;
             }
         }
-        
+
         /// <summary>
         /// Formatted type metadata, see <see cref="SerializedType"/>
         /// </summary>
         public string serializedTypeString;
-        
+
         /// <summary>
         /// Whether object is array
         /// </summary>
         public bool isArray;
-        
+
         /// <summary>
         /// Serialized object data
         /// </summary>
         public string jsonData;
-        
+
 #if UNITY_EDITOR
         /// <summary>
         /// Editor wrapper, used in SerializedObjectDrawer
@@ -51,9 +50,9 @@ namespace Chris.Serialization
                 serializedTypeString = serializedTypeString,
                 isArray = isArray,
                 jsonData = jsonData
-            };  
+            };
         }
-        
+
         public virtual Type GetObjectType()
         {
             var type = SerializedType.FromString(serializedTypeString);
@@ -61,7 +60,7 @@ namespace Chris.Serialization
             {
                 return null;
             }
-            
+
             if (isArray)
             {
                 type = type.MakeArrayType();
@@ -73,7 +72,7 @@ namespace Chris.Serialization
         {
             return type.IsArray || type.IsPrimitive || type == typeof(string);
         }
-        
+
         public Type GetBoxType()
         {
             var type = GetObjectType();
@@ -81,7 +80,7 @@ namespace Chris.Serialization
             {
                 return null;
             }
-            
+
             if (IsTypeNeedBox(type))
             {
                 return typeof(Box<>).MakeGenericType(type);
@@ -98,7 +97,7 @@ namespace Chris.Serialization
                 jsonData = jsonData
             };
         }
-        
+
         public T CreateInstance<T>()
         {
             var value = CreateInstance();
@@ -108,7 +107,7 @@ namespace Chris.Serialization
             }
             return (T)value;
         }
-        
+
         public object CreateInstance()
         {
             var type = SerializedType.FromString(serializedTypeString);
@@ -120,7 +119,7 @@ namespace Chris.Serialization
             {
                 type = type.MakeArrayType();
             }
-            
+
             return DeserializeObject(jsonData, type);
         }
 
@@ -134,23 +133,23 @@ namespace Chris.Serialization
             }
             return JsonUtility.FromJson(jsonData, objectType);
         }
-        
+
         public static string SerializeObject(object @object, Type objectType)
         {
             return SerializeObject_Imp(@object, IsTypeNeedBox(objectType));
         }
-        
+
         private static string SerializeObject_Imp(object @object, bool needBox)
         {
             if (needBox)
             {
                 var boxType = typeof(Box<>).MakeGenericType(@object.GetType());
-                var box= Activator.CreateInstance(boxType);
+                var box = Activator.CreateInstance(boxType);
                 return JsonUtility.ToJson(box);
             }
             return JsonUtility.ToJson(@object);
         }
-        
+
         public static SerializedObjectBase FromObject(object @object)
         {
             var type = @object.GetType();
@@ -162,7 +161,7 @@ namespace Chris.Serialization
             };
         }
     }
-    
+
     /// <summary>
     /// Serialized object that will serialize metadata and fields of object implementing T
     /// </summary>
@@ -173,8 +172,8 @@ namespace Chris.Serialization
 #pragma warning disable CS8632
         [NonSerialized]
         private T? _value;
-#pragma warning restore CS8632 
-        
+#pragma warning restore CS8632
+
         /// <summary>
         /// Get default object from <see cref="SerializedObject{T}"/>
         /// </summary>
@@ -187,16 +186,16 @@ namespace Chris.Serialization
             }
             return _value;
         }
-        
+
         /// <summary>
         /// Instantiate new object from <see cref="SerializedObject{T}"/>
         /// </summary>
         /// <returns></returns>
         public T NewObject()
         {
-            return CreateInstance<T>();;
+            return CreateInstance<T>(); ;
         }
-        
+
         /// <summary>
         /// Get object type from <see cref="SerializedObject{T}"/>
         /// </summary>
@@ -205,7 +204,7 @@ namespace Chris.Serialization
         {
             return _value != null ? _value.GetType() : base.GetObjectType();
         }
-        
+
         /// <summary>
         /// Create <see cref="SerializedObject{T}"/> from object
         /// </summary>
@@ -229,9 +228,9 @@ namespace Chris.Serialization
                 serializedTypeString = serializedTypeString,
                 isArray = isArray,
                 jsonData = jsonData
-            };  
+            };
         }
-        
+
         internal void InternalUpdate()
         {
             if (_value != null && SerializedType.ToString(_value.GetType()) != serializedTypeString)
