@@ -49,7 +49,7 @@ namespace Chris.Pool
         {
             var pooledObject = Pool.Get();
             pooledObject.PoolKey = new PoolKey(address);
-            pooledObject.GameObject = GameObjectPoolManager.Get(pooledObject.PoolKey, out _, parent);
+            pooledObject.GameObject = GameObjectPoolManager.Get(pooledObject.PoolKey, out _, parent, createEmptyIfNotExist: true);
             pooledObject.Init();
             return pooledObject;
         }
