@@ -81,7 +81,12 @@ namespace Chris.Serialization
             _extension = extension;
             _serializeFormatter = serializeFormatter ?? BinarySerializeFormatter.Instance;
         }
-        
+
+        public void Save<T>(T data)
+        {
+            Save(typeof(T).Name, data);
+        }
+
         public void Save<T>(string key, T data)
         {
             string jsonData;
@@ -134,6 +139,11 @@ namespace Chris.Serialization
             return false;
         }
 
+        public bool Overwrite<T>(T data)
+        {
+            return Overwrite(typeof(T).Name, data);
+        }
+
         public bool Overwrite<T>(string key, T data)
         {
             var path = $"{_path}/{key}.{_extension}";
@@ -147,6 +157,11 @@ namespace Chris.Serialization
                 return true;
             }
             return false;
+        }
+        
+        public T LoadOrNew<T>() where T : class, new()
+        {
+            return LoadOrNew<T>(typeof(T).Name);
         }
         
         public T LoadOrNew<T>(string key) where T : class, new()
