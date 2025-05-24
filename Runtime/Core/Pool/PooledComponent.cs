@@ -1,8 +1,11 @@
 using UnityEngine;
-using Object = UnityEngine.Object;
+using UObject = UnityEngine.Object;
+
 namespace Chris.Pool
 {
-    public class PooledComponent<T, TComponent> : PooledGameObject where TComponent : Component where T : PooledComponent<T, TComponent>, new()
+    public class PooledComponent<T, TComponent> : PooledGameObject 
+        where TComponent : Component 
+        where T : PooledComponent<T, TComponent>, new()
     {
         /// <summary>
         /// Cache component as meta data to reduce allocation
@@ -39,7 +42,7 @@ namespace Chris.Pool
         {
             var pooledComponent = Pool.Get();
             pooledComponent.PoolKey = ComponentKey;
-            pooledComponent.GameObject = GameObjectPoolManager.Get(ComponentKey, out var metadata, parent);
+            pooledComponent.GameObject = GameObjectPoolManager.Get(ComponentKey, out var metadata, parent, createEmptyIfNotExist: true);
             pooledComponent.Cache = metadata as ComponentCache;
             pooledComponent.Init();
             return pooledComponent;
@@ -69,7 +72,7 @@ namespace Chris.Pool
             var @object = GameObjectPoolManager.Get(key, out _metadata, parent, createEmptyIfNotExist: false);
             if (!@object)
             {
-                @object = Object.Instantiate(prefab, parent);
+                @object = UObject.Instantiate(prefab, parent);
             }
             pooledComponent.Cache = _metadata as ComponentCache;
             pooledComponent.GameObject = @object;
@@ -84,7 +87,7 @@ namespace Chris.Pool
         /// <param name="position"></param>
         /// <param name="rotation"></param>
         /// <param name="parent">The parent attached to. If parent exists, it will use prefab's scale as local scale instead of lossy scale</param>
-        /// <param name="useLocalPosition">Whether use local position instead of world position, default is false</param>
+        /// <param name="useLocalPosition">Whether to use local position instead of world position, default is false</param>
         /// <returns></returns>
         public static T Instantiate(GameObject prefab, Vector3 position, Quaternion rotation, Transform parent = null, bool useLocalPosition = false)
         {

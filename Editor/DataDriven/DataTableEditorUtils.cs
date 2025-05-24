@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Chris.Editor;
 using Chris.Resource.Editor;
@@ -75,7 +76,7 @@ namespace Chris.DataDriven.Editor
         /// <returns></returns>
         public static string ExportJson(DataTable dataTable)
         {
-            return ChrisSettings.instance.dataTableJsonSerializer.GetObject().Serialize(dataTable);
+            return ChrisSettings.instance.dataTableEditorSerializer.GetObject().Serialize(dataTable);
         }
         
         /// <summary>
@@ -86,7 +87,7 @@ namespace Chris.DataDriven.Editor
         public static void ImportJson(DataTable dataTable, string jsonData)
         {
             Undo.RecordObject(dataTable, "Overwrite DataTable from Json");
-            ChrisSettings.instance.dataTableJsonSerializer.GetObject().Deserialize(dataTable, jsonData);
+            ChrisSettings.instance.dataTableEditorSerializer.GetObject().Deserialize(dataTable, jsonData);
         }
         
         /// <summary>
@@ -183,9 +184,28 @@ namespace Chris.DataDriven.Editor
             var group = ResourceEditorUtils.GetOrCreateAssetGroup(addressableAttribute.Group);
             group.AddAsset(dataTable).address = address;
         }
+
+        /// <summary>
+        /// Register all DataTable in project if defined <see cref="AddressableDataTableAttribute"/>
+        /// </summary>
+        public static void RegisterAllDataTablesToAssetGroup()
+        {
+            var dataTables = AssetDatabase.FindAssets($"t:{typeof(DataTable)}")
+                .Select(guid => AssetDatabase.LoadAssetAtPath<DataTable>(AssetDatabase.GUIDToAssetPath(guid)))
+                .ToArray();
+            foreach (var dataTable in dataTables)
+            {
+                RegisterTableToAssetGroup(dataTable);
+            }
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+        }
     }
     
-    public interface IDataTableJsonSerializer
+    /// <summary>
+    /// Implement to customize editor serialization for <see cref="DataTable"/>
+    /// </summary>
+    public interface IDataTableEditorSerializer
     {
         string Serialize(DataTable dataTable);
         
@@ -193,9 +213,9 @@ namespace Chris.DataDriven.Editor
     }
     
     /// <summary>
-    /// Default json serializer using Unity built-in <see cref="JsonUtility"/>
+    /// Default serializer using Unity built-in <see cref="JsonUtility"/>
     /// </summary>
-    public class DataTableJsonSerializer : IDataTableJsonSerializer
+    public class DataTableEditorJsonSerializer : IDataTableEditorSerializer
     {
         public string Serialize(DataTable dataTable)
         {
@@ -203,6 +223,7 @@ namespace Chris.DataDriven.Editor
             DataTableEditorUtils.Modify(instance);
             return JsonUtility.ToJson(instance);
         }
+        
         public void Deserialize(DataTable dataTable, string jsonData)
         {
             JsonUtility.FromJsonOverwrite(jsonData, dataTable);

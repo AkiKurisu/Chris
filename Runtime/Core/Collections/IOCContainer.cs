@@ -2,11 +2,10 @@ using System.Collections.Generic;
 using System;
 namespace Chris.Collections
 {
-    // ReSharper disable once InconsistentNaming
     internal class IOCContainer
     {
         private readonly Dictionary<Type, object> _instances = new();
-        
+
         /// <summary>
         /// Register instance
         /// </summary>
@@ -17,7 +16,7 @@ namespace Chris.Collections
             var type = typeof(T);
             _instances[type] = instance;
         }
-        
+
         /// <summary>
         /// UnRegister instance
         /// </summary>
@@ -31,7 +30,7 @@ namespace Chris.Collections
                 _instances.Remove(type);
             }
         }
-        
+
         /// <summary>
         /// Get registered instance
         /// </summary>
@@ -45,7 +44,7 @@ namespace Chris.Collections
             }
             return null;
         }
-        
+
         /// <summary>
         /// Clear registered instances
         /// </summary>

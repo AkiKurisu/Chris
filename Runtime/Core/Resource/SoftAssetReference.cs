@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
-using Object = UnityEngine.Object;
+using UObject = UnityEngine.Object;
+
 namespace Chris.Resource
 {
     [AttributeUsage(AttributeTargets.Field)]
@@ -10,23 +11,23 @@ namespace Chris.Resource
         /// Asset type to select
         /// </summary>
         public Type AssetType { get; private set; }
-        
+
         /// <summary>
         /// Formatter method to get customized address
         /// </summary>
         public string Formatter { get; private set; }
-        
+
         /// <summary>
         /// Group to register referenced asset, default use AddressableAssetSettingsDefaultObject.Settings.DefaultGroup
         /// </summary>
         public string Group { get; private set; }
-        
+
         /// <summary>
         /// Enable to move asset entry to defined group if already in other asset group
         /// </summary>
         /// <value></value>
         public bool ForceGroup { get; private set; }
-        
+
         public AssetReferenceConstraintAttribute(Type assetType = null, string formatter = null, string group = null, bool forceGroup = false)
         {
             AssetType = assetType;
@@ -35,23 +36,20 @@ namespace Chris.Resource
             ForceGroup = forceGroup;
         }
     }
-    
+
     [Serializable]
     public class SoftAssetReferenceBase
     {
-        // ReSharper disable once InconsistentNaming
         public string Address;
 
 #if UNITY_EDITOR
         [SerializeField]
-        // ReSharper disable once InconsistentNaming
-        internal string Guid;
+                internal string Guid;
 
         [SerializeField]
-        // ReSharper disable once InconsistentNaming
-        internal bool Locked = true;
+                internal bool Locked = true;
 #endif
-        
+
         public override string ToString()
         {
             return Address;
@@ -67,7 +65,7 @@ namespace Chris.Resource
     /// A lightweight asset reference only use address as identifier
     /// </summary>
     [Serializable]
-    public class SoftAssetReference<T>: SoftAssetReferenceBase where T : Object
+    public class SoftAssetReference<T> : SoftAssetReferenceBase where T : UObject
     {
         /// <summary>
         /// Create asset reference from address
@@ -84,14 +82,22 @@ namespace Chris.Resource
 
         public SoftAssetReference()
         {
-            
+
         }
 
-        public static readonly SoftAssetReference Empty = new();
+        /// <summary>
+        /// Cache asset handle for preventing duplicated request
+        /// </summary>
+        private ResourceHandle<T> _resourceHandle;
 
+        /// <summary>
+        /// Load <see cref="T"/> async
+        /// </summary>
+        /// <returns>Handle of asset</returns>
         public ResourceHandle<T> LoadAsync()
         {
-            return ResourceSystem.LoadAssetAsync<T>(Address);
+            if (_resourceHandle.IsValid()) return _resourceHandle;
+            return _resourceHandle = ResourceSystem.LoadAssetAsync<T>(Address);
         }
 
         public static implicit operator SoftAssetReference<T>(string address)
@@ -126,12 +132,12 @@ namespace Chris.Resource
             };
         }
     }
-    
+
     /// <summary>
     /// A lightweight asset reference only use address as identifier
     /// </summary>
     [Serializable]
-    public class SoftAssetReference: SoftAssetReferenceBase
+    public class SoftAssetReference : SoftAssetReferenceBase
     {
         /// <summary>
         /// Create asset reference from address
@@ -145,17 +151,21 @@ namespace Chris.Resource
             Locked = false;
 #endif
         }
-        
+
         public SoftAssetReference()
         {
-            
+
         }
-        
-        public static readonly SoftAssetReference Empty = new();
+
+        /// <summary>
+        /// Cache asset handle for preventing duplicated request
+        /// </summary>
+        private ResourceHandle _resourceHandle;
 
         public ResourceHandle LoadAsync()
         {
-            return ResourceSystem.LoadAssetAsync<Object>(Address);
+            if (_resourceHandle.IsValid()) return _resourceHandle;
+            return _resourceHandle = ResourceSystem.LoadAssetAsync<UObject>(Address);
         }
 
         public static implicit operator SoftAssetReference(string address)

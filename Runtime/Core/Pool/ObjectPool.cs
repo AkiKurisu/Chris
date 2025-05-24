@@ -9,14 +9,13 @@ namespace Chris.Pool
     /// Internal simple object pool
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    // ReSharper disable once InconsistentNaming
     internal class _ObjectPool<T> where T : new()
 #pragma warning restore IDE1006 
     {
         private readonly Stack<T> _stack = new();
-        
+
         private int _maxSize;
-        
+
         internal Func<T> CreateFunc;
 
         public int MaxSize

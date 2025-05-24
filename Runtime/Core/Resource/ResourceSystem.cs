@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using Chris.Collections;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using Cysharp.Threading.Tasks;
+using UObject = UnityEngine.Object;
+
 namespace Chris.Resource
 {
     /// <summary>
@@ -59,11 +62,27 @@ namespace Chris.Resource
             Intersection
         }
         
-        internal const byte AssetLoadOperation = 0;
-        
-        internal const byte InstantiateOperation = 1;
+        private const byte AssetLoadOperation = 0;
 
-        #region  Asset Load
+        private const byte InstantiateOperation = 1;
+                        
+        /// <summary>
+        /// Start from 1 since 0 is always invalid handle
+        /// </summary>
+        private static uint _version = 1;
+        
+        private static readonly Dictionary<int, ResourceHandle> InstanceIDMap = new();
+        
+        private static readonly SparseArray<AsyncOperationStructure> Operations = new(10, int.MaxValue);
+
+        private struct AsyncOperationStructure
+        {
+            public AsyncOperationHandle AsyncOperationHandle;
+            
+            public ResourceHandle ResourceHandle;
+        }
+
+        #region Asset Load
         /// <summary>
         /// Check resource location whether exists and throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
@@ -154,25 +173,31 @@ namespace Chris.Resource
                 handle.Completed += (h) => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
-        #endregion
+        #endregion Asset Load
         
         #region Instantiate
 
         /// <summary>
-        /// Instantiate GameObject async
+        /// Instantiate a single <see cref="GameObject"/> async
         /// </summary>
-        /// <param name="address"></param>
-        /// <param name="parent"></param>
-        /// <param name="callBack"></param>
+        /// <param name="address">The key of the location of the Object to instantiate.</param>
+        /// <param name="parent">Parent transform for instantiated object.</param>
+        /// <param name="callback">Callback on instantiate complete</param>
         /// <returns></returns>
-        public static ResourceHandle<GameObject> InstantiateAsync(string address, Transform parent, Action<GameObject> callBack = null)
+        public static ResourceHandle<GameObject> InstantiateAsync(string address, 
+            Transform parent = null, 
+            Action<GameObject> callback = null)
         {
             var handle = Addressables.InstantiateAsync(address, parent);
             var resourceHandle = CreateHandle(handle, InstantiateOperation);
-            handle.Completed += h => InstanceIDMap.Add(h.Result.GetInstanceID(), resourceHandle);
-            if (callBack != null)
-                handle.Completed += h => callBack(h.Result);
+            handle.Completed += OnHandleOnCompleted;
             return resourceHandle;
+
+            void OnHandleOnCompleted(AsyncOperationHandle<GameObject> operationHandle)
+            {
+                InstanceIDMap.Add(operationHandle.Result.GetInstanceID(), resourceHandle);
+                callback?.Invoke(operationHandle.Result);
+            }
         }
         #endregion
         
@@ -257,17 +282,9 @@ namespace Chris.Resource
             return CreateHandle(handle, AssetLoadOperation);
         }
         #endregion
-        
-        /// <summary>
-        /// Start from 1 since 0 is always invalid handle
-        /// </summary>
-        private static uint _version = 1;
-        
-        private static readonly Dictionary<int, ResourceHandle> InstanceIDMap = new();
-        
-        private static readonly SparseArray<AsyncOperationStructure> Operations = new(10, int.MaxValue);
-        
-        internal static ResourceHandle<T> CreateHandle<T>(AsyncOperationHandle<T> asyncOperationHandle, byte operation)
+
+        #region Integration
+        private static ResourceHandle<T> CreateHandle<T>(AsyncOperationHandle<T> asyncOperationHandle, byte operation)
         {
             var index = Operations.AddUninitialized();
             var handle = new ResourceHandle<T>(_version, index, operation);
@@ -295,17 +312,94 @@ namespace Chris.Resource
 
             return default;
         }
-        
-        public static bool IsValid(uint version, int index)
+
+        private static bool IsValid(uint version, int index)
         {
             return Operations.IsAllocated(index) && Operations[index].ResourceHandle.Version == version;
         }
-        
-        private struct AsyncOperationStructure
+        #endregion Integration
+
+        #region Extensions
+        public static UniTask<T>.Awaiter GetAwaiter<T>(this ResourceHandle<T> handle)
         {
-            public AsyncOperationHandle AsyncOperationHandle;
-            
-            public ResourceHandle ResourceHandle;
+            return handle.InternalHandle.GetAwaiter();
         }
+        
+        public static UniTask.Awaiter GetAwaiter(this ResourceHandle handle)
+        {
+            return handle.InternalHandle.GetAwaiter();
+        }
+        
+        public static UniTask<T> ToUniTask<T>(this ResourceHandle<T> handle)
+        {
+            return handle.InternalHandle.ToUniTask();
+        }
+        
+        public static UniTask ToUniTask(this ResourceHandle handle)
+        {
+            return handle.InternalHandle.ToUniTask();
+        }
+        
+        public static UniTask<T> WithCancellation<T>(this ResourceHandle<T> handle, CancellationToken cancellationToken, bool cancelImmediately = false, bool autoReleaseWhenCanceled = false)
+        {
+            return handle.InternalHandle.WithCancellation(cancellationToken, cancelImmediately, autoReleaseWhenCanceled);
+        }
+        
+        public static UniTask WithCancellation(this ResourceHandle handle, CancellationToken cancellationToken, bool cancelImmediately = false, bool autoReleaseWhenCanceled = false)
+        {
+            return handle.InternalHandle.WithCancellation(cancellationToken, cancelImmediately, autoReleaseWhenCanceled);
+        }
+        
+        /// <summary>
+        /// Whether internal operation is valid
+        /// </summary>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static bool IsValid(this ResourceHandle handle)
+        {
+            return ResourceSystem.IsValid(handle.Version, handle.Index);
+        }
+        
+        /// <summary>
+        /// Whether internal operation is valid
+        /// </summary>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static bool IsValid<T>(this ResourceHandle<T> handle)
+        {
+            return ResourceSystem.IsValid(handle.Version, handle.Index);
+        }
+        
+        /// <summary>
+        /// Whether internal operation is done
+        /// </summary>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static bool IsDone(this ResourceHandle handle)
+        {
+            return ResourceSystem.IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
+        }
+        
+        /// <summary>
+        /// Whether internal operation is done
+        /// </summary>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static bool IsDone<T>(this ResourceHandle<T> handle)
+        {
+            return ResourceSystem.IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
+        }
+        
+        /// <summary>
+        /// Load asset async by <see cref="AssetReferenceT{T}"/> and convert to <see cref="ResourceHandle{T}"/>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="assetReferenceT"></param>
+        /// <returns></returns>
+        public static ResourceHandle<T> ToResourceHandle<T>(this AssetReferenceT<T> assetReferenceT) where T : UObject
+        {
+            return ResourceSystem.CreateHandle(assetReferenceT.LoadAssetAsync(), ResourceSystem.AssetLoadOperation);
+        }
+        #endregion Extensions
     }
 }

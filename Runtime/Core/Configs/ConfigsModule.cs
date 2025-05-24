@@ -9,7 +9,7 @@ using UnityEngine.Scripting;
 namespace Chris.Configs
 {
     [Preserve]
-    internal class ConfigsModule: RuntimeModule
+    public class ConfigsModule: RuntimeModule
     {
         public static readonly string ConfigStreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
         

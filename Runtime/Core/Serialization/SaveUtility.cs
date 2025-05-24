@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Chris.Serialization
 {
+    /// <summary>
+    /// Helper for save load game persistent data
+    /// </summary>
     public static class SaveUtility
     {
         static SaveUtility()
@@ -25,7 +28,7 @@ namespace Chris.Serialization
         /// <typeparam name="T"></typeparam>
         public static void Save<T>(T data)
         {
-            Serializer.Save(typeof(T).Name, data);
+            Serializer.Save(data);
         }
         
         /// <summary>
@@ -83,7 +86,7 @@ namespace Chris.Serialization
         /// <returns></returns>
         public static bool Overwrite<T>(T data)
         {
-            return Serializer.Overwrite(typeof(T).Name, data);
+            return Serializer.Overwrite(data);
         }
         
         /// <summary>
@@ -92,7 +95,7 @@ namespace Chris.Serialization
         /// <typeparam name="T"></typeparam>
         public static T LoadOrNew<T>() where T : class, new()
         {
-            return Serializer.LoadOrNew<T>(typeof(T).Name);
+            return Serializer.LoadOrNew<T>();
         }
     }
 }

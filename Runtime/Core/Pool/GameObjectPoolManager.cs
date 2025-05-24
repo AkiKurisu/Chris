@@ -27,12 +27,14 @@ namespace Chris.Pool
             _subKey = null;
             _id = 0;
         }
+        
         public PoolKey(string key, string subKey)
         {
             _key = key;
             _subKey = subKey;
             _id = 0;
         }
+        
         public PoolKey(string key, int id)
         {
             _key = key;
@@ -111,7 +113,8 @@ namespace Chris.Pool
         /// <param name="parent"></param>
         /// <param name="createEmptyIfNotExist"></param>
         /// <returns></returns>
-        public static GameObject Get(PoolKey address, out IPooledMetadata pooledMetadata, Transform parent = null, bool createEmptyIfNotExist = true)
+        public static GameObject Get(PoolKey address, out IPooledMetadata pooledMetadata, 
+            Transform parent = null, bool createEmptyIfNotExist = true)
         {
             GameObject obj = null;
             pooledMetadata = null;

@@ -11,7 +11,7 @@ namespace Chris.Editor
     {
         public bool schedulerStackTrace = true;
         
-        public SerializedType<IDataTableJsonSerializer> dataTableJsonSerializer = SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
+        public SerializedType<IDataTableEditorSerializer> dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
         
         public bool initializeDataTableManagerOnLoad;
         
@@ -31,7 +31,7 @@ namespace Chris.Editor
         {
             public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace", "Allow trace scheduled task in editor");
             
-            public static readonly GUIContent DataTableJsonSerializerLabel = new("Json Serializer", "Set DataTable json serializer type");
+            public static readonly GUIContent DataTableSerializerLabel = new("Editor Serializer", "Set DataTable Editor serializer type");
             
             public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers", "Initialize all DataManager instances before scene loaded");
             
@@ -48,10 +48,10 @@ namespace Chris.Editor
         
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
-            if(!ChrisSettings.instance.dataTableJsonSerializer.IsValid())
+            if(!ChrisSettings.instance.dataTableEditorSerializer.IsValid())
             {
-                ChrisSettings.instance.dataTableJsonSerializer =
-                    SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
+                ChrisSettings.instance.dataTableEditorSerializer =
+                    SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
                 ChrisSettings.SaveSettings();
             }  
             _settingsObject = new SerializedObject(_settings = ChrisSettings.instance);
@@ -83,14 +83,14 @@ namespace Chris.Editor
         {
             GUILayout.BeginVertical("DataTable Settings", GUI.skin.box);
             GUILayout.Space(EditorGUIUtility.singleLineHeight);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableJsonSerializer)), Styles.DataTableJsonSerializerLabel);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableEditorSerializer)), Styles.DataTableSerializerLabel);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.initializeDataTableManagerOnLoad)), Styles.InitializeDataTableManagerOnLoadLabel);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.inlineRowReadOnly)), Styles.InlineRowReadOnlyLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
-                if (!ChrisSettings.instance.dataTableJsonSerializer.IsValid())
+                if (!ChrisSettings.instance.dataTableEditorSerializer.IsValid())
                 {
-                    ChrisSettings.instance.dataTableJsonSerializer = SerializedType<IDataTableJsonSerializer>.FromType(typeof(DataTableJsonSerializer));
+                    ChrisSettings.instance.dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
                 }
                 if (_settings.initializeDataTableManagerOnLoad)
                     ScriptingSymbol.AddScriptingSymbol(InitializeDataTableManagerOnLoadSymbol);
@@ -100,6 +100,7 @@ namespace Chris.Editor
             }
             GUILayout.EndVertical();
         }
+        
         [SettingsProvider]
         public static SettingsProvider CreateSettingsProvider()
         {

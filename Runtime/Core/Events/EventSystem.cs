@@ -4,48 +4,47 @@ namespace Chris.Events
     public class EventSystem : MonoEventCoordinator
     {
 #pragma warning disable IDE1006
-        // ReSharper disable once InconsistentNaming
         private sealed class _CallbackEventHandler : CallbackEventHandler, IBehaviourScope
 #pragma warning restore IDE1006
         {
             public override bool IsCompositeRoot => true;
-            
+
             private readonly EventSystem _eventCoordinator;
-            
+
             public override IEventCoordinator Coordinator => _eventCoordinator;
-            
+
             public MonoBehaviour Behaviour { get; }
-            
+
             public _CallbackEventHandler(EventSystem eventCoordinator)
             {
                 Behaviour = eventCoordinator;
                 _eventCoordinator = eventCoordinator;
             }
-            
+
             public override void SendEvent(EventBase e, DispatchMode dispatchMode = DispatchMode.Default)
             {
                 e.Target = this;
                 _eventCoordinator.Dispatch(e, dispatchMode, MonoDispatchType.Update);
             }
-            
+
             public void SendMonoEvent(EventBase e, DispatchMode dispatchMode, MonoDispatchType monoDispatchType)
             {
                 e.Target = this;
                 _eventCoordinator.Dispatch(e, dispatchMode, monoDispatchType);
             }
         }
-        
+
         private static EventSystem _instance;
-        
+
         public static EventSystem Instance => _instance != null ? _instance : GetInstance();
-        
+
         private CallbackEventHandler _eventHandler;
-        
+
         /// <summary>
         /// Get event system <see cref="CallbackEventHandler"/>
         /// </summary>
         public static CallbackEventHandler EventHandler => Instance._eventHandler;
-        
+
         private static EventSystem GetInstance()
         {
 #if UNITY_EDITOR
@@ -59,7 +58,7 @@ namespace Chris.Events
             }
             return _instance;
         }
-        
+
         protected override void Awake()
         {
             base.Awake();
@@ -75,7 +74,7 @@ namespace Chris.Events
         {
             EventHandler.RegisterCallback(callback, useTrickleDown);
         }
-        
+
         /// <summary>
         /// Remove callback from the instance.
         /// </summary>

@@ -55,7 +55,15 @@ namespace Chris.Configs
         /// </summary>
         public void Save()
         {
-            ConfigsModule.PersistentSerializer.Save(ConfigName, (TConfig)this);
+            Save(ConfigsModule.PersistentSerializer);
+        }
+        
+        /// <summary>
+        /// Save config by providing serializer
+        /// </summary>
+        public void Save(SaveLoadSerializer serializer)
+        {
+            serializer.Save(ConfigName, (TConfig)this);
         }
     }
 }

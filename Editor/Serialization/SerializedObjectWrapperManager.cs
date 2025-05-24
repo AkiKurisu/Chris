@@ -9,8 +9,7 @@ namespace Chris.Serialization.Editor
     [Serializable]
     public class SerializedObjectWrapper<T> : SerializedObjectWrapper
     {
-        // ReSharper disable once InconsistentNaming
-        [SerializeField] 
+        [SerializeField]
         private T m_Value;
 
         public override object Value
@@ -27,7 +26,7 @@ namespace Chris.Serialization.Editor
             ValueChange.OnNext(m_Value);
         }
     }
-    
+
     /// <summary>
     /// Class to manage SerializedObjectWrapper
     /// </summary>
@@ -53,7 +52,7 @@ namespace Chris.Serialization.Editor
             }
             return wrapper;
         }
-        
+
         /// <summary>
         /// Create an editor wrapper for providing <see cref="FieldInfo"/> and track it by <see cref="SoftObjectHandle"/>
         /// </summary>
@@ -74,7 +73,7 @@ namespace Chris.Serialization.Editor
             }
             return wrapper;
         }
-        
+
         /// <summary>
         /// Manually destroy wrapper
         /// </summary>
@@ -83,7 +82,7 @@ namespace Chris.Serialization.Editor
         {
             GlobalObjectManager.UnregisterObject(softObjectHandle);
         }
-        
+
         /// <summary>
         /// Get editor wrapper if exists
         /// </summary>
@@ -101,8 +100,8 @@ namespace Chris.Serialization.Editor
             }
             return wrapper;
         }
-        
-        private static SerializedObjectWrapper Wrap(Type valueType ,object value = null, FieldInfo fieldInfo = null)
+
+        private static SerializedObjectWrapper Wrap(Type valueType, object value = null, FieldInfo fieldInfo = null)
         {
             var genericType = typeof(SerializedObjectWrapper<>).MakeGenericType(valueType);
             var dynamicType = DynamicTypeBuilder.MakeDerivedType(genericType, valueType);
@@ -111,14 +110,14 @@ namespace Chris.Serialization.Editor
                 var valueFieldInfo = genericType.GetField("m_Value", BindingFlags.NonPublic | BindingFlags.Instance);
                 var attributes = fieldInfo.GetCustomAttributes().ToList();
                 attributes.RemoveAll(x => x is SerializeField);
-                TypeDescriptor.AddAttributes(valueFieldInfo! ,attributes.ToArray());
+                TypeDescriptor.AddAttributes(valueFieldInfo!, attributes.ToArray());
             }
             var dynamicTypeInstance = ScriptableObject.CreateInstance(dynamicType);
             if (dynamicTypeInstance is not SerializedObjectWrapper wrapper)
             {
                 return null;
             }
-            if(value!=null)
+            if (value != null)
             {
                 wrapper.Value = value;
             }

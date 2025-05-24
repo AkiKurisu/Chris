@@ -31,13 +31,24 @@ namespace Chris.Serialization
             Handle = handle;
         }
         
-        public SoftObjectHandle(ulong serialNum, int index)
+        internal SoftObjectHandle(ulong serialNum, int index)
         {
             Assert.IsTrue(index >= 0 && index < MaxIndex);
             Assert.IsTrue(serialNum < MaxSerialNumber);
 #pragma warning disable CS0675
             Handle = (serialNum << IndexBits) | (ulong)index;
 #pragma warning restore CS0675
+        }
+
+        /// <summary>
+        /// Create a new soft object handle from object
+        /// </summary>
+        /// <param name="object"></param>
+        public SoftObjectHandle(object @object)
+        {
+            SoftObjectHandle handle = default;
+            GlobalObjectManager.RegisterObject(@object, ref handle);
+            Handle = handle.Handle;
         }
 
         public static bool operator ==(SoftObjectHandle left, SoftObjectHandle right)
