@@ -19,6 +19,16 @@ namespace Chris.DataDriven.Editor
         
         private const string NullType = "Null";
         
+        /// <summary>
+        /// Subscribe to add custom left toolbar
+        /// </summary>
+        public DrawToolBarDelegate OnDrawLeftTooBar;
+        
+        /// <summary>
+        /// Subscribe to add custom right toolbar
+        /// </summary>
+        public DrawToolBarDelegate OnDrawRightTooBar;
+        
         public DataTableRowView GetDataTableRowView()
         {
             _dataTableRowView ??= CreateDataTableRowView(Table);
@@ -139,7 +149,7 @@ namespace Chris.DataDriven.Editor
                     AssetDatabase.Refresh();
                 }
             }
-            DataTableEditorUtils.OnDrawLeftTooBar?.Invoke(this);
+            OnDrawLeftTooBar?.Invoke(this);
             GUILayout.FlexibleSpace();
 
             if (GUILayout.Button("Import from Json", DataTableEditorUtils.ToolBarButtonStyle))
@@ -155,7 +165,7 @@ namespace Chris.DataDriven.Editor
                     GUIUtility.ExitGUI();
                 }
             }
-            DataTableEditorUtils.OnDrawRightTooBar?.Invoke(this);
+            OnDrawRightTooBar?.Invoke(this);
             GUILayout.EndHorizontal();
         }
         
