@@ -37,16 +37,6 @@ namespace Chris.DataDriven.Editor
         public static DataTableUpdateDelegate OnDataTablePostUpdate;
         
         /// <summary>
-        /// Subscribe to add custom left toolbar
-        /// </summary>
-        public static DrawToolBarDelegate OnDrawLeftTooBar;
-        
-        /// <summary>
-        /// Subscribe to add custom right toolbar
-        /// </summary>
-        public static DrawToolBarDelegate OnDrawRightTooBar;
-        
-        /// <summary>
         /// Set row struct type
         /// </summary>
         /// <typeparam name="T"></typeparam>

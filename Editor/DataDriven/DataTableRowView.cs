@@ -53,7 +53,7 @@ namespace Chris.DataDriven.Editor
                     _selectIndex = -1;
                 }
                 _reorderableList.multiSelect = true;
-                _reorderableList.elementHeightCallback = (int index) =>
+                _reorderableList.elementHeightCallback = index =>
                 {
                     var prop = rowsProp.GetArrayElementAtIndex(index);
                     if (ReadOnly)
@@ -62,11 +62,11 @@ namespace Chris.DataDriven.Editor
                     }
                     return GetDataTableRowHeight(rowStructType, prop);
                 };
-                _reorderableList.drawHeaderCallback = (Rect rect) =>
+                _reorderableList.drawHeaderCallback = rect =>
                 {
                     DrawDataTableHeader(rect, header);
                 };
-                _reorderableList.drawElementCallback = (Rect rect, int index, bool selected, bool focused) =>
+                _reorderableList.drawElementCallback = (rect, index, selected, focused) =>
                 {
                     var prop = rowsProp.GetArrayElementAtIndex(index);
                     if (ReadOnly)

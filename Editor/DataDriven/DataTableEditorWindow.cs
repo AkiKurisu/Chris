@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
 using UEditor = UnityEditor.Editor;
+
 namespace Chris.DataDriven.Editor
 {
     /// <summary>
@@ -34,6 +35,8 @@ namespace Chris.DataDriven.Editor
         private static GUIStyle _detailsStyle;
         
         private Vector2 _detailsScroll;
+
+        private DataTableEditorExtension[] _extensions;
         
         [MenuItem("Tools/Chris/DataTable Editor")]
         public static void OpenWindow()
@@ -45,6 +48,10 @@ namespace Chris.DataDriven.Editor
             GetWindow<DataTableEditorWindow>("DataTable Editor").Show();
         }
         
+        /// <summary>
+        /// Open DataTable EditorWindow
+        /// </summary>
+        /// <param name="dataTable"></param>
         public static void OpenWindow(DataTable dataTable)
         {
             if (_window != null)
@@ -55,11 +62,28 @@ namespace Chris.DataDriven.Editor
             _window.Show();
             _window.OpenDataTable(dataTable);
         }
-        
+
+        /// <summary>
+        /// Open DataTable EditorWindow with custom extensions
+        /// </summary>
+        /// <param name="dataTable"></param>
+        /// <param name="extensions"></param>
+        public static void OpenWindowWithExtensions(DataTable dataTable, params DataTableEditorExtension[] extensions)
+        {
+            if (_window != null)
+            {
+                _window.Close();
+            }
+            _window = GetWindow<DataTableEditorWindow>("DataTable Editor");
+            _window.Show();
+            _window._extensions = extensions;
+            _window.OpenDataTable(dataTable);
+        }
+
         private void OnEnable()
         {
             _window = this;
-            _splitterState = SplitterGUILayout.CreateSplitterState(new float[] { 50f, 50f }, new int[] { 32, 32 }, null);
+            _splitterState = SplitterGUILayout.CreateSplitterState(new[] { 50f, 50f }, new[] { 32, 32 }, null);
         }
         
         private void OnDisable()
@@ -72,6 +96,15 @@ namespace Chris.DataDriven.Editor
             /* Auto register table if it has AddressableDataTableAttribute */
             DataTableEditorUtils.RegisterTableToAssetGroup(_currentEditor.Table);
             DestroyImmediate(_currentEditor);
+            /* Release extensions */
+            if (_extensions != null)
+            {
+                foreach (var extension in _extensions)
+                {
+                    extension.Dispose();
+                }
+            }
+            _extensions = null;
         }
         
         private void OnGUI()
@@ -123,6 +156,14 @@ namespace Chris.DataDriven.Editor
                 DestroyImmediate(_currentEditor);
             }
             _currentEditor = (InlineDataTableEditor)UEditor.CreateEditor(_currentTarget, typeof(InlineDataTableEditor));
+            /* Initialize extensions */
+            if (_extensions != null)
+            {
+                foreach (var extension in _extensions)
+                {
+                    extension.Initialize(_currentEditor);
+                }
+            }
         }
         
         private void RenderTable()
@@ -133,7 +174,7 @@ namespace Chris.DataDriven.Editor
                 _currentEditor.DrawToolBarInternal();
                 GUILayout.Space(10);
             }
-            _tableScroll = EditorGUILayout.BeginScrollView(_tableScroll, new GUILayoutOption[]
+            _tableScroll = EditorGUILayout.BeginScrollView(_tableScroll, new[]
             {
                 GUILayout.ExpandWidth(true),
                 GUILayout.MaxWidth(2000f)
@@ -162,7 +203,7 @@ namespace Chris.DataDriven.Editor
         private static bool OnOpenAsset(int instanceId, int _)
         {
             var asset = EditorUtility.InstanceIDToObject(instanceId);
-            if (asset is DataTable dataTable)
+            if (asset is DataTable dataTable && (dataTable.hideFlags & HideFlags.HideInInspector) == 0)
             {
                 OpenWindow(dataTable);
                 Selection.SetActiveObjectWithContext(null, null);
