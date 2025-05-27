@@ -90,12 +90,12 @@ namespace Chris.DataDriven.Editor
         {
             if (!_currentEditor) return;
             
-            /* Trigger save assets to force cleanup editor cache */
-            EditorUtility.SetDirty(_currentEditor.Table);
-            AssetDatabase.SaveAssetIfDirty(_currentEditor.Table);
             /* Auto register table if it has AddressableDataTableAttribute */
             DataTableEditorUtils.RegisterTableToAssetGroup(_currentEditor.Table);
+            /* Force cleanup editor cache */
             DestroyImmediate(_currentEditor);
+            EditorUtility.SetDirty(_currentEditor.Table);
+            AssetDatabase.SaveAssetIfDirty(_currentEditor.Table);
             /* Release extensions */
             if (_extensions != null)
             {
@@ -253,7 +253,7 @@ namespace Chris.DataDriven.Editor
                 }
             }
             
-            private void DrawDataTableRowDetail(SerializedProperty property, Type elementType)
+            private static void DrawDataTableRowDetail(SerializedProperty property, Type elementType)
             {
                 property = property.FindPropertyRelative("RowData");
                 var jsonProp = property.FindPropertyRelative("jsonData");
