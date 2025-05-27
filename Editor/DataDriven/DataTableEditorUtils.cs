@@ -24,7 +24,7 @@ namespace Chris.DataDriven.Editor
     /// </summary>
     public static class DataTableEditorUtils
     {
-        public static GUIStyle ToolBarButtonStyle => new("LargeButton");
+        public static GUIStyle ToolBarButtonStyle => EditorStyles.toolbarButton;
         
         /// <summary>
         /// Call before dataTable internal update

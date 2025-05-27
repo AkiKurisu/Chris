@@ -20,14 +20,9 @@ namespace Chris.DataDriven.Editor
         private const string NullType = "Null";
         
         /// <summary>
-        /// Subscribe to add custom left toolbar
+        /// Subscribe to add custom toolbar
         /// </summary>
-        public DrawToolBarDelegate OnDrawLeftTooBar;
-        
-        /// <summary>
-        /// Subscribe to add custom right toolbar
-        /// </summary>
-        public DrawToolBarDelegate OnDrawRightTooBar;
+        public DrawToolBarDelegate OnDrawToolBar;
         
         public DataTableRowView GetDataTableRowView()
         {
@@ -52,19 +47,9 @@ namespace Chris.DataDriven.Editor
         
         public override void OnInspectorGUI()
         {
-            DrawDefaultTitle();
             DrawToolBar();
             GUILayout.Space(10);
             DrawRowView();
-        }
-        
-        protected void DrawDefaultTitle()
-        {
-            GUILayout.Label("DataTable", new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 20,
-                alignment = TextAnchor.MiddleCenter
-            });
         }
         
         protected virtual void DrawRowView()
@@ -136,8 +121,8 @@ namespace Chris.DataDriven.Editor
         /// </summary>
         protected virtual void DrawToolBar()
         {
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Export to Json", DataTableEditorUtils.ToolBarButtonStyle))
+            GUILayout.BeginHorizontal(EditorStyles.toolbar);
+            if (GUILayout.Button(Styles.ExportJsonButtonLabel, DataTableEditorUtils.ToolBarButtonStyle))
             {
                 var jsonData = DataTableEditorUtils.ExportJson(Table);
                 string path = EditorUtility.SaveFilePanel("Select json file export path", Application.dataPath, Table.name, "json");
@@ -149,10 +134,8 @@ namespace Chris.DataDriven.Editor
                     AssetDatabase.Refresh();
                 }
             }
-            OnDrawLeftTooBar?.Invoke(this);
-            GUILayout.FlexibleSpace();
 
-            if (GUILayout.Button("Import from Json", DataTableEditorUtils.ToolBarButtonStyle))
+            if (GUILayout.Button(Styles.ImportJsonButtonLabel, DataTableEditorUtils.ToolBarButtonStyle))
             {
                 string path = EditorUtility.OpenFilePanel("Select json file to import", Application.dataPath, "json");
                 if (!string.IsNullOrEmpty(path))
@@ -165,7 +148,8 @@ namespace Chris.DataDriven.Editor
                     GUIUtility.ExitGUI();
                 }
             }
-            OnDrawRightTooBar?.Invoke(this);
+            OnDrawToolBar?.Invoke(this);
+            GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
         }
         
@@ -192,6 +176,13 @@ namespace Chris.DataDriven.Editor
         {
             // Manually rebuild row view after undo
             RebuildEditorView();
+        }
+        
+        private static class Styles
+        {
+            public static readonly GUIContent ImportJsonButtonLabel = new("  Import from Json", EditorGUIUtility.IconContent("d_Import@2x").image);
+
+            public static readonly GUIContent ExportJsonButtonLabel = new("  Export to Json", EditorGUIUtility.IconContent("SaveAs@2x").image);
         }
     }
 }
