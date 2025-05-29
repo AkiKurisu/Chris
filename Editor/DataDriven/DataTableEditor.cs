@@ -124,12 +124,12 @@ namespace Chris.DataDriven.Editor
             GUILayout.BeginHorizontal(EditorStyles.toolbar);
             if (GUILayout.Button(Styles.ExportJsonButtonLabel, DataTableEditorUtils.ToolBarButtonStyle))
             {
-                var jsonData = DataTableEditorUtils.ExportJson(Table);
                 string path = EditorUtility.SaveFilePanel("Select json file export path", Application.dataPath, Table.name, "json");
                 if (!string.IsNullOrEmpty(path))
                 {
+                    var jsonData = DataTableEditorUtils.ExportJson(Table);
                     File.WriteAllText(path, jsonData);
-                    Debug.Log($"<color=#3aff48>DataTable</color>: Save to json file succeed!");
+                    Debug.Log($"<color=#3aff48>DataTable</color>: Export data to json file succeed!");
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
                 }
@@ -143,6 +143,7 @@ namespace Chris.DataDriven.Editor
                     var data = File.ReadAllText(path);
                     DataTableEditorUtils.ImportJson(Table, data);
                     RequestDataTableUpdate();
+                    Debug.Log($"<color=#3aff48>DataTable</color>: Import data from json file succeed!");
                     EditorUtility.SetDirty(Table);
                     AssetDatabase.SaveAssets();
                     GUIUtility.ExitGUI();
