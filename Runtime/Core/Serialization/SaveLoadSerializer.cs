@@ -131,7 +131,7 @@ namespace Chris.Serialization
             var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
             {
-                using var file = File.Open(path, FileMode.Open);
+                using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                 jsonData = _serializeFormatter.Deserialize(file);
                 return true;
             }
@@ -149,7 +149,7 @@ namespace Chris.Serialization
             var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
             {
-                using var file = File.Open(path, FileMode.Open);
+                using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                 if (TypeCache<T>.PreferJsonConvert)
                     JsonConvert.PopulateObject(_serializeFormatter.Deserialize(file), data);
                 else
@@ -170,7 +170,7 @@ namespace Chris.Serialization
             var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
             {
-                using var file = File.Open(path, FileMode.Open);
+                using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                 if (TypeCache<T>.PreferJsonConvert)
                     data = JsonConvert.DeserializeObject<T>(_serializeFormatter.Deserialize(file));
                 else
@@ -183,7 +183,7 @@ namespace Chris.Serialization
         public T Load<T>(string key)
         {
             var path = $"{_path}/{key}.{_extension}";
-            using var file = File.Open(path, FileMode.Open);
+            using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (TypeCache<T>.PreferJsonConvert)
                 return JsonConvert.DeserializeObject<T>(_serializeFormatter.Deserialize(file));
             return JsonUtility.FromJson<T>(_serializeFormatter.Deserialize(file));
@@ -192,7 +192,7 @@ namespace Chris.Serialization
         public object Load(string key, Type type, bool preferJsonConvert)
         {
             var path = $"{_path}/{key}.{_extension}";
-            using var file = File.Open(path, FileMode.Open);
+            using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (preferJsonConvert)
                 return JsonConvert.DeserializeObject(_serializeFormatter.Deserialize(file), type);
             return JsonUtility.FromJson(_serializeFormatter.Deserialize(file), type);
