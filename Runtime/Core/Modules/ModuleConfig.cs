@@ -8,6 +8,7 @@ namespace Chris.Modules
     /// Config for <see cref="RuntimeModule"/>
     /// </summary>
     [PreferJsonConvert]
+    [ConfigPath("Chris.Modules")]
     public class ModuleConfig: Config<ModuleConfig>
     {
         private static ModuleConfig _config;

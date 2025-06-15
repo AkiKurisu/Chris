@@ -17,7 +17,7 @@ namespace Chris.Configs
 
         public const string ConfigExtension = "cfg";
 
-        public static readonly SaveLoadSerializer PersistentSerializer = new(ConfigPersistentDirectory, ConfigExtension);
+        public static readonly SaveLoadSerializer PersistentSerializer = new(ConfigPersistentDirectory, ConfigExtension, TextSerializeFormatter.Instance);
         
         public override void Initialize(ModuleConfig config)
         {

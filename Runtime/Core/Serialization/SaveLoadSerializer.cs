@@ -82,12 +82,12 @@ namespace Chris.Serialization
             _serializeFormatter = serializeFormatter ?? BinarySerializeFormatter.Instance;
         }
 
-        public void Save<T>(T data)
+        public void Serialize<T>(T data)
         {
-            Save(typeof(T).Name, data);
+            Serialize(typeof(T).Name, data);
         }
 
-        public void Save<T>(string key, T data)
+        public void Serialize<T>(string key, T data)
         {
             string jsonData;
             if (TypeCache<T>.PreferJsonConvert)
@@ -114,7 +114,7 @@ namespace Chris.Serialization
             if (Directory.Exists(_path)) Directory.Delete(_path, true);
         }
         
-        public void SaveJson(string key, string jsonData)
+        public void Serialize(string key, string jsonData)
         {
             if (!Directory.Exists(_path)) Directory.CreateDirectory(_path);
             using var file = File.Create($"{_path}/{key}.{_extension}");
@@ -126,7 +126,7 @@ namespace Chris.Serialization
             return File.Exists($"{_path}/{key}.{_extension}");
         }
         
-        public bool TryLoadJson(string key, out string jsonData)
+        public bool TryDeserialize(string key, out string jsonData)
         {
             var path = $"{_path}/{key}.{_extension}";
             if (File.Exists(path))
@@ -159,12 +159,12 @@ namespace Chris.Serialization
             return false;
         }
         
-        public T LoadOrNew<T>() where T : class, new()
+        public T DeserializeOrNew<T>() where T : class, new()
         {
-            return LoadOrNew<T>(typeof(T).Name);
+            return DeserializeOrNew<T>(typeof(T).Name);
         }
         
-        public T LoadOrNew<T>(string key) where T : class, new()
+        public T DeserializeOrNew<T>(string key) where T : class, new()
         {
             T data = null;
             var path = $"{_path}/{key}.{_extension}";
@@ -180,7 +180,7 @@ namespace Chris.Serialization
             return data;
         }
         
-        public T Load<T>(string key)
+        public T Deserialize<T>(string key)
         {
             var path = $"{_path}/{key}.{_extension}";
             using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -189,7 +189,7 @@ namespace Chris.Serialization
             return JsonUtility.FromJson<T>(_serializeFormatter.Deserialize(file));
         }
         
-        public object Load(string key, Type type, bool preferJsonConvert)
+        public object Deserialize(string key, Type type, bool preferJsonConvert)
         {
             var path = $"{_path}/{key}.{_extension}";
             using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);

@@ -28,7 +28,7 @@ namespace Chris.Serialization
         /// <typeparam name="T"></typeparam>
         public static void Save<T>(T data)
         {
-            Serializer.Save(data);
+            Serializer.Serialize(data);
         }
         
         /// <summary>
@@ -55,7 +55,7 @@ namespace Chris.Serialization
         /// <param name="jsonData"></param>
         public static void SaveJson(string key, string jsonData)
         {
-            Serializer.SaveJson(key, jsonData);
+            Serializer.Serialize(key, jsonData);
         }
         
         /// <summary>
@@ -75,7 +75,7 @@ namespace Chris.Serialization
         /// <param name="jsonData"></param>
         public static bool TryLoadJson(string key, out string jsonData)
         {
-            return Serializer.TryLoadJson(key, out jsonData);
+            return Serializer.TryDeserialize(key, out jsonData);
         }
         
         /// <summary>
@@ -95,7 +95,7 @@ namespace Chris.Serialization
         /// <typeparam name="T"></typeparam>
         public static T LoadOrNew<T>() where T : class, new()
         {
-            return Serializer.LoadOrNew<T>();
+            return Serializer.DeserializeOrNew<T>();
         }
     }
 }
