@@ -1,4 +1,7 @@
+using Chris.Configs;
+using Chris.DataDriven;
 using Chris.DataDriven.Editor;
+using Chris.Schedulers;
 using Chris.Serialization;
 using UnityEditor;
 using UnityEngine;
@@ -17,9 +20,19 @@ namespace Chris.Editor
         
         public bool inlineRowReadOnly;
 
-        public static void SaveSettings()
+        internal static void SaveSettings()
         {
             instance.Save(true);
+            var serializer = ConfigsModule.PersistentSerializer;
+            ConfigFileLocation location = "Chris";
+            var configFile = ConfigSystem.GetConfigFile(location);
+            var schedulerSettings = SchedulerSettings.Get();
+            schedulerSettings.schedulerStackTrace = instance.schedulerStackTrace;
+            configFile.SetConfig(SchedulerSettings.Location, schedulerSettings);
+            var dataDrivenSettings = DataDrivenSettings.Get();
+            dataDrivenSettings.initializeDataTableManagerOnLoad = instance.initializeDataTableManagerOnLoad;
+            configFile.SetConfig(DataDrivenSettings.Location, dataDrivenSettings);
+            serializer.Serialize(location, configFile);
         }
     }
 
@@ -40,12 +53,6 @@ namespace Chris.Editor
         
         public ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
         
-        private const string StackTraceSchedulerDisableSymbol = "AF_SCHEDULER_STACK_TRACE_DISABLE";
-        
-        private const string InitializeDataTableManagerOnLoadSymbol = "AF_INITIALIZE_DATATABLE_MANAGER_ON_LOAD";
-        
-        private ChrisSettings _settings;
-        
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
             if(!ChrisSettings.instance.dataTableEditorSerializer.IsValid())
@@ -54,7 +61,7 @@ namespace Chris.Editor
                     SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
                 ChrisSettings.SaveSettings();
             }  
-            _settingsObject = new SerializedObject(_settings = ChrisSettings.instance);
+            _settingsObject = new SerializedObject(ChrisSettings.instance);
         }
         
         public override void OnGUI(string searchContext)
@@ -70,10 +77,6 @@ namespace Chris.Editor
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.schedulerStackTrace)), Styles.StackTraceSchedulerLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
-                if (_settings.schedulerStackTrace)
-                    ScriptingSymbol.RemoveScriptingSymbol(StackTraceSchedulerDisableSymbol);
-                else
-                    ScriptingSymbol.AddScriptingSymbol(StackTraceSchedulerDisableSymbol);
                 ChrisSettings.SaveSettings();
             }
             GUILayout.EndVertical();
@@ -92,10 +95,6 @@ namespace Chris.Editor
                 {
                     ChrisSettings.instance.dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
                 }
-                if (_settings.initializeDataTableManagerOnLoad)
-                    ScriptingSymbol.AddScriptingSymbol(InitializeDataTableManagerOnLoadSymbol);
-                else
-                    ScriptingSymbol.RemoveScriptingSymbol(InitializeDataTableManagerOnLoadSymbol);
                 ChrisSettings.SaveSettings();
             }
             GUILayout.EndVertical();

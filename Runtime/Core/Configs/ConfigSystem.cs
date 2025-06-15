@@ -4,31 +4,33 @@ namespace Chris.Configs
 {
     public static class ConfigSystem
     {
-        private readonly struct ConfigProviderStructure
+        private readonly struct ConfigFileProviderStructure
         {
-            public readonly IConfigProvider Provider;
-            
+            public readonly IConfigFileProvider FileProvider;
+
             public readonly int Priority;
 
-            public ConfigProviderStructure(IConfigProvider provider, int priority)
+            public ConfigFileProviderStructure(IConfigFileProvider fileProvider, int priority)
             {
-                Provider = provider;
+                FileProvider = fileProvider;
                 Priority = priority;
             }
         }
-        
-        private static readonly List<ConfigProviderStructure> ConfigProviders = new();
 
-        private static readonly Dictionary<ulong, Config> GlobalConfigs = new();
+        private static readonly List<ConfigFileProviderStructure> ConfigFileProviders = new();
+
+        private static readonly Dictionary<ulong, ConfigBase> ConfigCache = new();
+
+        private static readonly Dictionary<string, IConfigFile> ConfigFileCache = new();
 
         static ConfigSystem()
         {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            RegisterConfigProvider(new StreamingConfigProvider(), 200);
+            RegisterConfigFileProvider(new StreamingConfigFileProvider(), 200);
 #endif
-            RegisterConfigProvider(new PersistentConfigProvider(), 100);
+            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
         }
-        
+
         /// <summary>
         /// Get global config
         /// </summary>
@@ -36,41 +38,68 @@ namespace Chris.Configs
         /// <returns></returns>
         public static TConfig GetConfig<TConfig>() where TConfig : Config<TConfig>, new()
         {
-            ulong id = Config<TConfig>.ConfigTypeId;
-            if (GlobalConfigs.TryGetValue(id, out var config))
+            // Try get from config cache
+            ulong id = Config<TConfig>.TypeId;
+            if (ConfigCache.TryGetValue(id, out var config))
             {
                 return (TConfig)config;
             }
-            var address = Config<TConfig>.ConfigLocation;
-            var globalConfig = GetConfig<TConfig>(address);
-            GlobalConfigs.Add(id, globalConfig);
+            var location = Config<TConfig>.Location;
+            var globalConfig = GetConfigFromFileCache<TConfig>(location);
+            ConfigCache.Add(id, globalConfig);
             return globalConfig;
         }
-        
+
         /// <summary>
-        /// Get config from <see cref="IConfigLocation"/>
+        /// Get config from cache by <see cref="IConfigLocation"/>
         /// </summary>
         /// <param name="location"></param>
         /// <typeparam name="TConfig"></typeparam>
         /// <returns></returns>
-        public static TConfig GetConfig<TConfig>(IConfigLocation location) where TConfig : Config<TConfig>, new()
+        private static TConfig GetConfigFromFileCache<TConfig>(IConfigLocation location) where TConfig : Config<TConfig>, new()
         {
-            foreach (var provider in ConfigProviders)
+            var configFile = GetConfigFile(location.FileLocation);
+            
+            // Try to get config
+            if (configFile.TryGetConfig(location, out var config))
             {
-                if (provider.Provider.TryGetConfig(location, out var config))
-                {
-                    return (TConfig)config;
-                }
+                return (TConfig)config;
             }
 
             // Return class default object
             return new TConfig();
         }
 
-        public static void RegisterConfigProvider(IConfigProvider provider, int priority = 0)
+        /// <summary>
+        /// Get <see cref="IConfigFile"/> from <see cref="ConfigFileLocation"/>
+        /// </summary>
+        /// <param name="location"></param>
+        /// <returns></returns>
+        public static IConfigFile GetConfigFile(ConfigFileLocation location)
         {
-            ConfigProviders.Add(new ConfigProviderStructure(provider, priority));
-            ConfigProviders.Sort(static (config1, config2) => config2.Priority.CompareTo(config1.Priority));
+            if (ConfigFileCache.TryGetValue(location.Path, out var configFile))
+            {
+                return configFile;
+            }
+            
+            foreach (var provider in ConfigFileProviders)
+            {
+                // Try to get config file
+                if (provider.FileProvider.TryGetConfigFile(location, out configFile))
+                {
+                   break;
+                }
+            }
+
+            configFile ??= new ConfigFile(location);
+            ConfigFileCache.Add(location.Path, configFile);
+            return configFile;
+        }
+
+        public static void RegisterConfigFileProvider(IConfigFileProvider fileProvider, int priority = 0)
+        {
+            ConfigFileProviders.Add(new ConfigFileProviderStructure(fileProvider, priority));
+            ConfigFileProviders.Sort(static (config1, config2) => config2.Priority.CompareTo(config1.Priority));
         }
     }
 }

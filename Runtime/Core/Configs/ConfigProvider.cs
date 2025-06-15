@@ -2,40 +2,61 @@
 
 namespace Chris.Configs
 {
-    public interface IConfigProvider
+    public interface IConfigFileProvider
     {
-        bool TryGetConfig(IConfigLocation location, out Config config);
+        bool TryGetConfigFile(ConfigFileLocation location, out IConfigFile config);
     }
     
-    internal class StreamingConfigProvider : IConfigProvider
+    [PreferJsonConvert]
+    public interface IConfigFile
     {
-        private readonly SaveLoadSerializer _saveLoadSerializer = new(ConfigsModule.ConfigStreamingDirectory, ConfigsModule.ConfigExtension);
-        
-        public bool TryGetConfig(IConfigLocation location, out Config config)
+        bool TryGetConfig(IConfigLocation location, out ConfigBase config);
+
+        void SetConfig(IConfigLocation location, ConfigBase config);
+    }
+
+    internal class SaveLoadConfigFileProvider : IConfigFileProvider
+    {
+        private readonly SaveLoadSerializer _serializer;
+
+        protected SaveLoadConfigFileProvider(SaveLoadSerializer serializer)
         {
-            config = null;
-            if (location is not Config.Location configLocation) return false;
-            if (_saveLoadSerializer.Exists(configLocation.Name))
+            _serializer = serializer;
+        }
+        
+        public bool TryGetConfigFile(ConfigFileLocation location, out IConfigFile config)
+        {
+            ConfigFile configFile = null;
+            if (_serializer.Exists(location.Path))
             {
-                config = _saveLoadSerializer.Load(configLocation.Name, configLocation.Type, configLocation.PreferJsonConvert) as Config;
+                configFile = _serializer.Deserialize<ConfigFile>(location.Path);
             }
-            return config != null;
+
+            if (configFile != null)
+            {
+                configFile.Location = location;
+                config = configFile;
+                return true;
+            }
+
+            config = null;
+            return false;
         }
     }
     
-    internal class PersistentConfigProvider : IConfigProvider
+    internal class StreamingConfigFileProvider : SaveLoadConfigFileProvider
     {
-        private readonly SaveLoadSerializer _saveLoadSerializer = ConfigsModule.PersistentSerializer;
-        
-        public bool TryGetConfig(IConfigLocation location, out Config config)
+        // Use binary format
+        public StreamingConfigFileProvider() : 
+            base(new SaveLoadSerializer(ConfigsModule.ConfigStreamingDirectory, ConfigsModule.ConfigExtension))
         {
-            config = null;
-            if (location is not Config.Location configLocation) return false;
-            if (_saveLoadSerializer.Exists(configLocation.Name))
-            {
-                config = _saveLoadSerializer.Load(configLocation.Name, configLocation.Type, configLocation.PreferJsonConvert) as Config;
-            }
-            return config != null;
+        }
+    }
+    
+    internal class PersistentConfigFileProvider : SaveLoadConfigFileProvider
+    {
+        public PersistentConfigFileProvider() : base(ConfigsModule.PersistentSerializer)
+        {
         }
     }
 }

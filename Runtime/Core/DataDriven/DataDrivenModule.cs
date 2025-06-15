@@ -8,9 +8,10 @@ namespace Chris.DataDriven
     {
         public override void Initialize(ModuleConfig config)
         {
-#if AF_INITIALIZE_DATATABLE_MANAGER_ON_LOAD
-            DataTableManager.Initialize();
-#endif
+            if (DataDrivenSettings.InitializeDataTableManagerOnLoad)
+            {
+                DataTableManager.Initialize();
+            }
         }
     }
 }
