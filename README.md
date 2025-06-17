@@ -45,9 +45,6 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 [Configs](./Documentation~/Configs.md)
 > Global configuration management system with hierarchical organization and automatic serialization.
 
-[Collections](./Documentation~/Collections.md)
-> Utility collection classes including IOC container, priority queue, and sparse arrays.
-
 [Tasks](./Documentation~/Tasks.md)
 > Asynchronous task system with prerequisites and event-driven completion.
 
