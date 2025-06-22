@@ -9,8 +9,6 @@ namespace Chris.Configs
     /// </summary>
     public abstract class ConfigBase
     {
-        protected static ulong NextConfigId;
-
         internal class ConfigLocation : IConfigLocation
         {
             public ConfigFileLocation FileLocation { get; }
@@ -28,6 +26,29 @@ namespace Chris.Configs
                 Type = type;
                 PreferJsonConvert = preferJsonConvert;
             }
+        }
+        
+        protected static ulong NextConfigId;
+
+        private protected abstract IConfigLocation GetConfigLocation();
+        
+        /// <summary>
+        /// Save config to persistent save path
+        /// </summary>
+        public void Save()
+        {
+            Save(ConfigsModule.PersistentSerializer);
+        }
+
+        /// <summary>
+        /// Save config by providing serializer
+        /// </summary>
+        public void Save(SaveLoadSerializer serializer)
+        {
+            var location = GetConfigLocation();
+            var configFile = ConfigSystem.GetConfigFile(location.FileLocation);
+            configFile.SetConfig(location, this);
+            serializer.Serialize(location.FileLocation, configFile);
         }
     }
 
@@ -96,22 +117,9 @@ namespace Chris.Configs
             return ConfigSystem.GetConfig<TConfig>();
         }
 
-        /// <summary>
-        /// Save config to persistent save path
-        /// </summary>
-        public void Save()
+        private protected override IConfigLocation GetConfigLocation()
         {
-            Save(ConfigsModule.PersistentSerializer);
-        }
-
-        /// <summary>
-        /// Save config by providing serializer
-        /// </summary>
-        public void Save(SaveLoadSerializer serializer)
-        {
-            var configFile = ConfigSystem.GetConfigFile(Location.FileLocation);
-            configFile.SetConfig(Location, this);
-            serializer.Serialize(Location.FileLocation, configFile);
+            return Location;
         }
     }
 }
