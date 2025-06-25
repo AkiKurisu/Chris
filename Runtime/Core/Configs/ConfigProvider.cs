@@ -46,9 +46,8 @@ namespace Chris.Configs
     
     internal class StreamingConfigFileProvider : SaveLoadConfigFileProvider
     {
-        // Use binary format
         public StreamingConfigFileProvider() : 
-            base(new SaveLoadSerializer(ConfigsModule.ConfigStreamingDirectory, ConfigsModule.ConfigExtension))
+            base(new SaveLoadSerializer(ConfigsModule.ConfigStreamingDirectory, ConfigsModule.ConfigExtension, TextSerializeFormatter.Instance))
         {
         }
     }
