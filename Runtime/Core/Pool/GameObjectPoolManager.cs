@@ -87,7 +87,11 @@ namespace Chris.Pool
             {
                 if (_instance == null)
                 {
-                    GameObject managerObject = new() { name = nameof(GameObjectPoolManager) };
+                    GameObject managerObject = new()
+                    {
+                        name = nameof(GameObjectPoolManager),
+                        hideFlags = HideFlags.DontSave
+                    };
                     _instance = managerObject.AddComponent<GameObjectPoolManager>();
                 }
                 return _instance;
