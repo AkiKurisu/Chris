@@ -45,16 +45,16 @@ namespace Chris.Configs.Editor
             CopyDirectoryRecursively(ConfigsModule.EditorDirectory, ConfigsModule.StreamingDirectory);
 #if UNITY_ANDROID
             // If android, make archive file and delete configs folder
-            if (Directory.GetFiles(ConfigsModule.ConfigStreamingDirectory).Length > 0)
+            if (Directory.GetFiles(ConfigsModule.StreamingDirectory).Length > 0)
             {
-                if (!ZipWrapper.Zip(new[] { ConfigsModule.ConfigStreamingDirectory },
-                        ConfigsModule.ConfigStreamingDirectory + ".zip"))
+                if (!ZipWrapper.Zip(new[] { ConfigsModule.StreamingDirectory },
+                        ConfigsModule.StreamingDirectory + ".zip"))
                 {
                     throw new IOException("[Chris] Archive configs failed");
                 }
             }
-            Directory.Delete(ConfigsModule.ConfigStreamingDirectory, true);
-            File.Delete(ConfigsModule.ConfigStreamingDirectory + ".meta");
+            Directory.Delete(ConfigsModule.StreamingDirectory, true);
+            File.Delete(ConfigsModule.StreamingDirectory + ".meta");
 #endif
         }
     }
