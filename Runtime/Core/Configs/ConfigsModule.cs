@@ -11,23 +11,29 @@ namespace Chris.Configs
     [Preserve]
     public class ConfigsModule: RuntimeModule
     {
-        public static readonly string ConfigStreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
+#if UNITY_ANDROID
+        public static readonly string ActualStreamingDirectory = Path.Combine(Application.persistentDataPath, "Configs");
+#else
+        public static readonly string ActualStreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
+#endif
         
-        public static readonly string ConfigPersistentDirectory = Path.Combine(SaveUtility.SavePath, "Configs");
+        public static readonly string StreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
         
-        internal static readonly string ConfigEditorDirectory = Path.Combine(Application.dataPath, "../Configs");
+        public static readonly string PersistentDirectory = Path.Combine(SaveUtility.SavePath, "Configs");
         
-        public const string ConfigExtension = "cfg";
+        internal static readonly string EditorDirectory = Path.Combine(Application.dataPath, "../Configs");
+        
+        public const string Extension = "cfg";
 
         /// <summary>
         /// Get runtime config serializer
         /// </summary>
-        public static readonly SaveLoadSerializer PersistentSerializer = new(ConfigPersistentDirectory, ConfigExtension, TextSerializeFormatter.Instance);
+        public static readonly SaveLoadSerializer PersistentSerializer = new(PersistentDirectory, Extension, TextSerializeFormatter.Instance);
         
         public override void Initialize(ModuleConfig config)
         {
 #if UNITY_ANDROID || UNITY_EDITOR
-            // Transfer streaming configs archive to persistent configs directory
+            // Transfer streaming configs archive to actual streaming configs directory
             ExtractStreamingConfigs();
 #endif
         }
@@ -37,8 +43,8 @@ namespace Chris.Configs
         {
             try
             {
-                using var request = UnityWebRequest.Get(new Uri(ConfigStreamingDirectory + ".zip").AbsoluteUri);
-                request.downloadHandler = new DownloadHandlerFile(ConfigPersistentDirectory);
+                using var request = UnityWebRequest.Get(new Uri(StreamingDirectory + ".zip").AbsoluteUri);
+                request.downloadHandler = new DownloadHandlerFile(PersistentDirectory);
                 request.SendWebRequest();
                 while (request.isDone)
                 {
@@ -51,16 +57,17 @@ namespace Chris.Configs
                 // ignored
             }
 
-            // Remove invalid file
-            if (File.Exists(ConfigPersistentDirectory))
+            // Remove invalid file when zip is nil
+            if (File.Exists(PersistentDirectory))
             {
-                File.Delete(ConfigPersistentDirectory);
+                File.Delete(PersistentDirectory);
             }
             
-            var zipPath = $"{ConfigPersistentDirectory}/Configs.zip";
+            var zipPath = $"{PersistentDirectory}/Configs.zip";
             if (File.Exists(zipPath))
             {
-                ZipWrapper.UnzipFile(zipPath, ConfigPersistentDirectory);
+                ZipWrapper.UnzipFile(zipPath, ActualStreamingDirectory);
+                File.Delete(zipPath);
             }
         }
     }

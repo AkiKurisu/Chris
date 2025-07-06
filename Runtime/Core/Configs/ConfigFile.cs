@@ -70,7 +70,7 @@ namespace Chris.Configs
                     var targetJToken = JToken.Parse(configDataEntry.configData);
 
                     var mergedJToken = MergeProperties(currentJToken, targetJToken);
-                    this[configDataEntry.configName] = mergedJToken.ToString();
+                    this[configDataEntry.configName] = mergedJToken.ToString(Formatting.None);
                 }
                 else
                 {
@@ -89,14 +89,14 @@ namespace Chris.Configs
             {
                 var merged = new JObject();
 
-                // Add all properties from current object
-                foreach (var property in currentObj.Properties())
+                // Merge or override with target object properties
+                foreach (var property in targetObj.Properties())
                 {
                     merged[property.Name] = property.Value;
                 }
 
-                // Merge or override with target object properties
-                foreach (var property in targetObj.Properties())
+                // Overwrite all properties from current object
+                foreach (var property in currentObj.Properties())
                 {
                     merged[property.Name] = property.Value;
                 }

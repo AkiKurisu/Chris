@@ -49,16 +49,18 @@ namespace Chris.Configs
         }
     }
     
+    internal class EditorConfigFileProvider : SaveLoadConfigFileProvider
+    {
+        public EditorConfigFileProvider() : 
+            base(new SaveLoadSerializer(ConfigsModule.EditorDirectory, ConfigsModule.Extension, TextSerializeFormatter.Instance))
+        {
+        }
+    }
+    
     internal class StreamingConfigFileProvider : SaveLoadConfigFileProvider
     {
         public StreamingConfigFileProvider() : 
-            base(
-#if UNITY_EDITOR
-                new SaveLoadSerializer(ConfigsModule.ConfigEditorDirectory, 
-#else
-                new SaveLoadSerializer(ConfigsModule.ConfigStreamingDirectory, 
-#endif
-                ConfigsModule.ConfigExtension, TextSerializeFormatter.Instance))
+            base(new SaveLoadSerializer(ConfigsModule.ActualStreamingDirectory, ConfigsModule.Extension, TextSerializeFormatter.Instance))
         {
         }
     }

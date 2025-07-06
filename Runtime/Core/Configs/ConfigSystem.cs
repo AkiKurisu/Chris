@@ -25,11 +25,13 @@ namespace Chris.Configs
 
         static ConfigSystem()
         {
-            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 200);
+            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
             
-            // Prefer to editor config.
-#if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            RegisterConfigFileProvider(new StreamingConfigFileProvider(), 100);
+            // Prefer to editor/streaming config.
+#if UNITY_EDITOR
+            RegisterConfigFileProvider(new EditorConfigFileProvider(), 200);
+#else
+            RegisterConfigFileProvider(new StreamingConfigFileProvider(), 200);
 #endif
         }
 
@@ -113,6 +115,7 @@ namespace Chris.Configs
         public static void RegisterConfigFileProvider(IConfigFileProvider fileProvider, int priority = 0)
         {
             ConfigFileProviders.Add(new ConfigFileProviderStructure(fileProvider, priority));
+            // Higher priority, lower prio.
             ConfigFileProviders.Sort(static (config1, config2) => config2.Priority.CompareTo(config1.Priority));
         }
     }

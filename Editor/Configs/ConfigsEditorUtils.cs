@@ -5,7 +5,7 @@ namespace Chris.Configs.Editor
 {
     public static class ConfigsEditorUtils
     {
-        private static readonly SaveLoadSerializer ConfigSerializer = new(ConfigsModule.ConfigEditorDirectory, ConfigsModule.ConfigExtension, TextSerializeFormatter.Instance);
+        private static readonly SaveLoadSerializer ConfigSerializer = new(ConfigsModule.EditorDirectory, ConfigsModule.Extension, TextSerializeFormatter.Instance);
 
         /// <summary>
         /// Get config serializer in editor, cache will be clean up before using.
@@ -42,7 +42,7 @@ namespace Chris.Configs.Editor
         public static void ExportAndArchiveConfigs()
         {
             // Collect all configs and export to streaming assets
-            CopyDirectoryRecursively(ConfigsModule.ConfigEditorDirectory, ConfigsModule.ConfigStreamingDirectory);
+            CopyDirectoryRecursively(ConfigsModule.EditorDirectory, ConfigsModule.StreamingDirectory);
 #if UNITY_ANDROID
             // If android, make archive file and delete configs folder
             if (Directory.GetFiles(ConfigsModule.ConfigStreamingDirectory).Length > 0)

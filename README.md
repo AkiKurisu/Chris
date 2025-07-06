@@ -2,7 +2,7 @@
 
 # Chris
 
-A Unity game framework designed for efficient development.
+A Unity development framework designed for efficient, flexible, and professional workflows.
 
 </div>
 
