@@ -11,7 +11,7 @@ namespace Chris.Configs.Editor
 
         private bool _isStreamingAssetsPathEmpty;
         
-        public void OnPreprocessBuild(BuildReport report)
+        void IPreprocessBuildWithReport.OnPreprocessBuild(BuildReport report)
         {
             _isStreamingAssetsPathEmpty = false;
             if (!Directory.Exists(Application.streamingAssetsPath))
@@ -22,7 +22,7 @@ namespace Chris.Configs.Editor
             ConfigsEditorUtils.ExportAndArchiveConfigs();
         }
         
-        public void OnPostprocessBuild(BuildReport report)
+        void IPostprocessBuildWithReport.OnPostprocessBuild(BuildReport report)
         {
             if (_isStreamingAssetsPathEmpty)
             {

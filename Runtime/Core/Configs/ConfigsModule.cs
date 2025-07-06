@@ -11,10 +11,10 @@ namespace Chris.Configs
     [Preserve]
     public class ConfigsModule: RuntimeModule
     {
-#if UNITY_ANDROID
-        public static readonly string ActualStreamingDirectory = Path.Combine(Application.persistentDataPath, "Configs");
-#else
+#if UNITY_EDITOR || UNITY_STANDALONE_WIN
         public static readonly string ActualStreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
+#else
+        public static readonly string ActualStreamingDirectory = Path.Combine(Application.persistentDataPath, "Configs");
 #endif
         
         public static readonly string StreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
@@ -29,10 +29,12 @@ namespace Chris.Configs
         /// Get runtime config serializer
         /// </summary>
         public static readonly SaveLoadSerializer PersistentSerializer = new(PersistentDirectory, Extension, TextSerializeFormatter.Instance);
-        
+
+        public override int Order => 0;
+
         public override void Initialize(ModuleConfig config)
         {
-#if UNITY_ANDROID || UNITY_EDITOR
+#if !UNITY_STANDALONE_WIN || UNITY_EDITOR
             // Transfer streaming configs archive to actual streaming configs directory
             ExtractStreamingConfigs();
 #endif
@@ -41,12 +43,13 @@ namespace Chris.Configs
         // ReSharper disable once UnusedMember.Local
         private static void ExtractStreamingConfigs()
         {
+            var downloadZipPath = $"{SaveUtility.SavePath}/Configs.zip";
+            using var request = UnityWebRequest.Get(new Uri(StreamingDirectory + ".zip").AbsoluteUri);
+            request.downloadHandler = new DownloadHandlerFile(downloadZipPath);
             try
             {
-                using var request = UnityWebRequest.Get(new Uri(StreamingDirectory + ".zip").AbsoluteUri);
-                request.downloadHandler = new DownloadHandlerFile(PersistentDirectory);
                 request.SendWebRequest();
-                while (request.isDone)
+                while (!request.isDone)
                 {
                     // Block main thread
                 }
@@ -57,17 +60,40 @@ namespace Chris.Configs
                 // ignored
             }
 
+            var result = request.result;
+            bool succeed = result == UnityWebRequest.Result.Success;
+
             // Remove invalid file when zip is nil
             if (File.Exists(PersistentDirectory))
             {
                 File.Delete(PersistentDirectory);
             }
             
-            var zipPath = $"{PersistentDirectory}/Configs.zip";
-            if (File.Exists(zipPath))
+            if (File.Exists(downloadZipPath))
             {
-                ZipWrapper.UnzipFile(zipPath, ActualStreamingDirectory);
-                File.Delete(zipPath);
+                // Prevent unzipping when downloading failed
+                if (result == UnityWebRequest.Result.Success)
+                {
+                    try
+                    {
+                        ZipWrapper.UnzipFile(downloadZipPath, ActualStreamingDirectory);
+                    }
+                    catch
+                    {
+                        succeed = false;
+                    }
+                }
+                File.Delete(downloadZipPath);
+            }
+            
+            if (succeed)
+            {
+                ConfigSystem.ClearCache();
+                Debug.Log("[Chris] Extract streaming configs succeed.");
+            }
+            else
+            {
+                Debug.LogWarning("[Chris] No streaming configs need to be extracted.");
             }
         }
     }

@@ -6,6 +6,11 @@ namespace Chris.Modules
     public abstract class RuntimeModule
     {
         /// <summary>
+        /// Module initialization order
+        /// </summary>
+        public virtual int Order { get; } = 100;
+        
+        /// <summary>
         /// Module initialization entry
         /// </summary>
         /// <param name="config"></param>

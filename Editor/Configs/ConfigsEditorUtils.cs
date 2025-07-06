@@ -43,16 +43,17 @@ namespace Chris.Configs.Editor
         {
             // Collect all configs and export to streaming assets
             CopyDirectoryRecursively(ConfigsModule.EditorDirectory, ConfigsModule.StreamingDirectory);
-#if UNITY_ANDROID
-            // If android, make archive file and delete configs folder
-            if (Directory.GetFiles(ConfigsModule.StreamingDirectory).Length > 0)
+#if !UNITY_STANDALONE_WIN
+            // For platforms can not access to streaming assets dir, make archive file
+            var files = Directory.GetFiles(ConfigsModule.StreamingDirectory);
+            if (files.Length > 0)
             {
-                if (!ZipWrapper.Zip(new[] { ConfigsModule.StreamingDirectory },
-                        ConfigsModule.StreamingDirectory + ".zip"))
+                if (!ZipWrapper.Zip(files, ConfigsModule.StreamingDirectory + ".zip"))
                 {
                     throw new IOException("[Chris] Archive configs failed");
                 }
             }
+            // Cleanup temporal directory
             Directory.Delete(ConfigsModule.StreamingDirectory, true);
             File.Delete(ConfigsModule.StreamingDirectory + ".meta");
 #endif

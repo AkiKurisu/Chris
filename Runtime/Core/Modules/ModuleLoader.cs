@@ -20,7 +20,7 @@ namespace Chris.Modules
             if (!Enable || _isLoaded) return;
             _isLoaded = true;
             var config = ModuleConfig.Get();
-            var managerTypes = AppDomain.CurrentDomain.GetAssemblies()
+            var modules = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(x =>
                 {
 #if UNITY_EDITOR
@@ -35,12 +35,13 @@ namespace Chris.Modules
                 })
                 .SelectMany(x => x.GetTypes())
                 .Where(x => typeof(RuntimeModule).IsAssignableFrom(x) && !x.IsAbstract)
+                .Select(t => (RuntimeModule)Activator.CreateInstance(t))
+                .OrderBy(module => module.Order)
                 .ToArray();
 
-            foreach (var type in managerTypes)
+            foreach (var module in modules)
             {
-                var manager = (RuntimeModule)Activator.CreateInstance(type);
-                manager.Initialize(config);
+                module.Initialize(config);
             }
             config.Save();
         }
