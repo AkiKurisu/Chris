@@ -25,10 +25,18 @@ namespace Chris.Configs
 
         static ConfigSystem()
         {
+            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 200);
+            
+            // Prefer to editor config.
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
-            RegisterConfigFileProvider(new StreamingConfigFileProvider(), 200);
+            RegisterConfigFileProvider(new StreamingConfigFileProvider(), 100);
 #endif
-            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
+        }
+
+        internal static void ClearCache()
+        {
+            ConfigFileCache.Clear();
+            ConfigCache.Clear();
         }
 
         /// <summary>
@@ -85,9 +93,15 @@ namespace Chris.Configs
             foreach (var provider in ConfigFileProviders)
             {
                 // Try to get config file
-                if (provider.FileProvider.TryGetConfigFile(location, out configFile))
+                if (provider.FileProvider.TryGetConfigFile(location, out var newConfigFile))
                 {
-                   break;
+                    if (configFile == null)
+                    {
+                        configFile = newConfigFile;
+                        continue;
+                    }
+
+                    configFile.MergeConfigFile(newConfigFile);
                 }
             }
 

@@ -11,8 +11,6 @@ namespace Chris.Modules
     [ConfigPath("Chris.Modules")]
     public class ModuleConfig: Config<ModuleConfig>
     {
-        private static ModuleConfig _config;
-
         /// <summary>
         /// Contains module additional data that can be changed during runtime
         /// </summary>

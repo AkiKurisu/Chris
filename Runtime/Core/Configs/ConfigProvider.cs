@@ -1,4 +1,5 @@
 ﻿using Chris.Serialization;
+using UnityEngine;
 
 namespace Chris.Configs
 {
@@ -10,9 +11,13 @@ namespace Chris.Configs
     [PreferJsonConvert]
     public interface IConfigFile
     {
+        (string configName, string configData)[] GetAllConfigData();
+        
         bool TryGetConfig(IConfigLocation location, out ConfigBase config);
 
         void SetConfig(IConfigLocation location, ConfigBase config);
+        
+        void MergeConfigFile(IConfigFile targetFile);
     }
 
     internal class SaveLoadConfigFileProvider : IConfigFileProvider
@@ -24,7 +29,7 @@ namespace Chris.Configs
             _serializer = serializer;
         }
         
-        public bool TryGetConfigFile(ConfigFileLocation location, out IConfigFile config)
+        public virtual bool TryGetConfigFile(ConfigFileLocation location, out IConfigFile config)
         {
             ConfigFile configFile = null;
             if (_serializer.Exists(location.Path))
@@ -47,7 +52,13 @@ namespace Chris.Configs
     internal class StreamingConfigFileProvider : SaveLoadConfigFileProvider
     {
         public StreamingConfigFileProvider() : 
-            base(new SaveLoadSerializer(ConfigsModule.ConfigStreamingDirectory, ConfigsModule.ConfigExtension, TextSerializeFormatter.Instance))
+            base(
+#if UNITY_EDITOR
+                new SaveLoadSerializer(ConfigsModule.ConfigEditorDirectory, 
+#else
+                new SaveLoadSerializer(ConfigsModule.ConfigStreamingDirectory, 
+#endif
+                ConfigsModule.ConfigExtension, TextSerializeFormatter.Instance))
         {
         }
     }
@@ -56,6 +67,18 @@ namespace Chris.Configs
     {
         public PersistentConfigFileProvider() : base(ConfigsModule.PersistentSerializer)
         {
+        }
+
+        public override bool TryGetConfigFile(ConfigFileLocation location, out IConfigFile config)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                config = null;
+                return false;
+            }
+#endif
+            return base.TryGetConfigFile(location, out config);
         }
     }
 }

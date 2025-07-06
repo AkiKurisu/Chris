@@ -14,9 +14,14 @@ namespace Chris.Configs
         public static readonly string ConfigStreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
         
         public static readonly string ConfigPersistentDirectory = Path.Combine(SaveUtility.SavePath, "Configs");
-
+        
+        internal static readonly string ConfigEditorDirectory = Path.Combine(Application.dataPath, "../Configs");
+        
         public const string ConfigExtension = "cfg";
 
+        /// <summary>
+        /// Get runtime config serializer
+        /// </summary>
         public static readonly SaveLoadSerializer PersistentSerializer = new(ConfigPersistentDirectory, ConfigExtension, TextSerializeFormatter.Instance);
         
         public override void Initialize(ModuleConfig config)

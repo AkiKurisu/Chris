@@ -1,9 +1,22 @@
 ﻿using System.IO;
+using Chris.Serialization;
 
 namespace Chris.Configs.Editor
 {
     public static class ConfigsEditorUtils
     {
+        private static readonly SaveLoadSerializer ConfigSerializer = new(ConfigsModule.ConfigEditorDirectory, ConfigsModule.ConfigExtension, TextSerializeFormatter.Instance);
+
+        /// <summary>
+        /// Get config serializer in editor, cache will be clean up before using.
+        /// </summary>
+        /// <returns></returns>
+        public static SaveLoadSerializer GetConfigSerializer()
+        {
+            ConfigSystem.ClearCache();
+            return ConfigSerializer;
+        }
+        
         private static void CopyDirectoryRecursively(string sourceDir, string destDir)
         {
             if (!Directory.Exists(destDir))
@@ -29,7 +42,7 @@ namespace Chris.Configs.Editor
         public static void ExportAndArchiveConfigs()
         {
             // Collect all configs and export to streaming assets
-            CopyDirectoryRecursively(ConfigsModule.ConfigPersistentDirectory, ConfigsModule.ConfigStreamingDirectory);
+            CopyDirectoryRecursively(ConfigsModule.ConfigEditorDirectory, ConfigsModule.ConfigStreamingDirectory);
 #if UNITY_ANDROID
             // If android, make archive file and delete configs folder
             if (Directory.GetFiles(ConfigsModule.ConfigStreamingDirectory).Length > 0)
