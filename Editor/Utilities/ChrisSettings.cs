@@ -1,4 +1,5 @@
 using Chris.Configs;
+using Chris.Configs.Editor;
 using Chris.DataDriven;
 using Chris.DataDriven.Editor;
 using Chris.Schedulers;
@@ -23,7 +24,7 @@ namespace Chris.Editor
         internal static void SaveSettings()
         {
             instance.Save(true);
-            var serializer = ConfigsModule.PersistentSerializer;
+            var serializer = ConfigsEditorUtils.GetConfigSerializer();
             ConfigFileLocation location = "Chris";
             var configFile = ConfigSystem.GetConfigFile(location);
             var schedulerSettings = SchedulerSettings.Get();
