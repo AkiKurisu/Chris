@@ -91,10 +91,12 @@ namespace Chris.Configs
                 ConfigSystem.ClearCache();
                 Debug.Log("[Chris] Extract streaming configs succeed.");
             }
+#if !UNITY_EDITOR
             else
             {
                 Debug.LogWarning("[Chris] No streaming configs need to be extracted.");
             }
+#endif
         }
     }
 }

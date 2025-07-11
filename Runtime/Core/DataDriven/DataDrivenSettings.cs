@@ -6,10 +6,10 @@ namespace Chris.DataDriven
 {
     [Serializable]
     [ConfigPath("Chris.DataDriven")]
-    public class DataDrivenSettings: Config<DataDrivenSettings>
+    public class DataDrivenSettings : Config<DataDrivenSettings>
     {
         [SerializeField]
-        internal bool initializeDataTableManagerOnLoad = false;
+        internal bool initializeDataTableManagerOnLoad;
 
         public static bool InitializeDataTableManagerOnLoad => Get().initializeDataTableManagerOnLoad;
     }
