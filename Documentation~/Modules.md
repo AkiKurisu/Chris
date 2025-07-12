@@ -21,9 +21,6 @@ public class MyGameModule : RuntimeModule
         // Module initialization logic
         Debug.Log("MyGameModule initialized");
         
-        // Access configuration
-        var enableFeature = config.GetSetting<bool>("EnableFeature");
-        
         // Initialize systems, register services, etc.
         InitializeGameSystems();
     }
@@ -128,8 +125,6 @@ public class ConfigsModule : RuntimeModule
 
 ## Creating Custom Modules
 
-### Basic Module
-
 ```csharp
 [Preserve]
 public class AudioModule : RuntimeModule
@@ -159,57 +154,6 @@ public class AudioModule : RuntimeModule
 }
 ```
 
-### Module with Dependencies
-
-```csharp
-[Preserve]
-public class NetworkModule : RuntimeModule
-{
-    public override void Initialize(ModuleConfig config)
-    {
-        // Ensure other modules are initialized first
-        var audioModule = FindObjectOfType<AudioModule>();
-        if (audioModule == null)
-        {
-            Debug.LogWarning("AudioModule not found - some features may be limited");
-        }
-        
-        // Initialize networking
-        SetupNetworkManager();
-        RegisterNetworkEvents();
-    }
-}
-```
-
-### Module with Configuration
-
-```csharp
-[Preserve]
-public class GraphicsModule : RuntimeModule
-{
-    [Serializable]
-    public class GraphicsModuleSettings
-    {
-        public bool enableHDR = true;
-        public int targetFrameRate = 60;
-        public bool enableVSync = false;
-    }
-    
-    public override void Initialize(ModuleConfig config)
-    {
-        // Load module-specific settings
-        var settings = LoadSettings<GraphicsModuleSettings>();
-        
-        // Apply graphics settings
-        Application.targetFrameRate = settings.targetFrameRate;
-        QualitySettings.vSyncCount = settings.enableVSync ? 1 : 0;
-        
-        // Save any changes back to config
-        SaveSettings(settings);
-    }
-}
-```
-
 ## Assembly Filtering
 
 The module loader intelligently filters assemblies:
@@ -233,74 +177,3 @@ var validAssemblies = AppDomain.CurrentDomain.GetAssemblies()
             || assembly.GetName().Name == nameof(Chris);
     });
 ```
-
-## Best Practices
-
-### Module Design
-
-1. **Keep modules focused** - Each module should have a single responsibility
-2. **Use [Preserve] attribute** - Prevents code stripping in builds
-3. **Handle missing dependencies gracefully** - Don't assume other modules exist
-4. **Initialize in correct order** - Consider dependencies between modules
-
-### Configuration Management
-
-```csharp
-[Preserve]
-public class MyModule : RuntimeModule
-{
-    public override void Initialize(ModuleConfig config)
-    {
-        // Load module settings
-        var settings = config.GetModuleSettings<MyModuleSettings>();
-        
-        // Use settings for initialization
-        InitializeWithSettings(settings);
-        
-        // Save any runtime changes
-        config.SetModuleSettings(settings);
-    }
-}
-```
-
-### Error Handling
-
-```csharp
-[Preserve]
-public class RobustModule : RuntimeModule
-{
-    public override void Initialize(ModuleConfig config)
-    {
-        try
-        {
-            InitializeCriticalSystems();
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"Failed to initialize {GetType().Name}: {ex.Message}");
-            // Graceful degradation
-            InitializeFallbackSystems();
-        }
-    }
-}
-```
-
-## Integration with Other Systems
-
-- **Configs** - Modules use `ModuleConfig` for persistent settings
-- **Events** - Modules can register for framework events during initialization
-- **Serialization** - Module settings can use framework serialization
-- **Tasks** - Modules can start background tasks during initialization
-
-## Debugging
-
-Enable module loading debugging:
-
-```csharp
-// In development builds
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-Debug.Log($"Initializing module: {moduleType.Name}");
-#endif
-```
-
-The module system provides a clean, automatic way to organize and initialize your game's systems while maintaining loose coupling and extensibility.

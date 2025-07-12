@@ -89,15 +89,22 @@ namespace Chris.DataDriven
             {
                 if (sync)
                 {
-                    // ReSharper disable once MethodHasAsyncOverload
-                    ResourceSystem.CheckAsset<DataTable>(tableKey);
+                    if (DataDrivenConfig.ValidateDataTableBeforeLoad)
+                    {
+                        // ReSharper disable once MethodHasAsyncOverload
+                        ResourceSystem.CheckAsset<DataTable>(tableKey);
+                    }
                     ResourceSystem.LoadAssetAsync<DataTable>(tableKey, dataTable =>
                     {
                         RegisterDataTable(tableKey, dataTable);
                     }).WaitForCompletion();
                     return;
                 }
-                await ResourceSystem.CheckAssetAsync<DataTable>(tableKey);
+
+                if (DataDrivenConfig.ValidateDataTableBeforeLoad)
+                {
+                    await ResourceSystem.CheckAssetAsync<DataTable>(tableKey);
+                }
                 await ResourceSystem.LoadAssetAsync<DataTable>(tableKey, dataTable =>
                 {
                     RegisterDataTable(tableKey, dataTable);

@@ -93,28 +93,6 @@ Configurations with the same root path are stored in the same file, enabling eff
 4. **Access** - `Config<T>.Get()` returns cached instance or loads from providers
 5. **Saving** - `Save()` serializes configuration to persistent storage
 
-## Built-in Framework Configurations
-
-The Chris framework includes several built-in configurations:
-
-**DataDrivenSettings** (`Chris.DataDriven`)
-```csharp
-var settings = DataDrivenSettings.Get();
-// Controls DataTable manager initialization
-```
-
-**ModuleConfig** (`Chris.Modules`)
-```csharp
-var config = ModuleConfig.Get();
-// Module loading configuration
-```
-
-**SchedulerSettings** (`Chris.Schedulers`)
-```csharp
-var settings = SchedulerSettings.Get();
-// Scheduler debugging and stack trace options
-```
-
 ## Advanced Features
 
 ### Custom Serialization
@@ -143,18 +121,91 @@ ConfigSystem.RegisterConfigFileProvider(new CustomConfigProvider(), priority: 30
 - **Persistent**: `SaveUtility.SavePath/Configs/`
 - **Extension**: `.cfg`
 
-## Best Practices
+## Console Variables
 
-1. **Use descriptive paths** - Organize configurations logically with `ConfigPathAttribute`
-2. **Group related settings** - Configurations with the same root path share a file
-3. **Prefer immutable access** - Get configuration once and cache locally if accessed frequently
-4. **Save sparingly** - Only call `Save()` when user explicitly changes settings
-5. **Use serializable types** - Ensure all fields are compatible with chosen serialization method
+Console Variables allow developers to modify configuration values at runtime through the in-game debug console. This feature is particularly useful for debugging, testing, and fine-tuning gameplay parameters without restarting the application.
 
-## Integration with Other Modules
+### Overview
 
-The Configs system integrates seamlessly with other Chris framework modules:
-- **Serialization** - Uses `SerializedType` and `SerializedObject` for complex data
-- **Modules** - `ModuleLoader` uses `ModuleConfig` for initialization settings
-- **DataDriven** - `DataDrivenSettings` controls DataTable behavior
-- **Schedulers** - `SchedulerSettings` configures debugging features
+The Console Variables system automatically discovers fields and properties marked with the `[ConsoleVariable]` attribute in Config classes and registers them as console commands. This enables real-time modification of configuration values through the integrated debug console.
+
+### How It Works
+
+1. **Auto-Discovery**: At startup, the system scans all Config classes for `[ConsoleVariable]` attributes
+2. **Command Generation**: Automatically creates console commands for getting and setting values
+3. **Type Safety**: Only supports `int`, `float`, `bool`, and `string` types
+4. **Persistence**: Changes are automatically saved to the persistent configuration file
+
+### Usage
+
+#### Adding Console Variables
+
+```csharp
+[Serializable]
+[ConfigPath("MyGame.Graphics")]
+public class GraphicsConfig : Config<GraphicsConfig>
+{
+    [SerializeField]
+    [ConsoleVariable("r.shadows")]
+    public bool enableShadows = true;
+    
+    [SerializeField]
+    [ConsoleVariable("r.quality")]
+    public int qualityLevel = 2;
+    
+    [SerializeField]
+    [ConsoleVariable("r.fov")]
+    public float fieldOfView = 60f;
+    
+    [SerializeField]
+    [ConsoleVariable("r.playerName")]
+    public string playerName = "Player";
+    
+    // Regular config field (not exposed to console)
+    [SerializeField]
+    public bool internalSetting = false;
+}
+```
+
+#### Console Commands
+
+The system automatically generates console commands for each variable:
+
+**Get Current Value:**
+```
+r.shadows
+r.quality
+r.fov
+r.playerName
+```
+
+**Set New Value:**
+```
+r.shadows= true
+r.quality= 3
+r.fov= 90.0
+r.playerName= "NewPlayer"
+```
+
+**Boolean Variables** (supports both formats):
+```
+r.shadows= true
+r.shadows= 1      // 1 = true, 0 = false
+```
+
+### Supported Types
+
+| Type | Example Command | Notes |
+|------|-----------------|-------|
+| `int` | `r.quality= 3` | Integer values |
+| `float` | `r.fov= 90.5` | Floating-point values |
+| `bool` | `r.shadows= true` | Boolean values (true/false or 1/0) |
+| `string` | `r.name= "Player"` | String values |
+
+### Integration with Debug Console
+
+![Console Variables](./Images/console_variables.png)
+
+The system integrates seamlessly with [yasirkula/UnityIngameDebugConsole](https://github.com/yasirkula/UnityIngameDebugConsole) which is modified and included in this repo.
+
+Console variables are automatically registered as console commands.

@@ -15,6 +15,15 @@ namespace Chris
 
         private static ConsoleVariableRegistry _instance;
 
+        // Type mapping for console variables
+        private static readonly Dictionary<Type, Type> TypeToConsoleVariableMap = new()
+        {
+            { typeof(int), typeof(IntConsoleVariable<>) },
+            { typeof(float), typeof(FloatConsoleVariable<>) },
+            { typeof(bool), typeof(BoolConsoleVariable<>) },
+            { typeof(string), typeof(StringConsoleVariable<>) }
+        };
+
         private ConsoleVariableRegistry()
         {
             InitializeVariables();
@@ -42,55 +51,78 @@ namespace Chris
 
         private void ProcessConfigType(Type configType)
         {
-            var fields = configType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            // Process fields
+            ProcessMembers(configType, GetFieldsWithAttribute(configType), CreateFieldAccessor);
+
+            // Process properties
+            ProcessMembers(configType, GetPropertiesWithAttribute(configType), CreatePropertyAccessor);
+        }
+
+        private static FieldInfo[] GetFieldsWithAttribute(Type configType)
+        {
+            return configType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Where(field => field.GetCustomAttribute<ConsoleVariableAttribute>() != null)
                 .ToArray();
+        }
 
-            foreach (var field in fields)
+        private static PropertyInfo[] GetPropertiesWithAttribute(Type configType)
+        {
+            return configType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .Where(prop => prop.GetCustomAttribute<ConsoleVariableAttribute>() != null)
+                .Where(prop => prop.CanRead && prop.CanWrite)
+                .ToArray();
+        }
+
+        private void ProcessMembers<T>(Type configType, T[] members, Func<T, MemberAccessor> accessorFactory) where T : MemberInfo
+        {
+            foreach (var member in members)
             {
-                var attribute = field.GetCustomAttribute<ConsoleVariableAttribute>();
-                CreateConsoleVariable(configType, field, attribute);
+                var attribute = member.GetCustomAttribute<ConsoleVariableAttribute>();
+                if (attribute == null) continue;
+
+                var memberAccessor = accessorFactory(member);
+                if (memberAccessor == null) continue;
+
+                CreateConsoleVariable(configType, memberAccessor, attribute);
             }
         }
 
-        private void CreateConsoleVariable(Type configType, FieldInfo fieldInfo, ConsoleVariableAttribute attribute)
+        private static MemberAccessor CreateFieldAccessor(FieldInfo field)
+        {
+            return new FieldAccessor(field);
+        }
+
+        private static MemberAccessor CreatePropertyAccessor(PropertyInfo property)
+        {
+            if (!property.CanRead || !property.CanWrite)
+            {
+                Debug.LogWarning($"[Chris] Property {property.Name} on {property.DeclaringType?.Name} must have both getter and setter to be used as console variable");
+                return null;
+            }
+
+            return new PropertyAccessor(property);
+        }
+
+        private void CreateConsoleVariable(Type configType, MemberAccessor memberAccessor, ConsoleVariableAttribute attribute)
         {
             var variableName = attribute.Name;
-            var fieldType = fieldInfo.FieldType;
+            var memberType = memberAccessor.MemberType;
 
             try
             {
-                ConsoleVariable variable;
+                var variable = TypeToConsoleVariableMap.TryGetValue(memberType, out var consoleVariableType)
+                    ? CreateTypedConsoleVariable(configType, memberAccessor, variableName, consoleVariableType)
+                    : null;
 
-                // Create appropriate console variable based on field type
-                if (fieldType == typeof(int))
+                if (variable == null)
                 {
-                    variable = CreateTypedConsoleVariable(configType, fieldInfo, variableName, typeof(IntConsoleVariable<>));
-                }
-                else if (fieldType == typeof(float))
-                {
-                    variable = CreateTypedConsoleVariable(configType, fieldInfo, variableName, typeof(FloatConsoleVariable<>));
-                }
-                else if (fieldType == typeof(bool))
-                {
-                    variable = CreateTypedConsoleVariable(configType, fieldInfo, variableName, typeof(BoolConsoleVariable<>));
-                }
-                else if (fieldType == typeof(string))
-                {
-                    variable = CreateTypedConsoleVariable(configType, fieldInfo, variableName, typeof(StringConsoleVariable<>));
-                }
-                else
-                {
-                    Debug.LogWarning($"[Chris] Unsupported field type {fieldType} for console variable {variableName}");
+                    Debug.LogWarning($"[Chris] Unsupported member type {memberType} for console variable {variableName}");
                     return;
                 }
 
-                if (variable != null)
+                if (!_variables.TryAdd(variableName, variable))
                 {
-                    if (!_variables.TryAdd(variableName, variable))
-                    {
-                        Debug.LogWarning($"[Chris] A config variable named {variableName} already exists!");
-                    }
+                    Debug.LogWarning($"[Chris] A config variable named {variableName} already exists!");
                 }
             }
             catch (Exception ex)
@@ -99,20 +131,20 @@ namespace Chris
             }
         }
 
-        private static ConsoleVariable CreateTypedConsoleVariable(Type configType, FieldInfo fieldInfo, string variableName, Type consoleVariableGenericType)
+        private static ConsoleVariable CreateTypedConsoleVariable(Type configType, MemberAccessor memberAccessor, string variableName, Type consoleVariableGenericType)
         {
             // Create the generic type with the config type
             var consoleVariableType = consoleVariableGenericType.MakeGenericType(configType);
 
             // Create instance using constructor
-            var constructor = consoleVariableType.GetConstructor(new[] { typeof(string), typeof(FieldInfo) });
+            var constructor = consoleVariableType.GetConstructor(new[] { typeof(string), typeof(MemberAccessor) });
             if (constructor == null)
             {
                 Debug.LogError($"Constructor not found for console variable type {consoleVariableType}");
                 return null;
             }
 
-            return (ConsoleVariable)constructor.Invoke(new object[] { variableName, fieldInfo });
+            return (ConsoleVariable)constructor.Invoke(new object[] { variableName, memberAccessor });
         }
 
         /// <summary>

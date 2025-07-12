@@ -5,21 +5,89 @@ using UnityEngine;
 namespace Chris.Configs
 {
     /// <summary>
+    /// Abstraction for accessing both fields and properties
+    /// </summary>
+    public abstract class MemberAccessor
+    {
+        public abstract Type MemberType { get; }
+        
+        public abstract string Name { get; }
+        
+        public abstract object GetValue(object target);
+        
+        public abstract void SetValue(object target, object value);
+    }
+
+    /// <summary>
+    /// Field accessor implementation
+    /// </summary>
+    public class FieldAccessor : MemberAccessor
+    {
+        private readonly FieldInfo _fieldInfo;
+
+        public FieldAccessor(FieldInfo fieldInfo)
+        {
+            _fieldInfo = fieldInfo;
+        }
+
+        public override Type MemberType => _fieldInfo.FieldType;
+        
+        public override string Name => _fieldInfo.Name;
+
+        public override object GetValue(object target)
+        {
+            return _fieldInfo.GetValue(target);
+        }
+
+        public override void SetValue(object target, object value)
+        {
+            _fieldInfo.SetValue(target, value);
+        }
+    }
+
+    /// <summary>
+    /// Property accessor implementation
+    /// </summary>
+    public class PropertyAccessor : MemberAccessor
+    {
+        private readonly PropertyInfo _propertyInfo;
+
+        public PropertyAccessor(PropertyInfo propertyInfo)
+        {
+            _propertyInfo = propertyInfo;
+        }
+
+        public override Type MemberType => _propertyInfo.PropertyType;
+        
+        public override string Name => _propertyInfo.Name;
+
+        public override object GetValue(object target)
+        {
+            return _propertyInfo.GetValue(target);
+        }
+
+        public override void SetValue(object target, object value)
+        {
+            _propertyInfo.SetValue(target, value);
+        }
+    }
+
+    /// <summary>
     /// Base class for config variables that can be modified through console
     /// </summary>
     public abstract class ConsoleVariable
     {
         public string Name { get; protected set; }
-        
-        public Type ConfigType { get; protected set; }
-        
-        public FieldInfo FieldInfo { get; protected set; }
 
-        protected ConsoleVariable(string name, Type configType, FieldInfo fieldInfo)
+        public Type ConfigType { get; protected set; }
+
+        public MemberAccessor MemberAccessor { get; protected set; }
+
+        protected ConsoleVariable(string name, Type configType, MemberAccessor memberAccessor)
         {
             Name = name;
             ConfigType = configType;
-            FieldInfo = fieldInfo;
+            MemberAccessor = memberAccessor;
         }
 
         /// <summary>
@@ -40,7 +108,7 @@ namespace Chris.Configs
         /// <returns>Variable type</returns>
         public virtual Type GetValueType()
         {
-            return FieldInfo.FieldType;
+            return MemberAccessor.MemberType;
         }
     }
 
@@ -52,7 +120,7 @@ namespace Chris.Configs
     public abstract class ConsoleVariable<TConfig, TValue> : ConsoleVariable
         where TConfig : Config<TConfig>, new()
     {
-        protected ConsoleVariable(string name, FieldInfo fieldInfo) : base(name, typeof(TConfig), fieldInfo)
+        protected ConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, typeof(TConfig), memberAccessor)
         {
         }
 
@@ -64,7 +132,7 @@ namespace Chris.Configs
         public override object GetValue()
         {
             var config = GetConfig();
-            return FieldInfo.GetValue(config);
+            return MemberAccessor.GetValue(config);
         }
 
         public override void SetValue(object value)
@@ -72,7 +140,7 @@ namespace Chris.Configs
             var config = GetConfig();
             if (value is TValue typedValue)
             {
-                FieldInfo.SetValue(config, typedValue);
+                MemberAccessor.SetValue(config, typedValue);
                 config.Save(); // Save the config after modification
             }
             else
@@ -81,7 +149,7 @@ namespace Chris.Configs
                 try
                 {
                     var convertedValue = Convert.ChangeType(value, typeof(TValue));
-                    FieldInfo.SetValue(config, convertedValue);
+                    MemberAccessor.SetValue(config, convertedValue);
                     config.Save();
                 }
                 catch (Exception ex)
@@ -99,7 +167,7 @@ namespace Chris.Configs
     public class IntConsoleVariable<TConfig> : ConsoleVariable<TConfig, int>
         where TConfig : Config<TConfig>, new()
     {
-        public IntConsoleVariable(string name, FieldInfo fieldInfo) : base(name, fieldInfo)
+        public IntConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }
@@ -111,7 +179,7 @@ namespace Chris.Configs
     public class FloatConsoleVariable<TConfig> : ConsoleVariable<TConfig, float>
         where TConfig : Config<TConfig>, new()
     {
-        public FloatConsoleVariable(string name, FieldInfo fieldInfo) : base(name, fieldInfo)
+        public FloatConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }
@@ -123,7 +191,7 @@ namespace Chris.Configs
     public class BoolConsoleVariable<TConfig> : ConsoleVariable<TConfig, bool>
         where TConfig : Config<TConfig>, new()
     {
-        public BoolConsoleVariable(string name, FieldInfo fieldInfo) : base(name, fieldInfo)
+        public BoolConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }
@@ -135,7 +203,7 @@ namespace Chris.Configs
     public class StringConsoleVariable<TConfig> : ConsoleVariable<TConfig, string>
         where TConfig : Config<TConfig>, new()
     {
-        public StringConsoleVariable(string name, FieldInfo fieldInfo) : base(name, fieldInfo)
+        public StringConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }

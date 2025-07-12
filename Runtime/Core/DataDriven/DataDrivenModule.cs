@@ -8,7 +8,7 @@ namespace Chris.DataDriven
     {
         public override void Initialize(ModuleConfig config)
         {
-            if (DataDrivenSettings.InitializeDataTableManagerOnLoad)
+            if (DataDrivenConfig.InitializeDataTableManagerOnLoad)
             {
                 DataTableManager.Initialize();
             }

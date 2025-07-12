@@ -6,12 +6,12 @@ namespace Chris.Schedulers
 {
     [Serializable]
     [ConfigPath("Chris.Schedulers")]
-    public class SchedulerSettings : Config<SchedulerSettings>
+    public class SchedulerConfig : Config<SchedulerConfig>
     {
         [SerializeField]
         [ConsoleVariable("r.scheduler.stackTrace")]
-        internal bool schedulerStackTrace = true;
+        internal bool enableStackTrace = true;
 
-        public static bool SchedulerStackTrace => Get().schedulerStackTrace;
+        public static bool EnableStackTrace => Get().enableStackTrace;
     }
 }

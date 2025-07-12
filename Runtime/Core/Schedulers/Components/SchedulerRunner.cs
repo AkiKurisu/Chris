@@ -188,7 +188,7 @@ namespace Chris.Schedulers
             ScheduledItems[index] = item;
             _pendingHandles.Add(scheduled.Handle);
 #if UNITY_EDITOR
-            if (SchedulerSettings.SchedulerStackTrace)
+            if (SchedulerConfig.EnableStackTrace)
             {
                 SchedulerRegistry.RegisterListener(scheduled, @delegate);
             }
@@ -210,7 +210,7 @@ namespace Chris.Schedulers
         {
             ScheduledItems.RemoveAt(scheduled.Handle.GetIndex());
 #if UNITY_EDITOR
-            if (SchedulerSettings.SchedulerStackTrace)
+            if (SchedulerConfig.EnableStackTrace)
             {
                 SchedulerRegistry.UnregisterListener(scheduled, @delegate);
             }

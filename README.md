@@ -38,12 +38,19 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 ![SoftAssetReference](./Documentation~/Images/soft_asset_reference.png)
 
 [Data Driven](./Documentation~/DataDriven.md)
->Use Unreal-like DataTable workflow in Unity.
+> Use Unreal-like DataTable workflow in Unity.
 
 ![DataTable](./Documentation~/Images/datatable_editor_window.png)
 
 [Configs](./Documentation~/Configs.md)
 > Global configuration management system with hierarchical organization and automatic serialization.
+
+![Configs](./Documentation~/Images/configs.png)
+
+[Console Variables](./Documentation~/Configs.md#console-variables)
+> Runtime configuration adjustment through in-game console commands.
+
+![Console Variables](./Documentation~/Images/console_variables.png)
 
 [Tasks](./Documentation~/Tasks.md)
 > Asynchronous task system with prerequisites and event-driven completion.

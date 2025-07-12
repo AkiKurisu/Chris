@@ -15,24 +15,31 @@ namespace Chris.Editor
     {
         public bool schedulerStackTrace = true;
         
-        public SerializedType<IDataTableEditorSerializer> dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
-        
         public bool initializeDataTableManagerOnLoad;
+        
+        public bool validateDataTableBeforeLoad = true;
+        
+        public SerializedType<IDataTableEditorSerializer> dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
         
         public bool inlineRowReadOnly;
 
         internal static void SaveSettings()
         {
             instance.Save(true);
+            
             var serializer = ConfigsEditorUtils.GetConfigSerializer();
             ConfigFileLocation location = "Chris";
             var configFile = ConfigSystem.GetConfigFile(location);
-            var schedulerSettings = SchedulerSettings.Get();
-            schedulerSettings.schedulerStackTrace = instance.schedulerStackTrace;
-            configFile.SetConfig(SchedulerSettings.Location, schedulerSettings);
-            var dataDrivenSettings = DataDrivenSettings.Get();
+            
+            var schedulerSettings = SchedulerConfig.Get();
+            schedulerSettings.enableStackTrace = instance.schedulerStackTrace;
+            configFile.SetConfig(SchedulerConfig.Location, schedulerSettings);
+            
+            var dataDrivenSettings = DataDrivenConfig.Get();
             dataDrivenSettings.initializeDataTableManagerOnLoad = instance.initializeDataTableManagerOnLoad;
-            configFile.SetConfig(DataDrivenSettings.Location, dataDrivenSettings);
+            dataDrivenSettings.validateDataTableBeforeLoad = instance.validateDataTableBeforeLoad;
+            configFile.SetConfig(DataDrivenConfig.Location, dataDrivenSettings);
+            
             serializer.Serialize(location, configFile);
         }
     }
@@ -43,13 +50,15 @@ namespace Chris.Editor
         
         private class Styles
         {
-            public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace", "Allow trace scheduled task in editor");
+            public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace", "Allow trace scheduled task in editor.");
             
-            public static readonly GUIContent DataTableSerializerLabel = new("Editor Serializer", "Set DataTable Editor serializer type");
+            public static readonly GUIContent DataTableSerializerLabel = new("Editor Serializer", "Set DataTable Editor serializer type.");
             
-            public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers", "Initialize all DataManager instances before scene loaded");
+            public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers", "Initialize all DataTableManager instances before scene loaded.");
             
-            public static readonly GUIContent InlineRowReadOnlyLabel = new("Inline Row ReadOnly", "Enable to let DataTableRow in inspector list view readonly");
+            public static readonly GUIContent ValidateDataTableBeforeLoadLabel = new("Validate Before Load", "Verify that the DataTable exists before loading it.");
+
+            public static readonly GUIContent InlineRowReadOnlyLabel = new("Inline Row ReadOnly", "Enable to let DataTableRow in inspector list view readonly.");
         }
         
         public ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
@@ -87,8 +96,9 @@ namespace Chris.Editor
         {
             GUILayout.BeginVertical("DataTable Settings", GUI.skin.box);
             GUILayout.Space(EditorGUIUtility.singleLineHeight);
-            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableEditorSerializer)), Styles.DataTableSerializerLabel);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.initializeDataTableManagerOnLoad)), Styles.InitializeDataTableManagerOnLoadLabel);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.validateDataTableBeforeLoad)), Styles.ValidateDataTableBeforeLoadLabel);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableEditorSerializer)), Styles.DataTableSerializerLabel);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.inlineRowReadOnly)), Styles.InlineRowReadOnlyLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
