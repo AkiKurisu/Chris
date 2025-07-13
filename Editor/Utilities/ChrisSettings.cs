@@ -50,18 +50,25 @@ namespace Chris.Editor
         
         private class Styles
         {
-            public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace", "Allow trace scheduled task in editor.");
+            public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace", 
+                "Allow trace scheduled task in editor.");
             
-            public static readonly GUIContent DataTableSerializerLabel = new("Editor Serializer", "Set DataTable Editor serializer type.");
+            public static readonly GUIContent DataTableSerializerLabel = new("Editor Serializer", 
+                "Set the serializer type in DataTable Editor.");
             
-            public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers", "Initialize all DataTableManager instances before scene loaded.");
+            public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers", 
+                "Initialize all DataTableManager instances before the scene loads.");
             
-            public static readonly GUIContent ValidateDataTableBeforeLoadLabel = new("Validate Before Load", "Verify that the DataTable exists before loading it.");
+            public static readonly GUIContent ValidateDataTableBeforeLoadLabel = new("Validate Before Load", 
+                "Verify the existence of a DataTable before loading it." +
+                "Disabling this feature may cause exceptions to be thrown on load, resulting in unexpected behavior. " +
+                "Disable only after checking that all DataTables exist.");
 
-            public static readonly GUIContent InlineRowReadOnlyLabel = new("Inline Row ReadOnly", "Enable to let DataTableRow in inspector list view readonly.");
+            public static readonly GUIContent InlineRowReadOnlyLabel = new("Inline Row ReadOnly", 
+                "Enable to make the DataTableRow in the inspector list view read-only.");
         }
-        
-        public ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
+
+        private ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
         
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
