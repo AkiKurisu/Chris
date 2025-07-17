@@ -2,7 +2,7 @@
 
 # Chris
 
-A Unity development framework designed for efficient, flexible, and professional workflows.
+A Unity development framework designed for efficient, flexible and professional workflows.
 
 </div>
 
@@ -38,12 +38,19 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 ![SoftAssetReference](./Documentation~/Images/soft_asset_reference.png)
 
 [Data Driven](./Documentation~/DataDriven.md)
->Use Unreal-like DataTable workflow in Unity.
+> Use Unreal-like DataTable workflow in Unity.
 
 ![DataTable](./Documentation~/Images/datatable_editor_window.png)
 
 [Configs](./Documentation~/Configs.md)
 > Global configuration management system with hierarchical organization and automatic serialization.
+
+![Configs](./Documentation~/Images/configs.png)
+
+[Console Variables](./Documentation~/Configs.md#console-variables)
+> Runtime configuration adjustment through in-game console commands.
+
+![Console Variables](./Documentation~/Images/console_variables.png)
 
 [Tasks](./Documentation~/Tasks.md)
 > Asynchronous task system with prerequisites and event-driven completion.
@@ -68,15 +75,17 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
   }
 ```
 
-## Reference
+## Credits
 
-[R3](https://github.com/Cysharp/R3)
+[Cysharp/R3](https://github.com/Cysharp/R3)
 
-[UniTask](https://github.com/Cysharp/UniTask)
+[Cysharp/UniTask](https://github.com/Cysharp/UniTask)
 
-[Unity.UIElements](https://github.com/Unity-Technologies/UnityCsReference/tree/2022.3/ModuleOverrides/com.unity.ui/Core)
+[Unity/UIElements](https://github.com/Unity-Technologies/UnityCsReference/tree/2022.3/ModuleOverrides/com.unity.ui/Core)
 
-[Unity Timer](https://github.com/akbiggs/UnityTimer)
+[akbiggs/Unity Timer](https://github.com/akbiggs/UnityTimer)
+
+[yasirkula/UnityIngameDebugConsole](https://github.com/yasirkula/UnityIngameDebugConsole)
 
 ## License
 

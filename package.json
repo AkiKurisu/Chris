@@ -1,9 +1,9 @@
 {
   "name": "com.kurisu.chris",
   "displayName": "Chris",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "unity": "2022.3",
-  "description": "A Unity development framework designed for efficient, flexible, and professional workflows.",
+  "description": "A Unity development framework designed for efficient, flexible and professional workflows.",
   "keywords": [
     "Framework"
   ],

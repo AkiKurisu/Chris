@@ -277,5 +277,40 @@ namespace Chris
                 return null;
             }
         }
+        
+        /// <summary>
+        /// Determines whether the specified type inherits from the specified generic type definition, and obtains the generic parameter type.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="genericDefinition"></param>
+        /// <param name="arguments"></param>
+        /// <returns></returns>
+        public static bool IsInheritedFromGenericDefinition(this Type type, Type genericDefinition, out Type[] arguments)
+        {
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == genericDefinition)
+            {
+                arguments = type.GetGenericArguments();
+                return true;
+            }
+            
+            if (type.BaseType != null)
+            {
+                if (IsInheritedFromGenericDefinition(type.BaseType, genericDefinition, out arguments))
+                {
+                    return true;
+                }
+            }
+            
+            foreach (var interfaceType in type.GetInterfaces())
+            {
+                if (IsInheritedFromGenericDefinition(interfaceType, genericDefinition, out arguments))
+                {
+                    return true;
+                }
+            }
+
+            arguments = Type.EmptyTypes;
+            return false;
+        }
     }
 }
