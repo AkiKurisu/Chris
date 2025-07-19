@@ -22,6 +22,11 @@ namespace Chris.Serialization.Editor
             EditorGUI.BeginProperty(position, label, property);
             position.height = EditorGUIUtility.singleLineHeight;
             var reference = property.FindPropertyRelative("serializedTypeString");
+            var fieldType = fieldInfo.FieldType;
+            if (fieldType.IsArray)
+            {
+                fieldType = fieldType.GetElementType();
+            }
             Type type;
             try
             {
@@ -33,18 +38,13 @@ namespace Chris.Serialization.Editor
             }
             string id = type != null ? type.Name : NullType;
             float width = position.width;
-            position.width = GUI.skin.label.CalcSize(label).x;
+            position.width = Mathf.Min(GUI.skin.label.CalcSize(label).x, width * 0.5f - 10);
             GUI.Label(position, label);
             position.x += position.width + 10;
             position.width = width - position.width - 10;
             if (EditorGUI.DropdownButton(position, new GUIContent(id), FocusType.Keyboard))
             {
                 var provider = ScriptableObject.CreateInstance<TypeSearchWindow>();
-                var fieldType = fieldInfo.FieldType;
-                if (fieldType.IsArray)
-                {
-                    fieldType = fieldType.GetElementType();
-                }
                 provider.Initialize(ReflectionUtility.GetGenericArgumentType(fieldType), selectType =>
                 {
                     reference.stringValue = selectType != null ? SerializedType.ToString(selectType) : NullType;
