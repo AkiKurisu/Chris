@@ -64,16 +64,15 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 
 ## Dependencies
 
+Add following dependencies to `manifest.json`.
+
 ```json
 "dependencies": {
-    "com.cysharp.unitask":"https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
-    "com.unity.addressables": "1.21.0",
-    "com.unity.nuget.newtonsoft-json": "3.2.1",
-    "com.unity.collections": "2.2.1",
-    "com.unity.burst": "1.8.9",
-    "com.unity.mathematics": "1.3.1"
+    "com.cysharp.unitask":"https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask"
   }
 ```
+
+Use git URL to download package by Unity Package Manager ```https://github.com/AkiKurisu/Chris.git```.
 
 ## Credits
 
