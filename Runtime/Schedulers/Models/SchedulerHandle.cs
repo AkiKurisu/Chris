@@ -41,8 +41,7 @@ namespace Chris.Schedulers
         /// <value></value>
         public bool IsDone()
         {
-            if (!SchedulerRunner.IsInitialized) return default;
-            return SchedulerRunner.Get().IsDone(this);
+            return SchedulerRunner.IsInitialized ? SchedulerRunner.Get().IsDone(this) : default;
         }
         
         public SchedulerHandle(ulong handle)

@@ -4,6 +4,7 @@ using Chris.Collections;
 using Chris.Pool;
 using Unity.Profiling;
 using UnityEngine;
+
 namespace Chris.Schedulers
 {
     /// <summary>
@@ -114,7 +115,7 @@ namespace Chris.Schedulers
         
         private int _lastFrame;
         
-        public static bool IsInitialized => _instance != null;
+        public static bool IsInitialized => (bool)_instance;
         
         private static SchedulerRunner _instance;
         
@@ -129,17 +130,19 @@ namespace Chris.Schedulers
                 return null;
             }
 #endif
-            if (_instance != null) return _instance;
-            
-            var managerInScene = FindObjectOfType<SchedulerRunner>();
-            _instance = managerInScene != null ? managerInScene : new GameObject(nameof(SchedulerRunner)).AddComponent<SchedulerRunner>();
+            if (!_instance)
+            {
+                _instance = new GameObject(nameof(SchedulerRunner))
+                {
+                    hideFlags = HideFlags.HideInHierarchy | HideFlags.NotEditable
+                }.AddComponent<SchedulerRunner>();
+            }
             return _instance;
         }
         
         private void Update()
         {
             UpdateAll(TickFrame.Update);
-
         }
         
         private void FixedUpdate()
