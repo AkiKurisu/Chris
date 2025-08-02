@@ -172,7 +172,10 @@ namespace Chris.DataDriven.Editor
             
             string address = addressableAttribute.Address ?? dataTable.name;
             var group = ResourceEditorUtils.GetOrCreateAssetGroup(addressableAttribute.Group);
-            group.AddAsset(dataTable).address = address;
+            using (group.Modify())
+            {
+                group.AddAsset(dataTable).address = address;
+            }
         }
 
         /// <summary>

@@ -9,16 +9,18 @@ using Chris.Serialization;
 using UObject = UnityEngine.Object;
 using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 using UnityEngine.Assertions;
+using UnityEngine.Pool;
+
 namespace Chris.Resource.Editor
 {
     public static class SoftAssetReferenceEditorUtils
     {
-        private static readonly Dictionary<string, SoftObjectHandle> refDic = new();
-
+        private static readonly Dictionary<string, SoftObjectHandle> RefDic = new();
+        
         static SoftAssetReferenceEditorUtils()
         {
             // Cleanup cache since SoftObjectHandle is not valid anymore
-            GlobalObjectManager.OnGlobalObjectCleanup += () => refDic.Clear();
+            GlobalObjectManager.OnGlobalObjectCleanup += () => RefDic.Clear();
         }
         
         /// <summary>
@@ -30,13 +32,13 @@ namespace Chris.Resource.Editor
         {
             if (string.IsNullOrEmpty(guid)) return null;
 
-            if (!refDic.TryGetValue(guid, out var handle))
+            if (!RefDic.TryGetValue(guid, out var handle))
             {
                 var uObject = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(guid), typeof(UObject));
                 if (uObject)
                 {
                     GlobalObjectManager.RegisterObject(uObject, ref handle);
-                    refDic[guid] = handle;
+                    RefDic[guid] = handle;
                     return uObject;
                 }
                 return null;
@@ -49,7 +51,7 @@ namespace Chris.Resource.Editor
             if (newObject)
             {
                 GlobalObjectManager.RegisterObject(newObject, ref handle);
-                refDic[guid] = handle;
+                RefDic[guid] = handle;
             }
             return newObject;
         }
@@ -105,17 +107,20 @@ namespace Chris.Resource.Editor
         /// <returns></returns>
         public static SoftAssetReference<T> FromTObject<T>(T asset, string groupName = null) where T : UObject
         {
-            return (SoftAssetReference<T>)FromObject(asset, groupName);
+            return FromObject(asset, groupName);
         }
-        
+
         /// <summary>
-        /// Move reference object safe in editor
+        /// Move <see cref="SoftAssetReference"/> asset to target <see cref="AddressableAssetGroup"/> safe in editor
         /// </summary>
         /// <param name="reference"></param>
+        /// <param name="group"></param>
+        /// <param name="labels">Asset labels need assigned with</param>
         public static void MoveSoftReferenceObject(ref SoftAssetReference reference, AddressableAssetGroup group, params string[] labels)
         {
             var uObject = GetAssetFromGUID(reference.Guid);
             if (!uObject) return;
+            
             var newEntry = group.AddAsset(uObject, labels);
             reference.Address = newEntry.address;
         }
@@ -123,6 +128,68 @@ namespace Chris.Resource.Editor
     
     public static class ResourceEditorUtils
     {
+        public class AssetGroupModificationScope : IDisposable
+        {
+            private readonly AddressableAssetGroup _group;
+
+            private readonly List<AddressableAssetEntry> _entries;
+
+            private readonly bool _postEvent;
+            
+            public AssetGroupModificationScope(AddressableAssetGroup group, bool postEvent)
+            {
+                _group = group;
+                _postEvent = postEvent;
+                if (!_group) return;
+                
+                _entries = ListPool<AddressableAssetEntry>.Get();
+                StartModification(_group, this);
+            }
+            
+            internal void AddEntry(AddressableAssetEntry entry)
+            {
+                if (!_group) return;
+                
+                _entries.Add(entry);
+            }
+
+            public void Dispose()
+            {
+                if (!_group) return;
+                
+                if (_entries.Any())
+                {
+                    // Notify asset group dirty
+                    _group.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, _entries, _postEvent, true);
+                }
+                ListPool<AddressableAssetEntry>.Release(_entries);
+                EndModification(_group);
+            }
+        }
+        
+        private static readonly Dictionary<AddressableAssetGroup, AssetGroupModificationScope> Scopes = new();
+
+        /// <summary>
+        /// Create a modification scope and marks the group as modified when any entry was added in the scope.
+        /// </summary>
+        /// <param name="group"></param>
+        /// <param name="postEvent"></param>
+        /// <returns></returns>
+        public static AssetGroupModificationScope Modify(this AddressableAssetGroup group, bool postEvent = false)
+        {
+            return new AssetGroupModificationScope(group, postEvent);
+        }
+
+        private static void StartModification(AddressableAssetGroup group, AssetGroupModificationScope scope)
+        {
+            Scopes.Add(group, scope);
+        }
+
+        private static void EndModification(AddressableAssetGroup group)
+        {
+            Scopes.Remove(group);
+        }
+        
         public static AddressableAssetGroup GetOrCreateAssetGroup(string groupName)
         {
             var group = AddressableAssetSettingsDefaultObject.Settings.groups.FirstOrDefault(x => x.name == groupName);
@@ -138,16 +205,25 @@ namespace Chris.Resource.Editor
         {
             Assert.IsNotNull(group);
             if (asset == null) return null;
+            
             var guid = asset.GetAssetGUID();
             if (string.IsNullOrEmpty(guid))
             {
-                Debug.LogError($"[Resource Editor] Can't find {asset} !");
+                Debug.LogError($"Can't find {asset}!");
                 return null;
             }
             var entry = AddressableAssetSettingsDefaultObject.Settings.CreateOrMoveEntry(guid, group, false, false);
             if (labels != null)
             {
-                for (int i = 0; i < labels.Length; i++) entry.SetLabel(labels[i], true, true, false);
+                for (int i = 0; i < labels.Length; i++)
+                {
+                    entry.SetLabel(labels[i], true, true, false);
+                }
+            }
+
+            if (Scopes.TryGetValue(group, out var scope))
+            {
+                scope.AddEntry(entry);
             }
             return entry;
         }
@@ -180,6 +256,11 @@ namespace Chris.Resource.Editor
                                         return (type == assetType || type.IsSubclassOf(assetType)) && e.address == address;
                                     });
             return entries.FirstOrDefault();
+        }
+        
+        public static void CleanupAssetGroup(AddressableAssetGroup assetGroup)
+        {
+            assetGroup.RemoveAssetEntries(assetGroup.entries.ToArray());
         }
 
         public static string GetAssetGUID(this UObject asset)

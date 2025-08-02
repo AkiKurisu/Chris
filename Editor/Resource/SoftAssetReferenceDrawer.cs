@@ -7,17 +7,23 @@ using Chris.Editor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
 using UObject = UnityEngine.Object;
-using Object = UnityEngine.Object;
+
 namespace Chris.Resource.Editor
 {
     public abstract class AssetReferenceDrawer : PropertyDrawer
     {
         private const string AddressPropertyName = "Address";
+        
         private const string GuidPropertyName = "Guid";
+        
         private const string LockPropertyName = "Locked";
+        
         private static readonly GUIContent LockedContent = new("", "when address is in locked, validation will prefer to use Object value");
+        
         private static readonly GUIStyle LockedStyle = new("IN LockButton");
+        
         protected abstract Type GetAssetType();
+        
         public sealed override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             GetPropertyMetaData(out var assetGroup, out var assetType, out var processMethod, out var forceMoveToGroup);
@@ -87,11 +93,11 @@ namespace Chris.Resource.Editor
                 }
             }
         }
-        private static void AssignAddress(SerializedProperty property, Object Object, string processMethod, AddressableAssetGroup assetGroup, bool forceMoveToGroup)
+        private static void AssignAddress(SerializedProperty property, UObject Object, string processMethod, AddressableAssetGroup assetGroup, bool forceMoveToGroup)
         {
             var addressProp = property.FindPropertyRelative(AddressPropertyName);
             var guidProp = property.FindPropertyRelative(GuidPropertyName);
-            // Alreay exists => use entry current address, ensure to not effect other references
+            // Already exists => use entry current address, ensure to not affect other references
             string path = AssetDatabase.GetAssetPath(Object);
             var existingEntry = Object.ToAddressableAssetEntry();
             if (existingEntry != null && !(forceMoveToGroup && existingEntry.parentGroup != assetGroup))
@@ -115,14 +121,16 @@ namespace Chris.Resource.Editor
                         .Where(m => m.GetParameters().Length == 1)
                         .FirstOrDefault(x => x.Name == processMethod);
                     if (method != null)
-                        addressProp.stringValue = (string)method.Invoke(target, new object[1] { Object });
+                        addressProp.stringValue = (string)method.Invoke(target, new object[] { Object });
                     else
                         addressProp.stringValue = path;
                 }
                 guidProp.stringValue = Object.GetAssetGUID();
-                var entry = assetGroup.AddAsset(Object);
-                entry.address = addressProp.stringValue;
-                assetGroup.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, entry, false, true);
+                using (assetGroup.Modify())
+                {
+                    var entry = assetGroup.AddAsset(Object);
+                    entry.address = addressProp.stringValue;
+                }
             }
         }
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -135,7 +143,7 @@ namespace Chris.Resource.Editor
             {
                 return;
             }
-            int index = property.propertyPath.LastIndexOf(".Array.data[");
+            int index = property.propertyPath.LastIndexOf(".Array.data[", StringComparison.Ordinal);
             string parentPath = property.propertyPath[..index];
             var parentProp = property.serializedObject.FindProperty(parentPath);
             var evt = Event.current;
@@ -206,6 +214,7 @@ namespace Chris.Resource.Editor
             }
         }
     }
+    
     [CustomPropertyDrawer(typeof(SoftAssetReference<>))]
     public class SoftAssetReferenceTDrawer : AssetReferenceDrawer
     {
@@ -216,9 +225,10 @@ namespace Chris.Resource.Editor
             {
                 assetType = assetType.GetElementType();
             }
-            return assetType.GetGenericArguments()[0];
+            return assetType!.GetGenericArguments()[0];
         }
     }
+    
     [CustomPropertyDrawer(typeof(SoftAssetReference))]
     public class SoftAssetReferenceDrawer : AssetReferenceDrawer
     {
