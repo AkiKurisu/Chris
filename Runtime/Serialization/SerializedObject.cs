@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+
 namespace Chris.Serialization
 {
     [Serializable]

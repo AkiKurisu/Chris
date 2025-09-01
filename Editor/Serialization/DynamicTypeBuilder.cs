@@ -2,11 +2,13 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+
 namespace Chris.Serialization.Editor
 {
     public static class DynamicTypeBuilder
     {
-        private const string kDynamicTypeBuilderAssemblyName = "Kurisu.Framework.Emit";
+        private const string kDynamicTypeBuilderAssemblyName = "Chris.Emit";
+        
         private static ModuleBuilder m_ModuleBuilder;
 
         private static ModuleBuilder CreateModuleBuilder()

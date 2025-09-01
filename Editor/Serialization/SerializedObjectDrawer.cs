@@ -1,35 +1,67 @@
+using System;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+
 namespace Chris.Serialization.Editor
 {
-    [CustomPropertyDrawer(typeof(SerializedObject<>))]
-    public class SerializedObjectDrawer : PropertyDrawer
+    [CustomPropertyDrawer(typeof(SerializedObjectBase), true)]
+    public sealed class SerializedObjectDrawer : PropertyDrawer
     {
         private const string NullType = "Null";
-        
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+
+        private Type GetFieldType()
         {
-            var reference = property.FindPropertyRelative("serializedTypeString");
-            var objectHandleProp = property.FindPropertyRelative("objectHandle");
-            var handle = new SoftObjectHandle(objectHandleProp.ulongValue);
-            var type = SerializedType.FromString(reference.stringValue);
-            var wrapper = SerializedObjectWrapperManager.CreateWrapper(type, ref handle);
-            if (objectHandleProp.ulongValue != handle.Handle)
+            var fieldType = fieldInfo.FieldType;
+            if (fieldType.IsArray)
             {
-                objectHandleProp.ulongValue = handle.Handle;
-                property.serializedObject.ApplyModifiedProperties();
+                fieldType = fieldType.GetElementType();
             }
 
-            return EditorGUIUtility.singleLineHeight
-            + SerializedObjectWrapperDrawer.CalculatePropertyHeight(wrapper)
-            + EditorGUIUtility.standardVerticalSpacing;
+            return fieldType;
         }
+
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            var fieldType = GetFieldType();
+            if (fieldType == typeof(SerializedObjectBase))
+            {
+                return GetPropertyHeightBase(property);
+            }
+            
+            return GetPropertyHeightGeneric(property, label);
+        }
+
+        private static float GetPropertyHeightGeneric(SerializedProperty property, GUIContent label)
+        {
+            var reference = property.FindPropertyRelative("serializedTypeString");
+                var objectHandleProp = property.FindPropertyRelative("objectHandle");
+                var handle = new SoftObjectHandle(objectHandleProp.ulongValue);
+                var type = SerializedType.FromString(reference.stringValue);
+                var wrapper = SerializedObjectWrapperManager.CreateWrapper(type, ref handle);
+                if (objectHandleProp.ulongValue != handle.Handle)
+                {
+                    objectHandleProp.ulongValue = handle.Handle;
+                    property.serializedObject.ApplyModifiedProperties();
+                }
+
+                return EditorGUIUtility.singleLineHeight
+                        + SerializedObjectWrapperDrawer.CalculatePropertyHeight(wrapper)
+                        + EditorGUIUtility.standardVerticalSpacing;
+        }
+        
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            DrawGUI(position, property, label);
+            var fieldType = GetFieldType();
+            if (fieldType == typeof(SerializedObjectBase))
+            {
+                DrawGUIBase(position, property, label);
+                return;
+            }
+            DrawGUI(position, property, label,fieldType);
         }
-        private void DrawGUI(Rect position, SerializedProperty property, GUIContent label)
+        
+        private void DrawGUI(Rect position, SerializedProperty property, GUIContent label, Type fieldType)
         {
             var reference = property.FindPropertyRelative("serializedTypeString");
             var json = property.FindPropertyRelative("jsonData");
@@ -58,11 +90,6 @@ namespace Chris.Serialization.Editor
             if (EditorGUI.DropdownButton(position, new GUIContent(id), FocusType.Keyboard))
             {
                 var provider = ScriptableObject.CreateInstance<TypeSearchWindow>();
-                var fieldType = fieldInfo.FieldType;
-                if (fieldType.IsArray)
-                {
-                    fieldType = fieldType.GetElementType();
-                }
                 provider.Initialize(fieldType!.GetGenericArguments()[0], (selectType) =>
                 {
                     reference.stringValue = selectType != null ? SerializedType.ToString(selectType) : string.Empty;
@@ -101,12 +128,8 @@ namespace Chris.Serialization.Editor
             }
             EditorGUI.EndProperty();
         }
-    }
-    
-    [CustomPropertyDrawer(typeof(SerializedObjectBase))]
-    public class SerializedObjectBaseDrawer : PropertyDrawer
-    {
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+
+        private float GetPropertyHeightBase(SerializedProperty property)
         {
             var reference = property.FindPropertyRelative("serializedTypeString");
             var objectHandleProp = property.FindPropertyRelative("objectHandle");
@@ -121,13 +144,8 @@ namespace Chris.Serialization.Editor
 
             return SerializedObjectWrapperDrawer.CalculatePropertyHeight(wrapper);
         }
-        
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-        {
-            DrawGUI(position, property, label);
-        }
-        
-        private void DrawGUI(Rect position, SerializedProperty property, GUIContent label)
+
+        private static void DrawGUIBase(Rect position, SerializedProperty property, GUIContent label)
         {
             var reference = property.FindPropertyRelative("serializedTypeString");
             var json = property.FindPropertyRelative("jsonData");

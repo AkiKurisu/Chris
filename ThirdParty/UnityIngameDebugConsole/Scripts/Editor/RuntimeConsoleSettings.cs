@@ -1,21 +1,21 @@
 ﻿using Chris.Configs.Editor;
+using Chris.Editor;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Chris.RuntimeConsole.Editor
 {
-    [FilePath("ProjectSettings/RuntimeConsoleSettings.asset", FilePathAttribute.Location.ProjectFolder)]
-    public class RuntimeConsoleSettings : ScriptableSingleton<RuntimeConsoleSettings>
+    public class RuntimeConsoleSettings : ConfigSingleton<RuntimeConsoleSettings>
     {
         public bool enableConsoleInReleaseBuild;
 
         internal static void SaveSettings()
         {
-            instance.Save(true);
+            Instance.Save(true);
             var serializer = ConfigsEditorUtils.GetConfigSerializer();
             var config = RuntimeConsoleConfig.Get();
-            config.enableConsoleInReleaseBuild = instance.enableConsoleInReleaseBuild;
+            config.enableConsoleInReleaseBuild = Instance.enableConsoleInReleaseBuild;
             config.Save(serializer);
         }
     }
@@ -33,7 +33,7 @@ namespace Chris.RuntimeConsole.Editor
         
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
-            _settingsObject = new SerializedObject(RuntimeConsoleSettings.instance);
+            _settingsObject = new SerializedObject(RuntimeConsoleSettings.Instance);
         }
         
         public override void OnGUI(string searchContext)

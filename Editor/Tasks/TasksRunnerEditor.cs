@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using UEditor = UnityEditor.Editor;
+
 namespace Chris.Tasks.Editor
 {
     [CustomEditor(typeof(TaskRunner))]
@@ -36,16 +37,13 @@ namespace Chris.Tasks.Editor
             {
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(task.InternalGetTaskName());
-                GUILayout.Label($"Status: {task.GetStatus().ToString()}", style);
+                GUILayout.Label($"Status: {StatusToString(task.GetStatus())}", style);
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndVertical();
         }
-    }
-    
-    public static class TaskEditorExtensions
-    {
-        public static string ToString(this TaskStatus status)
+        
+        private static string StatusToString(TaskStatus status)
         {
             return status switch
             {

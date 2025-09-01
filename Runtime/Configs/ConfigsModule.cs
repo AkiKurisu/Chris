@@ -5,6 +5,7 @@ using UnityEngine;
 using System;
 using UnityEngine.Networking;
 using UnityEngine.Scripting;
+using Debug = UnityEngine.Debug;
 
 namespace Chris.Configs
 {
@@ -21,7 +22,24 @@ namespace Chris.Configs
         
         public static readonly string PersistentDirectory = Path.Combine(SaveUtility.SavePath, "Configs");
         
-        internal static readonly string EditorDirectory = Path.Combine(Application.dataPath, "../Configs");
+#if UNITY_EDITOR
+        private static string _editorDirectory;
+
+        internal static string EditorDirectory
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_editorDirectory))
+                {
+                    _editorDirectory = Path.Combine(Application.dataPath, "../Configs");
+                    Directory.CreateDirectory(_editorDirectory);
+                    _editorDirectory = Path.Combine(_editorDirectory, UnityEditor.EditorUserBuildSettings.activeBuildTarget.ToString());
+                    Directory.CreateDirectory(_editorDirectory);
+                }
+                return _editorDirectory;
+            }
+        }
+#endif
         
         public const string Extension = "cfg";
 
