@@ -49,6 +49,7 @@ namespace Chris.Configs
         }
     }
     
+#if UNITY_EDITOR
     internal class EditorConfigFileProvider : SaveLoadConfigFileProvider
     {
         public EditorConfigFileProvider() : 
@@ -56,6 +57,7 @@ namespace Chris.Configs
         {
         }
     }
+#endif
     
     internal class StreamingConfigFileProvider : SaveLoadConfigFileProvider
     {

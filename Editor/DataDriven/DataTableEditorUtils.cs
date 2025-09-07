@@ -66,7 +66,7 @@ namespace Chris.DataDriven.Editor
         /// <returns></returns>
         public static string ExportJson(DataTable dataTable)
         {
-            return ChrisSettings.instance.dataTableEditorSerializer.GetObject().Serialize(dataTable);
+            return ChrisSettings.Instance.dataTableEditorSerializer.GetObject().Serialize(dataTable);
         }
         
         /// <summary>
@@ -77,7 +77,7 @@ namespace Chris.DataDriven.Editor
         public static void ImportJson(DataTable dataTable, string jsonData)
         {
             Undo.RecordObject(dataTable, "Overwrite DataTable from Json");
-            ChrisSettings.instance.dataTableEditorSerializer.GetObject().Deserialize(dataTable, jsonData);
+            ChrisSettings.Instance.dataTableEditorSerializer.GetObject().Deserialize(dataTable, jsonData);
         }
         
         /// <summary>
@@ -155,7 +155,7 @@ namespace Chris.DataDriven.Editor
         /// </summary>
         /// <param name="dataTable"></param>
         public static void Cleanup(DataTable dataTable)
-        { ;
+        {
             dataTable.Cleanup();
         }
         
@@ -172,7 +172,10 @@ namespace Chris.DataDriven.Editor
             
             string address = addressableAttribute.Address ?? dataTable.name;
             var group = ResourceEditorUtils.GetOrCreateAssetGroup(addressableAttribute.Group);
-            group.AddAsset(dataTable).address = address;
+            using (group.Modify())
+            {
+                group.AddAsset(dataTable).address = address;
+            }
         }
 
         /// <summary>

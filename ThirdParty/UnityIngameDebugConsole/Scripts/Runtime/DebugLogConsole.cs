@@ -234,7 +234,7 @@ namespace Chris.RuntimeConsole
 				// Register getter command (just the variable name)
 				AddCommand(variableName, $"Get {variableName} ({valueType.Name})", () =>
 				{
-					Debug.Log($"{variable.GetValue()}");
+					Debug.Log($"{variableName}: {variable.GetValue()}");
 				});
 
 				// Register setter command (variable name with parameter)
@@ -258,14 +258,17 @@ namespace Chris.RuntimeConsole
 					{
 						variable.SetValue(value != 0);
 					});
-					AddCommand($"{variableName}=", $"Set {variableName} (bool)", (bool value) =>
-					{
-						variable.SetValue(value);
-					});
 				}
 				else if (valueType == typeof(string))
 				{
 					AddCommand($"{variableName}=", $"Set {variableName} (string)", (string value) =>
+					{
+						variable.SetValue(value);
+					});
+				}
+				else if (valueType.IsEnum)
+				{
+					AddCommand($"{variableName}=", $"Set {variableName} (int)", (int value) =>
 					{
 						variable.SetValue(value);
 					});

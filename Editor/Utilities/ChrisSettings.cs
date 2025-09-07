@@ -10,8 +10,7 @@ using UnityEngine.UIElements;
 
 namespace Chris.Editor
 {
-    [FilePath("ProjectSettings/ChrisSettings.asset", FilePathAttribute.Location.ProjectFolder)]
-    public class ChrisSettings : ScriptableSingleton<ChrisSettings>
+    public class ChrisSettings : ConfigSingleton<ChrisSettings>
     {
         public bool schedulerStackTrace = true;
         
@@ -25,19 +24,19 @@ namespace Chris.Editor
 
         internal static void SaveSettings()
         {
-            instance.Save(true);
+            Instance.Save(true);
             
             var serializer = ConfigsEditorUtils.GetConfigSerializer();
             ConfigFileLocation location = "Chris";
             var configFile = ConfigSystem.GetConfigFile(location);
             
             var schedulerSettings = SchedulerConfig.Get();
-            schedulerSettings.enableStackTrace = instance.schedulerStackTrace;
+            schedulerSettings.enableStackTrace = Instance.schedulerStackTrace;
             configFile.SetConfig(SchedulerConfig.Location, schedulerSettings);
             
             var dataDrivenSettings = DataDrivenConfig.Get();
-            dataDrivenSettings.initializeDataTableManagerOnLoad = instance.initializeDataTableManagerOnLoad;
-            dataDrivenSettings.validateDataTableBeforeLoad = instance.validateDataTableBeforeLoad;
+            dataDrivenSettings.initializeDataTableManagerOnLoad = Instance.initializeDataTableManagerOnLoad;
+            dataDrivenSettings.validateDataTableBeforeLoad = Instance.validateDataTableBeforeLoad;
             configFile.SetConfig(DataDrivenConfig.Location, dataDrivenSettings);
             
             serializer.Serialize(location, configFile);
@@ -72,13 +71,13 @@ namespace Chris.Editor
         
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
-            if(!ChrisSettings.instance.dataTableEditorSerializer.IsValid())
+            if (!ChrisSettings.Instance.dataTableEditorSerializer.IsValid())
             {
-                ChrisSettings.instance.dataTableEditorSerializer =
+                ChrisSettings.Instance.dataTableEditorSerializer =
                     SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
                 ChrisSettings.SaveSettings();
             }  
-            _settingsObject = new SerializedObject(ChrisSettings.instance);
+            _settingsObject = new SerializedObject(ChrisSettings.Instance);
         }
         
         public override void OnGUI(string searchContext)
@@ -109,9 +108,9 @@ namespace Chris.Editor
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.inlineRowReadOnly)), Styles.InlineRowReadOnlyLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
-                if (!ChrisSettings.instance.dataTableEditorSerializer.IsValid())
+                if (!ChrisSettings.Instance.dataTableEditorSerializer.IsValid())
                 {
-                    ChrisSettings.instance.dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
+                    ChrisSettings.Instance.dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
                 }
                 ChrisSettings.SaveSettings();
             }

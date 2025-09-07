@@ -110,9 +110,7 @@ namespace Chris
 
             try
             {
-                var variable = TypeToConsoleVariableMap.TryGetValue(memberType, out var consoleVariableType)
-                    ? CreateTypedConsoleVariable(configType, memberAccessor, variableName, consoleVariableType)
-                    : null;
+                var variable = CreateConsoleVariable_Internal(configType, memberAccessor, memberType, variableName);
 
                 if (variable == null)
                 {
@@ -129,6 +127,21 @@ namespace Chris
             {
                 Debug.LogError($"[Chris] Failed to create console variable {variableName}: {ex.Message}");
             }
+        }
+
+        private static ConsoleVariable CreateConsoleVariable_Internal(Type configType, MemberAccessor memberAccessor, 
+            Type memberType,string variableName)
+        {
+            // Redirect enum to int
+            if (memberType.IsEnum)
+            {
+                memberType = typeof(int);
+            }
+
+            var variable = TypeToConsoleVariableMap.TryGetValue(memberType, out var consoleVariableType)
+                ? CreateTypedConsoleVariable(configType, memberAccessor, variableName, consoleVariableType)
+                : null;
+            return variable;
         }
 
         private static ConsoleVariable CreateTypedConsoleVariable(Type configType, MemberAccessor memberAccessor, string variableName, Type consoleVariableGenericType)
