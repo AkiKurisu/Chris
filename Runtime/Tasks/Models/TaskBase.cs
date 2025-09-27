@@ -5,6 +5,7 @@ using Chris.Pool;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Pool;
+
 namespace Chris.Tasks
 {
     public enum TaskStatus
@@ -85,11 +86,6 @@ namespace Chris.Tasks
         {
             e.Target = this;
             EventSystem.Instance.Dispatch(e, dispatchMode, MonoDispatchType.Update);
-        }
-
-        internal void SetParentEventHandler(CallbackEventHandler eventHandler)
-        {
-            Parent = eventHandler;
         }
 
         public virtual TaskStatus GetStatus()

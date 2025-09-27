@@ -13,7 +13,7 @@ namespace Chris.Events
         /// Get and set parent callBack handler
         /// </summary>
         /// <value></value>
-        public CallbackEventHandler Parent { get; protected set; }
+        public CallbackEventHandler Parent { get; set; }
         
         private EventCallbackRegistry _callbackRegistry;
 

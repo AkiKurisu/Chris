@@ -3,6 +3,7 @@ using Chris.Events;
 using UnityEngine;
 using R3;
 using R3.Chris;
+
 namespace Chris.Tasks
 {
     internal class TaskRunner : MonoBehaviour
@@ -55,7 +56,7 @@ namespace Chris.Tasks
                     return;
                 }
                 task.Acquire();
-                task.SetParentEventHandler(instance.GetEventHandler());
+                task.Parent = instance.GetEventHandler();
                 instance._tasksToAdd.Add(task);
             }
         }
