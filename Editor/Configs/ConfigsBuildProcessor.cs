@@ -1,17 +1,15 @@
 using System.IO;
-using UnityEditor.Build;
+using Chris.Editor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
 namespace Chris.Configs.Editor
 {
-    internal class ConfigsBuildProcessor : IPreprocessBuildWithReport, IPostprocessBuildWithReport
+    internal class ConfigsBuildProcessor : BuildProcessorWithReport
     {
-        public int callbackOrder { get; }
-
         private bool _isStreamingAssetsPathEmpty;
         
-        void IPreprocessBuildWithReport.OnPreprocessBuild(BuildReport report)
+        protected override void PreprocessBuild(BuildReport report)
         {
             _isStreamingAssetsPathEmpty = false;
             if (!Directory.Exists(Application.streamingAssetsPath))
@@ -22,9 +20,9 @@ namespace Chris.Configs.Editor
             ConfigsEditorUtils.ExportAndArchiveConfigs();
         }
         
-        void IPostprocessBuildWithReport.OnPostprocessBuild(BuildReport report)
+        protected override void PostprocessBuild(BuildReport report)
         {
-            if (_isStreamingAssetsPathEmpty)
+            if (_isStreamingAssetsPathEmpty && Directory.Exists(Application.streamingAssetsPath))
             {
                 Directory.Delete(Application.streamingAssetsPath, true);
                 File.Delete(Application.streamingAssetsPath + ".meta");
