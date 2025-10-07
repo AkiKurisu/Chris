@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+
 namespace Chris
 {
     /// <summary>
@@ -15,11 +16,12 @@ namespace Chris
         private T value;
 
         public readonly bool Enabled => enabled;
+        
         public readonly T Value => value;
 
-        public Optional(T initialValue)
+        public Optional(T initialValue, bool isEnabled = true)
         {
-            enabled = true;
+            enabled = isEnabled;
             value = initialValue;
         }
     }
