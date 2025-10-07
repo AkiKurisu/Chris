@@ -1,5 +1,6 @@
 using System.IO;
 using Chris.Editor;
+using Chris.Resource.Editor;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
@@ -22,10 +23,9 @@ namespace Chris.Configs.Editor
         
         protected override void PostprocessBuild(BuildReport report)
         {
-            if (_isStreamingAssetsPathEmpty && Directory.Exists(Application.streamingAssetsPath))
+            if (_isStreamingAssetsPathEmpty)
             {
-                Directory.Delete(Application.streamingAssetsPath, true);
-                File.Delete(Application.streamingAssetsPath + ".meta");
+                ResourceEditorUtils.DeleteDirectory(Application.streamingAssetsPath);
             }
         }
     }
