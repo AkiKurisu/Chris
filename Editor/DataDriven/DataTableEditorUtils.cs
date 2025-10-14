@@ -148,6 +148,8 @@ namespace Chris.DataDriven.Editor
         {
             dataTable.InternalUpdate();
             dataTable.Cleanup();
+            // Since editor objects referencing DataTable, we need reallocate managers for data refresh.
+            DataTableManager.ReleaseAll();
         }
         
         /// <summary>

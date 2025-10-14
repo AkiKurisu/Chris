@@ -70,6 +70,15 @@ namespace Chris.DataDriven
         {
             return DataTables.GetValueOrDefault(name);
         }
+
+        /// <summary>
+        /// Free all <see cref="DataTableManager"/> for clearing cache
+        /// </summary>
+        public static void ReleaseAll()
+        {
+            _isLoaded = false;
+            DataTableManagers.Clear();
+        }
         
         /// <summary>
         /// Async initialize manager at start of game, loading your dataTables in this stage
@@ -127,6 +136,16 @@ namespace Chris.DataDriven
             return (DataTableManager)getMethod!.Invoke(null, Array.Empty<object>());
         }
         
+        public static bool TryGetDataTableManager(Type type, out DataTableManager dataTableManager)
+        {
+            return DataTableManagers.TryGetValue(type, out dataTableManager);
+        }
+        
+        public static DataTableManager GetDataTableManager(Type type)
+        {
+            return DataTableManagers.GetValueOrDefault(type);
+        }
+        
         protected static void RegisterDataTableManager<TManager>(TManager dataTableManager) where TManager: DataTableManager
         {
             DataTableManagers.TryAdd(typeof(TManager), dataTableManager);
@@ -135,13 +154,17 @@ namespace Chris.DataDriven
     
     public abstract class DataTableManager<TManager> : DataTableManager where TManager : DataTableManager<TManager>
     {
-        private static TManager _instance;
+        private static readonly Type ManagerType;
+
+        static DataTableManager()
+        {
+            ManagerType = typeof(TManager);
+        }
         
         // Force implementation has this constructor
         protected DataTableManager(object _)
         {
-            _instance = (TManager)this;
-            RegisterDataTableManager(_instance);
+            RegisterDataTableManager((TManager)this);
         }
         
         /// <summary>
@@ -150,11 +173,12 @@ namespace Chris.DataDriven
         /// <returns></returns>
         public static TManager Get()
         {
-            if (_instance == null)
+            if (TryGetDataTableManager(ManagerType, out var dataTableManager))
             {
-                Initialize(); /* Initialize in blocking mode */
+                return dataTableManager as TManager;
             }
-            return _instance;
+            Initialize(); /* Initialize in blocking mode */
+            return GetDataTableManager(ManagerType) as TManager;
         }
     }
 }
