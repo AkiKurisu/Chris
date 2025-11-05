@@ -19,7 +19,9 @@ namespace Chris.Serialization
         public static readonly string SavePath = Path.Combine(Application.persistentDataPath, "Saved");
 #endif
         
-        private static readonly SaveLoadSerializer Serializer = new(SavePath);
+        private static readonly SaveLoadSerializer Serializer = new(SavePath, Extension, BinarySerializeFormatter.Instance);
+        
+        private const string Extension = "sav";
         
         /// <summary>
         /// Save data to saving

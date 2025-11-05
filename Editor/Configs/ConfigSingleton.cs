@@ -1,10 +1,25 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Reflection;
+using Chris.Configs;
+using Chris.Configs.Editor;
+using Chris.Serialization;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Chris.Editor
 {
+    /// <summary>
+    /// Mark config singleton should save as project wide config, else will save as platform specific config.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+    public sealed class BaseConfigAttribute : Attribute
+    {
+        
+    }
+    
     /// <summary>
     ///   <para>Generic class for storing Editor Config.</para>
     /// </summary>
@@ -16,7 +31,7 @@ namespace Chris.Editor
         {
             get
             {
-                if (_instance == null)
+                if (!_instance)
                     CreateAndLoad();
                 return _instance;
             }
@@ -24,7 +39,7 @@ namespace Chris.Editor
 
         protected ConfigSingleton()
         {
-            if (_instance != null)
+            if (_instance)
             {
                 Debug.LogError("ConfigSingleton already exists. Did you query the singleton in a constructor?");
             }
@@ -39,14 +54,14 @@ namespace Chris.Editor
             string filePath = GetFilePath();
             if (!string.IsNullOrEmpty(filePath))
                 InternalEditorUtility.LoadSerializedFileAndForget(filePath);
-            if (!(_instance == null))
+            if (_instance)
                 return;
             CreateInstance<T>().hideFlags = HideFlags.DontSave | HideFlags.HideInHierarchy;
         }
 
         protected virtual void Save(bool saveAsText)
         {
-            if (_instance == null)
+            if (!_instance)
             {
                 Debug.LogError("Cannot save ScriptableSingleton: no instance!");
             }
@@ -72,11 +87,49 @@ namespace Chris.Editor
             }
         }
 
+        private static bool _isPlatformConfig;
+        
         private static string _filePath;
         
         private static string GetFilePath()
         {
-            return _filePath ??= $"ProjectSettings/{EditorUserBuildSettings.activeBuildTarget.ToString()}/{typeof(T).Name}.asset";
+            if (string.IsNullOrEmpty(_filePath))
+            {
+                _isPlatformConfig = typeof(T).GetCustomAttribute<BaseConfigAttribute>() == null;
+                _filePath = _isPlatformConfig
+                    ? $"ProjectSettings/{EditorUserBuildSettings.activeBuildTarget.ToString()}/{typeof(T).Name}.asset"
+                    : $"ProjectSettings/{typeof(T).Name}.asset";
+            }
+            
+            return _filePath;
+        }
+        
+        /// <summary>
+        /// Get config serializer
+        /// </summary>
+        /// <returns></returns>
+        private static SaveLoadSerializer GetConfigSerializer()
+        {
+            return ConfigsEditorUtils.GetConfigSerializer(_isPlatformConfig);
+        }
+        
+        /// <summary>
+        /// Serialize config
+        /// </summary>
+        /// <returns></returns>
+        protected static void Serialize(ConfigBase configBase)
+        {
+            configBase.Save(GetConfigSerializer());
+        }
+        
+        /// <summary>
+        /// Serialize config with providing location
+        /// </summary>
+        /// <param name="configFileLocation"></param>
+        /// <param name="configBase"></param>
+        protected static void Serialize(ConfigFileLocation configFileLocation, IConfigFile configBase)
+        {
+            GetConfigSerializer().Serialize(configFileLocation, configBase);
         }
     }
 }

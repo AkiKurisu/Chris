@@ -1,11 +1,11 @@
-﻿using Chris.Configs.Editor;
-using Chris.Editor;
+﻿using Chris.Editor;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Chris.RuntimeConsole.Editor
 {
+    [BaseConfig]
     public class RuntimeConsoleSettings : ConfigSingleton<RuntimeConsoleSettings>
     {
         public bool enableConsoleInReleaseBuild;
@@ -13,20 +13,20 @@ namespace Chris.RuntimeConsole.Editor
         internal static void SaveSettings()
         {
             Instance.Save(true);
-            var serializer = ConfigsEditorUtils.GetConfigSerializer();
             var config = RuntimeConsoleConfig.Get();
             config.enableConsoleInReleaseBuild = Instance.enableConsoleInReleaseBuild;
-            config.Save(serializer);
+            Serialize(config);
         }
     }
 
     internal class RuntimeConsoleSettingsProvider : SettingsProvider
     {
         private SerializedObject _settingsObject;
-        
+
         private class Styles
         {
-            public static readonly GUIContent EnableConsoleInReleaseBuildLabel = new("Enable Console In Release Build", "Allow runtime console using in release build.");
+            public static readonly GUIContent EnableConsoleInReleaseBuildLabel = new("Enable Console In Release Build",
+                "Allow runtime console using in release build.");
         }
 
         private RuntimeConsoleSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
@@ -38,8 +38,9 @@ namespace Chris.RuntimeConsole.Editor
         
         public override void OnGUI(string searchContext)
         {
-            GUILayout.BeginVertical("Runtime Settings", GUI.skin.box);
-            GUILayout.Space(EditorGUIUtility.singleLineHeight);
+            var titleStyle = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+            GUILayout.Label("Runtime Settings", titleStyle);
+            GUILayout.BeginVertical(GUI.skin.box);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(RuntimeConsoleSettings.enableConsoleInReleaseBuild)), Styles.EnableConsoleInReleaseBuildLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {

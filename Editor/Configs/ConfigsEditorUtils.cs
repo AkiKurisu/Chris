@@ -1,48 +1,112 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using Chris.Serialization;
 
 namespace Chris.Configs.Editor
 {
-    public static class ConfigsEditorUtils
+    internal static class ConfigsEditorUtils
     {
-        private static readonly SaveLoadSerializer ConfigSerializer = new(ConfigsModule.EditorDirectory, ConfigsModule.Extension, TextSerializeFormatter.Instance);
+        private static readonly SaveLoadSerializer PlatformSerializer = new(
+            ConfigsModule.EditorPlatformDirectory,
+            ConfigsModule.Extension,
+            ConfigsConfig.GetConfigSerializer());
+
+        private static readonly SaveLoadSerializer ProjectWideSerializer = new(
+            ConfigsModule.EditorBaseDirectory,
+            ConfigsModule.Extension,
+            ConfigsConfig.GetConfigSerializer());
 
         /// <summary>
         /// Get config serializer in editor, cache will be clean up before using.
         /// </summary>
+        /// <param name="platformSpecific">Whether config is platform specific or project-wide as base config</param>
         /// <returns></returns>
-        public static SaveLoadSerializer GetConfigSerializer()
+        public static SaveLoadSerializer GetConfigSerializer(bool platformSpecific = true)
         {
             ConfigSystem.ClearCache();
-            return ConfigSerializer;
+            return platformSpecific ? PlatformSerializer : ProjectWideSerializer;
         }
-        
-        private static void CopyDirectoryRecursively(string sourceDir, string destDir)
-        {
-            if (!Directory.Exists(destDir))
-            {
-                Directory.CreateDirectory(destDir);
-            }
-            
-            foreach (var filePath in Directory.GetFiles(sourceDir))
-            {
-                var fileName = Path.GetFileName(filePath);
-                var destFilePath = Path.Combine(destDir, fileName);
-                File.Copy(filePath, destFilePath, true);
-            }
-            
-            foreach (var subDir in Directory.GetDirectories(sourceDir))
-            {
-                var dirName = Path.GetFileName(subDir);
-                var destSubDir = Path.Combine(destDir, dirName);
-                CopyDirectoryRecursively(subDir, destSubDir);
-            }
-        }
-        
+
         public static void ExportAndArchiveConfigs()
         {
-            // Collect all configs and export to streaming assets
-            CopyDirectoryRecursively(ConfigsModule.EditorDirectory, ConfigsModule.StreamingDirectory);
+            // Clear streaming directory
+            if (Directory.Exists(ConfigsModule.StreamingDirectory))
+            {
+                Directory.Delete(ConfigsModule.StreamingDirectory, true);
+            }
+            Directory.CreateDirectory(ConfigsModule.StreamingDirectory);
+
+            // Create serializers
+            var baseSerializer = new SaveLoadSerializer(
+                ConfigsModule.EditorBaseDirectory,
+                ConfigsModule.Extension,
+                ConfigsConfig.GetConfigSerializer());
+
+            var platformSerializer = new SaveLoadSerializer(
+                ConfigsModule.EditorPlatformDirectory,
+                ConfigsModule.Extension,
+                ConfigsConfig.GetConfigSerializer());
+
+            var streamingSerializer = new SaveLoadSerializer(
+                ConfigsModule.StreamingDirectory,
+                ConfigsModule.Extension,
+                ConfigsConfig.GetConfigSerializer());
+
+            // Collect all config file paths from base directory
+            var baseConfigFiles = new HashSet<string>();
+            if (Directory.Exists(ConfigsModule.EditorBaseDirectory))
+            {
+                foreach (var filePath in Directory.GetFiles(ConfigsModule.EditorBaseDirectory, $"*.{ConfigsModule.Extension}"))
+                {
+                    baseConfigFiles.Add(Path.GetFileNameWithoutExtension(filePath));
+                }
+            }
+
+            // Collect all config file paths from platform directory
+            var platformConfigFiles = new HashSet<string>();
+            if (Directory.Exists(ConfigsModule.EditorPlatformDirectory))
+            {
+                foreach (var filePath in Directory.GetFiles(ConfigsModule.EditorPlatformDirectory, $"*.{ConfigsModule.Extension}"))
+                {
+                    platformConfigFiles.Add(Path.GetFileNameWithoutExtension(filePath));
+                }
+            }
+
+            // Merge all config files
+            var allConfigFiles = new HashSet<string>(baseConfigFiles);
+            allConfigFiles.UnionWith(platformConfigFiles);
+
+            foreach (var configFileName in allConfigFiles)
+            {
+                IConfigFile mergedConfigFile = null;
+
+                // Load base config first (lower priority)
+                if (baseSerializer.Exists(configFileName))
+                {
+                    mergedConfigFile = baseSerializer.Deserialize<ConfigFile>(configFileName);
+                }
+
+                // Load and merge platform config (higher priority)
+                if (platformSerializer.Exists(configFileName))
+                {
+                    var platformConfigFile = platformSerializer.Deserialize<ConfigFile>(configFileName);
+                    if (mergedConfigFile == null)
+                    {
+                        mergedConfigFile = platformConfigFile;
+                    }
+                    else
+                    {
+                        mergedConfigFile.MergeConfigFile(platformConfigFile);
+                    }
+                }
+
+                // Save merged config to streaming directory
+                if (mergedConfigFile != null)
+                {
+                    streamingSerializer.Serialize(configFileName, mergedConfigFile);
+                }
+            }
+
 #if !UNITY_STANDALONE_WIN
             // For platforms can not access to streaming assets dir, make archive file
             var files = Directory.GetFiles(ConfigsModule.StreamingDirectory);

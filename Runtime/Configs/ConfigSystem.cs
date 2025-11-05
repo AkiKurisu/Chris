@@ -25,14 +25,19 @@ namespace Chris.Configs
 
         static ConfigSystem()
         {
-            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
-            
-            // Prefer to editor/streaming config.
+            // Register framework-level config providers first
 #if UNITY_EDITOR
-            RegisterConfigFileProvider(new EditorConfigFileProvider(), 200);
+            RegisterConfigFileProvider(new EditorConfigFileProvider(), 200);        // Platform specific
+            RegisterConfigFileProvider(new EditorBaseConfigFileProvider(), 300);    // Project Base
 #else
             RegisterConfigFileProvider(new StreamingConfigFileProvider(), 200);
 #endif
+
+            // Pre-load ConfigsConfig to initialize serializer configuration
+            _ = GetConfig<ConfigsConfig>();
+
+            // SRegister user-level config provider with configurable serializer
+            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
         }
 
         internal static void ClearCache()
@@ -69,7 +74,7 @@ namespace Chris.Configs
         private static TConfig GetConfigFromFileCache<TConfig>(IConfigLocation location) where TConfig : Config<TConfig>, new()
         {
             var configFile = GetConfigFile(location.FileLocation);
-            
+
             // Try to get config
             if (configFile.TryGetConfig(location, out var config))
             {
@@ -91,7 +96,7 @@ namespace Chris.Configs
             {
                 return configFile;
             }
-            
+
             foreach (var provider in ConfigFileProviders)
             {
                 // Try to get config file
