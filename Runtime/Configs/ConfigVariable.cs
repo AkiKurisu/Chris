@@ -75,15 +75,15 @@ namespace Chris.Configs
     /// <summary>
     /// Base class for config variables that can be modified through console
     /// </summary>
-    public abstract class ConsoleVariable
+    public abstract class ConfigVariable
     {
-        public string Name { get; protected set; }
+        public string Name { get; }
 
         public Type ConfigType { get; protected set; }
 
-        public MemberAccessor MemberAccessor { get; protected set; }
+        protected MemberAccessor MemberAccessor { get; }
 
-        protected ConsoleVariable(string name, Type configType, MemberAccessor memberAccessor)
+        protected ConfigVariable(string name, Type configType, MemberAccessor memberAccessor)
         {
             Name = name;
             ConfigType = configType;
@@ -117,10 +117,10 @@ namespace Chris.Configs
     /// </summary>
     /// <typeparam name="TConfig">Config type</typeparam>
     /// <typeparam name="TValue">Value type</typeparam>
-    public abstract class ConsoleVariable<TConfig, TValue> : ConsoleVariable
+    public abstract class ConfigVariable<TConfig, TValue> : ConfigVariable
         where TConfig : Config<TConfig>, new()
     {
-        protected ConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, typeof(TConfig), memberAccessor)
+        protected ConfigVariable(string name, MemberAccessor memberAccessor) : base(name, typeof(TConfig), memberAccessor)
         {
         }
 
@@ -164,10 +164,10 @@ namespace Chris.Configs
     /// Integer console variable
     /// </summary>
     /// <typeparam name="TConfig">Config type</typeparam>
-    public class IntConsoleVariable<TConfig> : ConsoleVariable<TConfig, int>
+    public class IntConfigVariable<TConfig> : ConfigVariable<TConfig, int>
         where TConfig : Config<TConfig>, new()
     {
-        public IntConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
+        public IntConfigVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }
@@ -176,10 +176,10 @@ namespace Chris.Configs
     /// Float console variable
     /// </summary>
     /// <typeparam name="TConfig">Config type</typeparam>
-    public class FloatConsoleVariable<TConfig> : ConsoleVariable<TConfig, float>
+    public class FloatConfigVariable<TConfig> : ConfigVariable<TConfig, float>
         where TConfig : Config<TConfig>, new()
     {
-        public FloatConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
+        public FloatConfigVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }
@@ -188,10 +188,10 @@ namespace Chris.Configs
     /// Boolean console variable
     /// </summary>
     /// <typeparam name="TConfig">Config type</typeparam>
-    public class BoolConsoleVariable<TConfig> : ConsoleVariable<TConfig, bool>
+    public class BoolConfigVariable<TConfig> : ConfigVariable<TConfig, bool>
         where TConfig : Config<TConfig>, new()
     {
-        public BoolConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
+        public BoolConfigVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }
@@ -200,10 +200,10 @@ namespace Chris.Configs
     /// String console variable
     /// </summary>
     /// <typeparam name="TConfig">Config type</typeparam>
-    public class StringConsoleVariable<TConfig> : ConsoleVariable<TConfig, string>
+    public class StringConfigVariable<TConfig> : ConfigVariable<TConfig, string>
         where TConfig : Config<TConfig>, new()
     {
-        public StringConsoleVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
+        public StringConfigVariable(string name, MemberAccessor memberAccessor) : base(name, memberAccessor)
         {
         }
     }

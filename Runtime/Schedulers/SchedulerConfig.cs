@@ -9,7 +9,7 @@ namespace Chris.Schedulers
     public class SchedulerConfig : Config<SchedulerConfig>
     {
         [SerializeField]
-        [ConsoleVariable("r.scheduler.stackTrace")]
+        [ConfigVariable("r.scheduler.stackTrace")]
         internal bool enableStackTrace = true;
 
         public static bool EnableStackTrace => Get().enableStackTrace;

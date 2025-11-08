@@ -2,36 +2,35 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Chris.Configs;
 using UnityEngine;
 
-namespace Chris
+namespace Chris.Configs
 {
-    public class ConsoleVariableRegistry
+    public class ConfigVariableRegistry
     {
         private const string ChrisAssemblyName = "Chris";
 
-        private readonly Dictionary<string, ConsoleVariable> _variables = new();
+        private readonly Dictionary<string, ConfigVariable> _variables = new();
 
-        private static ConsoleVariableRegistry _instance;
+        private static ConfigVariableRegistry _instance;
 
         // Type mapping for console variables
         private static readonly Dictionary<Type, Type> TypeToConsoleVariableMap = new()
         {
-            { typeof(int), typeof(IntConsoleVariable<>) },
-            { typeof(float), typeof(FloatConsoleVariable<>) },
-            { typeof(bool), typeof(BoolConsoleVariable<>) },
-            { typeof(string), typeof(StringConsoleVariable<>) }
+            { typeof(int), typeof(IntConfigVariable<>) },
+            { typeof(float), typeof(FloatConfigVariable<>) },
+            { typeof(bool), typeof(BoolConfigVariable<>) },
+            { typeof(string), typeof(StringConfigVariable<>) }
         };
 
-        private ConsoleVariableRegistry()
+        private ConfigVariableRegistry()
         {
             InitializeVariables();
         }
 
-        public static ConsoleVariableRegistry Get()
+        public static ConfigVariableRegistry Get()
         {
-            return _instance ??= new ConsoleVariableRegistry();
+            return _instance ??= new ConfigVariableRegistry();
         }
 
         private void InitializeVariables()
@@ -61,14 +60,14 @@ namespace Chris
         private static FieldInfo[] GetFieldsWithAttribute(Type configType)
         {
             return configType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .Where(field => field.GetCustomAttribute<ConsoleVariableAttribute>() != null)
+                .Where(field => field.GetCustomAttribute<ConfigVariableAttribute>() != null)
                 .ToArray();
         }
 
         private static PropertyInfo[] GetPropertiesWithAttribute(Type configType)
         {
             return configType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .Where(prop => prop.GetCustomAttribute<ConsoleVariableAttribute>() != null)
+                .Where(prop => prop.GetCustomAttribute<ConfigVariableAttribute>() != null)
                 .Where(prop => prop.CanRead && prop.CanWrite)
                 .ToArray();
         }
@@ -77,7 +76,7 @@ namespace Chris
         {
             foreach (var member in members)
             {
-                var attribute = member.GetCustomAttribute<ConsoleVariableAttribute>();
+                var attribute = member.GetCustomAttribute<ConfigVariableAttribute>();
                 if (attribute == null) continue;
 
                 var memberAccessor = accessorFactory(member);
@@ -103,7 +102,7 @@ namespace Chris
             return new PropertyAccessor(property);
         }
 
-        private void CreateConsoleVariable(Type configType, MemberAccessor memberAccessor, ConsoleVariableAttribute attribute)
+        private void CreateConsoleVariable(Type configType, MemberAccessor memberAccessor, ConfigVariableAttribute attribute)
         {
             var variableName = attribute.Name;
             var memberType = memberAccessor.MemberType;
@@ -129,7 +128,7 @@ namespace Chris
             }
         }
 
-        private static ConsoleVariable CreateConsoleVariable_Internal(Type configType, MemberAccessor memberAccessor, 
+        private static ConfigVariable CreateConsoleVariable_Internal(Type configType, MemberAccessor memberAccessor, 
             Type memberType,string variableName)
         {
             // Redirect enum to int
@@ -144,7 +143,7 @@ namespace Chris
             return variable;
         }
 
-        private static ConsoleVariable CreateTypedConsoleVariable(Type configType, MemberAccessor memberAccessor, string variableName, Type consoleVariableGenericType)
+        private static ConfigVariable CreateTypedConsoleVariable(Type configType, MemberAccessor memberAccessor, string variableName, Type consoleVariableGenericType)
         {
             // Create the generic type with the config type
             var consoleVariableType = consoleVariableGenericType.MakeGenericType(configType);
@@ -157,7 +156,7 @@ namespace Chris
                 return null;
             }
 
-            return (ConsoleVariable)constructor.Invoke(new object[] { variableName, memberAccessor });
+            return (ConfigVariable)constructor.Invoke(new object[] { variableName, memberAccessor });
         }
 
         /// <summary>
@@ -165,7 +164,7 @@ namespace Chris
         /// </summary>
         /// <param name="name">Variable name</param>
         /// <returns>Console variable if found, null otherwise</returns>
-        public ConsoleVariable GetVariable(string name)
+        public ConfigVariable GetVariable(string name)
         {
             _variables.TryGetValue(name, out var variable);
             return variable;
@@ -177,7 +176,7 @@ namespace Chris
         /// <param name="name">Variable name</param>
         /// <param name="variable">The found variable</param>
         /// <returns>True if variable exists, false otherwise</returns>
-        public bool TryGetVariable(string name, out ConsoleVariable variable)
+        public bool TryGetVariable(string name, out ConfigVariable variable)
         {
             variable = null;
 
@@ -218,7 +217,7 @@ namespace Chris
         /// Get all registered console variables
         /// </summary>
         /// <returns>Dictionary of all variables</returns>
-        public ConsoleVariable[] GetAllVariables()
+        public ConfigVariable[] GetAllVariables()
         {
             return _variables.Values.ToArray();
         }

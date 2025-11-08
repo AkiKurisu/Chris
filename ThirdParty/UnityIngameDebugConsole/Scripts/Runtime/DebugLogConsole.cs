@@ -206,7 +206,7 @@ namespace Chris.RuntimeConsole
 		{
 			try
 			{
-				var registry = ConsoleVariableRegistry.Get();
+				var registry = ConfigVariableRegistry.Get();
 				var variables = registry.GetAllVariables();
 
 				foreach (var variable in variables)
@@ -224,7 +224,7 @@ namespace Chris.RuntimeConsole
 		/// Register a single console variable as console commands
 		/// </summary>
 		/// <param name="variable">Console variable to register</param>
-		private static void RegisterConsoleVariable(ConsoleVariable variable)
+		private static void RegisterConsoleVariable(ConfigVariable variable)
 		{
 			var variableName = variable.Name;
 			var valueType = variable.GetValueType();

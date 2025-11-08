@@ -23,7 +23,7 @@ namespace Chris.Resource
         /// Validate asset location before loading, throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
         /// <value></value>
-        public bool AddressSafeCheck { get; set; } = false;
+        public bool AddressSafeCheck { get; set; }
 
         /// <summary>
         /// Current cache version
@@ -136,13 +136,16 @@ namespace Chris.Resource
         /// <param name="version"></param>
         public void ReleaseAssetsWithVersion(int version)
         {
-            _versionMap.Where(p => p.Value == version).Select(p => p.Key).ToList().ForEach(ads =>
+            _versionMap.Where(pair => pair.Value == version)
+                .Select(pair => pair.Key)
+                .ToList()
+                .ForEach(address =>
             {
-                if (_internalHandles.TryGetValue(ads, out var handle))
+                if (_internalHandles.TryGetValue(address, out var handle))
                     ResourceSystem.ReleaseAsset(handle);
-                _cacheMap.Remove(ads);
-                _internalHandles.Remove(ads);
-                _versionMap.Remove(ads);
+                _cacheMap.Remove(address);
+                _internalHandles.Remove(address);
+                _versionMap.Remove(address);
             });
         }
         

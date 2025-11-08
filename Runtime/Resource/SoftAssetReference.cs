@@ -4,39 +4,6 @@ using UObject = UnityEngine.Object;
 
 namespace Chris.Resource
 {
-    [AttributeUsage(AttributeTargets.Field)]
-    public class AssetReferenceConstraintAttribute : PropertyAttribute
-    {
-        /// <summary>
-        /// Asset type to select
-        /// </summary>
-        public Type AssetType { get; private set; }
-
-        /// <summary>
-        /// Formatter method to get customized address
-        /// </summary>
-        public string Formatter { get; private set; }
-
-        /// <summary>
-        /// Group to register referenced asset, default use AddressableAssetSettingsDefaultObject.Settings.DefaultGroup
-        /// </summary>
-        public string Group { get; private set; }
-
-        /// <summary>
-        /// Enable to move asset entry to defined group if already in other asset group
-        /// </summary>
-        /// <value></value>
-        public bool ForceGroup { get; private set; }
-
-        public AssetReferenceConstraintAttribute(Type assetType = null, string formatter = null, string group = null, bool forceGroup = false)
-        {
-            AssetType = assetType;
-            Formatter = formatter;
-            Group = group;
-            ForceGroup = forceGroup;
-        }
-    }
-
     [Serializable]
     public class SoftAssetReferenceBase
     {
@@ -44,10 +11,10 @@ namespace Chris.Resource
 
 #if UNITY_EDITOR
         [SerializeField]
-                internal string Guid;
+        internal string Guid;
 
         [SerializeField]
-                internal bool Locked = true;
+        internal bool Locked = true;
 #endif
 
         public override string ToString()
