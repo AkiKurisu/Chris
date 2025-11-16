@@ -34,9 +34,10 @@ namespace Chris.Configs
 #endif
 
             // Pre-load ConfigsConfig to initialize serializer configuration
-            _ = GetConfig<ConfigsConfig>();
+            _ = ConfigsConfig.GetConfigSerializer();
+            ClearCache();
 
-            // SRegister user-level config provider with configurable serializer
+            // Register user-level config provider with configurable serializer
             RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
         }
 

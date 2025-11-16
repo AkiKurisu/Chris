@@ -11,15 +11,24 @@ namespace Chris.Configs
         [SerializeField]
         internal SerializedType<ISerializeFormatter> configSerializer = SerializedType<ISerializeFormatter>.FromType(typeof(TextSerializeFormatter));
 
+        private static ISerializeFormatter _formatter;
+        
         public static ISerializeFormatter GetConfigSerializer()
         {
-            var config = Get();
-            if (config.configSerializer.IsValid())
+            if (_formatter == null)
             {
-                return config.configSerializer.GetObject();
+                var config = Get();
+                if (config.configSerializer.IsValid())
+                {
+                    _formatter = config.configSerializer.GetObject();
+                }
+                else
+                {
+                    _formatter = TextSerializeFormatter.Instance;
+                }
             }
-            // Fallback to default
-            return TextSerializeFormatter.Instance;
+
+            return _formatter;
         }
     }
 }
