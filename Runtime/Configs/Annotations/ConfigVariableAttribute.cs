@@ -6,11 +6,11 @@ namespace Chris.Configs
     /// Define config variable can be edited through console.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public sealed class ConsoleVariableAttribute : Attribute
+    public sealed class ConfigVariableAttribute : Attribute
     {
         public string Name { get; private set; }
 
-        public ConsoleVariableAttribute(string name)
+        public ConfigVariableAttribute(string name)
         {
             Name = name;
         }

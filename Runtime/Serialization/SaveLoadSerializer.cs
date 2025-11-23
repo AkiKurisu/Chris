@@ -71,15 +71,13 @@ namespace Chris.Serialization
         
         private readonly string _extension;
 
-        private const string DefaultExtension = "sav";
-
         private readonly ISerializeFormatter _serializeFormatter;
 
-        public SaveLoadSerializer(string path, string extension = DefaultExtension, ISerializeFormatter serializeFormatter = null)
+        public SaveLoadSerializer(string path, string extension, ISerializeFormatter serializeFormatter)
         {
             _path = path;
             _extension = extension;
-            _serializeFormatter = serializeFormatter ?? BinarySerializeFormatter.Instance;
+            _serializeFormatter = serializeFormatter;
         }
 
         public void Serialize<T>(T data)

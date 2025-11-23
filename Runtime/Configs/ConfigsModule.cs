@@ -23,17 +23,30 @@ namespace Chris.Configs
         public static readonly string PersistentDirectory = Path.Combine(SaveUtility.SavePath, "Configs");
         
 #if UNITY_EDITOR
+        private static string _editorBaseDirectory;
+        
         private static string _editorDirectory;
+        
+        internal static string EditorBaseDirectory
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_editorBaseDirectory))
+                {
+                    _editorBaseDirectory = Path.Combine(Application.dataPath, "../Configs");
+                    Directory.CreateDirectory(_editorBaseDirectory);
+                }
+                return _editorBaseDirectory;
+            }
+        }
 
-        internal static string EditorDirectory
+        internal static string EditorPlatformDirectory
         {
             get
             {
                 if (string.IsNullOrEmpty(_editorDirectory))
                 {
-                    _editorDirectory = Path.Combine(Application.dataPath, "../Configs");
-                    Directory.CreateDirectory(_editorDirectory);
-                    _editorDirectory = Path.Combine(_editorDirectory, UnityEditor.EditorUserBuildSettings.activeBuildTarget.ToString());
+                    _editorDirectory = Path.Combine(EditorBaseDirectory, UnityEditor.EditorUserBuildSettings.activeBuildTarget.ToString());
                     Directory.CreateDirectory(_editorDirectory);
                 }
                 return _editorDirectory;
@@ -43,11 +56,22 @@ namespace Chris.Configs
         
         public const string Extension = "cfg";
 
+        private static SaveLoadSerializer _persistentSerializer;
+
         /// <summary>
         /// Get runtime config serializer
         /// </summary>
-        public static readonly SaveLoadSerializer PersistentSerializer = new(PersistentDirectory, Extension, TextSerializeFormatter.Instance);
-
+        public static SaveLoadSerializer PersistentSerializer
+        {
+            get
+            {
+                return _persistentSerializer ??= new SaveLoadSerializer(
+                    PersistentDirectory,
+                    Extension,
+                    ConfigsConfig.GetConfigSerializer());
+            }
+        }
+        
         public override int Order => 0;
 
         public override void Initialize(ModuleConfig config)

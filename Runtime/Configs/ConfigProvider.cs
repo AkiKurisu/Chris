@@ -50,15 +50,22 @@ namespace Chris.Configs
     }
     
 #if UNITY_EDITOR
-    internal class EditorConfigFileProvider : SaveLoadConfigFileProvider
+    internal class EditorBaseConfigFileProvider : SaveLoadConfigFileProvider
     {
-        public EditorConfigFileProvider() : 
-            base(new SaveLoadSerializer(ConfigsModule.EditorDirectory, ConfigsModule.Extension, TextSerializeFormatter.Instance))
+        public EditorBaseConfigFileProvider() : 
+            base(new SaveLoadSerializer(ConfigsModule.EditorBaseDirectory, ConfigsModule.Extension, TextSerializeFormatter.Instance))
         {
         }
     }
-#endif
     
+    internal class EditorConfigFileProvider : SaveLoadConfigFileProvider
+    {
+        public EditorConfigFileProvider() : 
+            base(new SaveLoadSerializer(ConfigsModule.EditorPlatformDirectory, ConfigsModule.Extension, TextSerializeFormatter.Instance))
+        {
+        }
+    }
+#else
     internal class StreamingConfigFileProvider : SaveLoadConfigFileProvider
     {
         public StreamingConfigFileProvider() : 
@@ -66,6 +73,7 @@ namespace Chris.Configs
         {
         }
     }
+#endif
     
     internal class PersistentConfigFileProvider : SaveLoadConfigFileProvider
     {

@@ -1,5 +1,4 @@
 using Chris.Configs;
-using Chris.Configs.Editor;
 using Chris.DataDriven;
 using Chris.DataDriven.Editor;
 using Chris.Schedulers;
@@ -10,36 +9,42 @@ using UnityEngine.UIElements;
 
 namespace Chris.Editor
 {
+    [BaseConfig]
     public class ChrisSettings : ConfigSingleton<ChrisSettings>
     {
         public bool schedulerStackTrace = true;
-        
+
         public bool initializeDataTableManagerOnLoad;
-        
+
         public bool validateDataTableBeforeLoad = true;
-        
+
         public SerializedType<IDataTableEditorSerializer> dataTableEditorSerializer = SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
-        
+
         public bool inlineRowReadOnly;
+
+        public SerializedType<ISerializeFormatter> configSerializer = SerializedType<ISerializeFormatter>.FromType(typeof(TextSerializeFormatter));
 
         internal static void SaveSettings()
         {
             Instance.Save(true);
-            
-            var serializer = ConfigsEditorUtils.GetConfigSerializer();
+
             ConfigFileLocation location = "Chris";
             var configFile = ConfigSystem.GetConfigFile(location);
-            
+
             var schedulerSettings = SchedulerConfig.Get();
             schedulerSettings.enableStackTrace = Instance.schedulerStackTrace;
             configFile.SetConfig(SchedulerConfig.Location, schedulerSettings);
-            
+
             var dataDrivenSettings = DataDrivenConfig.Get();
             dataDrivenSettings.initializeDataTableManagerOnLoad = Instance.initializeDataTableManagerOnLoad;
             dataDrivenSettings.validateDataTableBeforeLoad = Instance.validateDataTableBeforeLoad;
             configFile.SetConfig(DataDrivenConfig.Location, dataDrivenSettings);
-            
-            serializer.Serialize(location, configFile);
+
+            var configsSettings = ConfigsConfig.Get();
+            configsSettings.configSerializer = Instance.configSerializer;
+            configFile.SetConfig(ConfigsConfig.Location, configsSettings);
+
+            Serialize(location, configFile);
         }
     }
 
@@ -49,26 +54,29 @@ namespace Chris.Editor
         
         private class Styles
         {
-            public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace", 
+            public static readonly GUIContent StackTraceSchedulerLabel = new("Stack Trace",
                 "Allow trace scheduled task in editor.");
-            
-            public static readonly GUIContent DataTableSerializerLabel = new("Editor Serializer", 
+
+            public static readonly GUIContent DataTableSerializerLabel = new("Editor Serializer",
                 "Set the serializer type in DataTable Editor.");
-            
-            public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers", 
+
+            public static readonly GUIContent InitializeDataTableManagerOnLoadLabel = new("Initialize Managers",
                 "Initialize all DataTableManager instances before the scene loads.");
-            
-            public static readonly GUIContent ValidateDataTableBeforeLoadLabel = new("Validate Before Load", 
+
+            public static readonly GUIContent ValidateDataTableBeforeLoadLabel = new("Validate Before Load",
                 "Verify the existence of a DataTable before loading it." +
                 "Disabling this feature may cause exceptions to be thrown on load, resulting in unexpected behavior. " +
                 "Disable only after checking that all DataTables exist.");
 
-            public static readonly GUIContent InlineRowReadOnlyLabel = new("Inline Row ReadOnly", 
+            public static readonly GUIContent InlineRowReadOnlyLabel = new("Inline Row ReadOnly",
                 "Enable to make the DataTableRow in the inspector list view read-only.");
+
+            public static readonly GUIContent ConfigSerializerLabel = new("Config Serializer",
+                "Set the serializer type for Config files.");
         }
 
         private ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
-        
+
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
             if (!ChrisSettings.Instance.dataTableEditorSerializer.IsValid())
@@ -76,20 +84,27 @@ namespace Chris.Editor
                 ChrisSettings.Instance.dataTableEditorSerializer =
                     SerializedType<IDataTableEditorSerializer>.FromType(typeof(DataTableEditorJsonSerializer));
                 ChrisSettings.SaveSettings();
-            }  
+            }
+            if (!ChrisSettings.Instance.configSerializer.IsValid())
+            {
+                ChrisSettings.Instance.configSerializer = SerializedType<ISerializeFormatter>.FromType(typeof(TextSerializeFormatter));
+                ChrisSettings.SaveSettings();
+            }
             _settingsObject = new SerializedObject(ChrisSettings.Instance);
         }
-        
+
         public override void OnGUI(string searchContext)
         {
             DrawSchedulerSettings();
             DrawDataTableSettings();
+            DrawConfigSettings();
         }
-        
+
         private void DrawSchedulerSettings()
         {
-            GUILayout.BeginVertical("Scheduler Settings", GUI.skin.box);
-            GUILayout.Space(EditorGUIUtility.singleLineHeight);
+            var titleStyle = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+            GUILayout.Label("Scheduler Settings", titleStyle);
+            GUILayout.BeginVertical(GUI.skin.box);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.schedulerStackTrace)), Styles.StackTraceSchedulerLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
@@ -97,11 +112,12 @@ namespace Chris.Editor
             }
             GUILayout.EndVertical();
         }
-        
+
         private void DrawDataTableSettings()
         {
-            GUILayout.BeginVertical("DataTable Settings", GUI.skin.box);
-            GUILayout.Space(EditorGUIUtility.singleLineHeight);
+            var titleStyle = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+            GUILayout.Label("DataTable Settings", titleStyle);
+            GUILayout.BeginVertical(GUI.skin.box);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.initializeDataTableManagerOnLoad)), Styles.InitializeDataTableManagerOnLoadLabel);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.validateDataTableBeforeLoad)), Styles.ValidateDataTableBeforeLoadLabel);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.dataTableEditorSerializer)), Styles.DataTableSerializerLabel);
@@ -116,7 +132,24 @@ namespace Chris.Editor
             }
             GUILayout.EndVertical();
         }
-        
+
+        private void DrawConfigSettings()
+        {
+            var titleStyle = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+            GUILayout.Label("Config Settings", titleStyle);
+            GUILayout.BeginVertical(GUI.skin.box);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.configSerializer)), Styles.ConfigSerializerLabel);
+            if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
+            {
+                if (!ChrisSettings.Instance.configSerializer.IsValid())
+                {
+                    ChrisSettings.Instance.configSerializer = SerializedType<ISerializeFormatter>.FromType(typeof(TextSerializeFormatter));
+                }
+                ChrisSettings.SaveSettings();
+            }
+            GUILayout.EndVertical();
+        }
+
         [SettingsProvider]
         public static SettingsProvider CreateSettingsProvider()
         {
