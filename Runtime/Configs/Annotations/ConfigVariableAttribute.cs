@@ -9,6 +9,8 @@ namespace Chris.Configs
     public sealed class ConfigVariableAttribute : Attribute
     {
         public string Name { get; private set; }
+        
+        public bool IsEditor { get; set; }
 
         public ConfigVariableAttribute(string name)
         {

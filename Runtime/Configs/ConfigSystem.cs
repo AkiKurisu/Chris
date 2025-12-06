@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using Newtonsoft.Json;
+using R3.Chris;
 
 namespace Chris.Configs
 {
@@ -22,9 +24,23 @@ namespace Chris.Configs
         private static readonly Dictionary<ulong, ConfigBase> ConfigCache = new();
 
         private static readonly Dictionary<string, IConfigFile> ConfigFileCache = new();
-
+        
+        private static readonly JsonSerializerSettings SerializerSettings;
+        
         static ConfigSystem()
         {
+            // Register ReactivePropertyConverter used in Config
+            if (JsonConvert.DefaultSettings == null)
+            {
+                SerializerSettings = new JsonSerializerSettings();
+                JsonConvert.DefaultSettings = GetDefaultSettings;
+            }
+            else
+            {
+                SerializerSettings = JsonConvert.DefaultSettings();
+            }
+            SerializerSettings.Converters.Add(new ReactivePropertyConverter());
+            
             // Register framework-level config providers first
 #if UNITY_EDITOR
             RegisterConfigFileProvider(new EditorConfigFileProvider(), 200);        // Platform specific
@@ -45,6 +61,11 @@ namespace Chris.Configs
         {
             ConfigFileCache.Clear();
             ConfigCache.Clear();
+        }
+        
+        private static JsonSerializerSettings GetDefaultSettings()
+        {
+            return SerializerSettings;
         }
 
         /// <summary>
