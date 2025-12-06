@@ -105,6 +105,13 @@ namespace Chris.Configs
         private void CreateConsoleVariable(Type configType, MemberAccessor memberAccessor, ConfigVariableAttribute attribute)
         {
             var variableName = attribute.Name;
+#if !UNITY_EDITOR
+            if (attribute.IsEditor)
+            {
+                return;
+            }
+#endif
+            
             var memberType = memberAccessor.MemberType;
 
             try

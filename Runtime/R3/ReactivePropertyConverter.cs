@@ -1,38 +1,82 @@
 using System;
+using System.Collections.Concurrent;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using UnityEngine;
+
 namespace R3.Chris
 {
     /// <summary>
     /// Serialization helper for <see cref="ReactiveProperty{T}"/> when use <see cref="JsonConverter"/>
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public class ReactivePropertyConverter<T> : JsonConverter
+    public class ReactivePropertyConverter : JsonConverter
     {
-        public override bool CanConvert(Type objectType)
+        private interface IReactivePropertyHandler
         {
-            return objectType == typeof(ReactiveProperty<T>);
+            void WriteJson(JsonWriter writer, object value, JsonSerializer serializer);
+            
+            object ReadJson(JsonReader reader, JsonSerializer serializer);
         }
         
+        private class ReactivePropertyHandler<T> : IReactivePropertyHandler
+        {
+            public void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+            {
+                var rp = (ReactiveProperty<T>)value;
+                serializer.Serialize(writer, rp.Value);
+            }
+
+            public object ReadJson(JsonReader reader, JsonSerializer serializer)
+            {
+                var value = serializer.Deserialize<T>(reader);
+                return new ReactiveProperty<T>(value);
+            }
+        }
+        
+        private static readonly ConcurrentDictionary<Type, IReactivePropertyHandler> Handlers = new();
+
+        public override bool CanConvert(Type objectType)
+        {
+            return objectType.IsGenericType 
+                   && objectType.GetGenericTypeDefinition() == typeof(ReactiveProperty<>);
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            if (value == null)
+            {
+                writer.WriteNull();
+                return;
+            }
+
+            var type = value.GetType();
+            var handler = GetOrCreateHandler(type);
+            handler.WriteJson(writer, value, serializer);
+        }
+
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             try
             {
-                var token = JToken.Load(reader);
-                var value = token.ToObject<T>();
-                return new ReactiveProperty<T>(value);
+                var handler = GetOrCreateHandler(objectType);
+                return handler.ReadJson(reader, serializer);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Debug.LogError(e);
-                return new ReactiveProperty<T>();
+                return Activator.CreateInstance(objectType);
             }
         }
         
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        private static IReactivePropertyHandler GetOrCreateHandler(Type objectType)
         {
-            serializer.Serialize(writer, (value as ReactiveProperty<T>)!.Value);
+            if (Handlers.TryGetValue(objectType, out var handler))
+            {
+                return handler;
+            }
+            
+            var valueType = objectType.GetGenericArguments()[0];
+            var handlerType = typeof(ReactivePropertyHandler<>).MakeGenericType(valueType);
+            handler = (IReactivePropertyHandler)Activator.CreateInstance(handlerType);
+            Handlers.TryAdd(objectType, handler);
+            return handler;
         }
     }
 }
