@@ -70,6 +70,7 @@ namespace Chris.Resource.Editor
                 guidProp.stringValue = Object.GetAssetGUID();
             }
             EditorGUI.EndProperty();
+            return;
 
             void ValidateAddress()
             {
@@ -93,6 +94,7 @@ namespace Chris.Resource.Editor
                 }
             }
         }
+        
         private static void AssignAddress(SerializedProperty property, UObject Object, string processMethod, AddressableAssetGroup assetGroup, bool forceMoveToGroup)
         {
             var addressProp = property.FindPropertyRelative(AddressPropertyName);
@@ -133,10 +135,12 @@ namespace Chris.Resource.Editor
                 }
             }
         }
+        
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             return EditorGUIUtility.singleLineHeight * 2 + EditorGUIUtility.standardVerticalSpacing;
         }
+        
         private void ListenDragAndDrop(Rect rect, SerializedProperty property)
         {
             if (!fieldInfo.FieldType.IsArray)
@@ -187,10 +191,9 @@ namespace Chris.Resource.Editor
                         Event.current.Use();
                     }
                     break;
-                default:
-                    break;
             }
         }
+        
         private void GetPropertyMetaData(out AddressableAssetGroup assetGroup, out Type assetType,
                                 out string processMethod, out bool forceMoveToGroup)
         {

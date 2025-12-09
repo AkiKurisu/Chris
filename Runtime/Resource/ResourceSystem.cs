@@ -1,12 +1,21 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Chris.Collections;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using Cysharp.Threading.Tasks;
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+using System.Reflection;
+using UnityEngine.AddressableAssets.ResourceLocators;
+using UnityEngine.ResourceManagement.Util;
+#else
+using System.Text;
+#endif
 using UObject = UnityEngine.Object;
 
 namespace Chris.Resource
@@ -17,15 +26,20 @@ namespace Chris.Resource
     public class InvalidResourceRequestException : Exception
     {
         public string InvalidAddress { get; }
-        
+
         public InvalidResourceRequestException(string address, string message) : base(message) { InvalidAddress = address; }
     }
-    
+
     /// <summary>
     /// Resource system that loads resource by address and label based on Addressables.
     /// </summary>
     public static class ResourceSystem
     {
+        /// <summary>
+        /// Dynamic load path placeholder for content catalog
+        /// </summary>
+        public const string DynamicLoadPath = "{DYNAMIC_LOCAL_PATH}";
+
         /// <summary>
         /// Options for merging the results of requests.
         /// If keys (A, B) mapped to results ([1,2,4],[3,4,5])...
@@ -61,24 +75,24 @@ namespace Chris.Resource
             /// </summary>
             Intersection
         }
-        
+
         private const byte AssetLoadOperation = 0;
 
         private const byte InstantiateOperation = 1;
-                        
+
         /// <summary>
         /// Start from 1 since 0 is always invalid handle
         /// </summary>
         private static uint _version = 1;
-        
+
         private static readonly Dictionary<int, ResourceHandle> InstanceIDMap = new();
-        
+
         private static readonly SparseArray<AsyncOperationStructure> Operations = new(10, int.MaxValue);
 
         private struct AsyncOperationStructure
         {
             public AsyncOperationHandle AsyncOperationHandle;
-            
+
             public ResourceHandle ResourceHandle;
         }
 
@@ -100,7 +114,7 @@ namespace Chris.Resource
                 throw new InvalidResourceRequestException(stringValue, $"Address {stringValue} not valid for loading {typeof(TAsset)} asset");
             }
         }
-        
+
         /// <summary>
         /// Check resource location whether exists and throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
@@ -119,7 +133,7 @@ namespace Chris.Resource
                 throw new InvalidResourceRequestException(stringValue, $"Address {stringValue} not valid for loading {typeof(TAsset)} asset");
             }
         }
-        
+
         /// <summary>
         /// Check resource location whether exists and throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
@@ -138,7 +152,7 @@ namespace Chris.Resource
                 throw new InvalidResourceRequestException(stringValue, $"Address {stringValue} not valid for loading {typeof(TAsset)} asset");
             }
         }
-        
+
         /// <summary>
         /// Check resource location whether exists and throw <see cref="InvalidResourceRequestException"/> if not exist
         /// </summary>
@@ -174,7 +188,7 @@ namespace Chris.Resource
             return CreateHandle(handle, AssetLoadOperation);
         }
         #endregion Asset Load
-        
+
         #region Instantiate
 
         /// <summary>
@@ -184,8 +198,8 @@ namespace Chris.Resource
         /// <param name="parent">Parent transform for instantiated object.</param>
         /// <param name="callback">Callback on instantiate complete</param>
         /// <returns></returns>
-        public static ResourceHandle<GameObject> InstantiateAsync(string address, 
-            Transform parent = null, 
+        public static ResourceHandle<GameObject> InstantiateAsync(string address,
+            Transform parent = null,
             Action<GameObject> callback = null)
         {
             var handle = Addressables.InstantiateAsync(address, parent);
@@ -200,7 +214,7 @@ namespace Chris.Resource
             }
         }
         #endregion
-        
+
         #region Release
         /// <summary>
         /// Release resource
@@ -215,7 +229,7 @@ namespace Chris.Resource
             else
                 ReleaseAsset(handle);
         }
-        
+
         /// <summary>
         /// Release resource
         /// </summary>
@@ -228,7 +242,7 @@ namespace Chris.Resource
             else
                 ReleaseAsset(handle);
         }
-        
+
         /// <summary>
         /// Release Asset, should align with <see cref="LoadAssetAsync{T}"/>
         /// </summary>
@@ -242,7 +256,7 @@ namespace Chris.Resource
             }
             ReleaseHandleInternal(handle);
         }
-        
+
         /// <summary>
         /// Release GameObject Instance, should align with <see cref="InstantiateAsync"/>
         /// </summary>
@@ -257,14 +271,14 @@ namespace Chris.Resource
             if (gameObject != null)
                 Addressables.ReleaseInstance(gameObject);
         }
-        
+
         private static void ReleaseHandleInternal(ResourceHandle handle)
         {
             Operations.RemoveAt(handle.Index);
             _version++;
         }
         #endregion
-        
+
         #region  Multi Assets Load
         public static ResourceHandle<IList<T>> LoadAssetsAsync<T>(object key, Action<IList<T>> callBack = null)
         {
@@ -273,7 +287,7 @@ namespace Chris.Resource
                 handle.Completed += h => callBack(h.Result);
             return CreateHandle(handle, AssetLoadOperation);
         }
-        
+
         public static ResourceHandle<IList<T>> LoadAssetsAsync<T>(IEnumerable key, MergeMode mode, Action<IList<T>> callBack = null)
         {
             var handle = Addressables.LoadAssetsAsync<T>(key, null, (Addressables.MergeMode)mode);
@@ -295,19 +309,18 @@ namespace Chris.Resource
             };
             return handle;
         }
-        
+
         internal static AsyncOperationHandle<T> CastOperationHandle<T>(uint version, int index)
         {
             return CastOperationHandle(version, index).Convert<T>();
         }
-        
+
         internal static AsyncOperationHandle CastOperationHandle(uint version, int index)
         {
             if (Operations.IsAllocated(index))
             {
                 if (Operations[index].ResourceHandle.Version == version)
                     return Operations[index].AsyncOperationHandle;
-                return default;
             }
 
             return default;
@@ -324,32 +337,32 @@ namespace Chris.Resource
         {
             return handle.InternalHandle.GetAwaiter();
         }
-        
+
         public static UniTask.Awaiter GetAwaiter(this ResourceHandle handle)
         {
             return handle.InternalHandle.GetAwaiter();
         }
-        
+
         public static UniTask<T> ToUniTask<T>(this ResourceHandle<T> handle)
         {
             return handle.InternalHandle.ToUniTask();
         }
-        
+
         public static UniTask ToUniTask(this ResourceHandle handle)
         {
             return handle.InternalHandle.ToUniTask();
         }
-        
+
         public static UniTask<T> WithCancellation<T>(this ResourceHandle<T> handle, CancellationToken cancellationToken, bool cancelImmediately = false, bool autoReleaseWhenCanceled = false)
         {
             return handle.InternalHandle.WithCancellation(cancellationToken, cancelImmediately, autoReleaseWhenCanceled);
         }
-        
+
         public static UniTask WithCancellation(this ResourceHandle handle, CancellationToken cancellationToken, bool cancelImmediately = false, bool autoReleaseWhenCanceled = false)
         {
             return handle.InternalHandle.WithCancellation(cancellationToken, cancelImmediately, autoReleaseWhenCanceled);
         }
-        
+
         /// <summary>
         /// Whether internal operation is valid
         /// </summary>
@@ -357,9 +370,9 @@ namespace Chris.Resource
         /// <returns></returns>
         public static bool IsValid(this ResourceHandle handle)
         {
-            return ResourceSystem.IsValid(handle.Version, handle.Index);
+            return IsValid(handle.Version, handle.Index);
         }
-        
+
         /// <summary>
         /// Whether internal operation is valid
         /// </summary>
@@ -367,9 +380,9 @@ namespace Chris.Resource
         /// <returns></returns>
         public static bool IsValid<T>(this ResourceHandle<T> handle)
         {
-            return ResourceSystem.IsValid(handle.Version, handle.Index);
+            return IsValid(handle.Version, handle.Index);
         }
-        
+
         /// <summary>
         /// Whether internal operation is done
         /// </summary>
@@ -377,9 +390,9 @@ namespace Chris.Resource
         /// <returns></returns>
         public static bool IsDone(this ResourceHandle handle)
         {
-            return ResourceSystem.IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
+            return IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
         }
-        
+
         /// <summary>
         /// Whether internal operation is done
         /// </summary>
@@ -387,9 +400,9 @@ namespace Chris.Resource
         /// <returns></returns>
         public static bool IsDone<T>(this ResourceHandle<T> handle)
         {
-            return ResourceSystem.IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
+            return IsValid(handle.Version, handle.Index) && handle.InternalHandle.IsDone;
         }
-        
+
         /// <summary>
         /// Load asset async by <see cref="AssetReferenceT{T}"/> and convert to <see cref="ResourceHandle{T}"/>
         /// </summary>
@@ -401,5 +414,173 @@ namespace Chris.Resource
             return ResourceSystem.CreateHandle(assetReferenceT.LoadAssetAsync(), ResourceSystem.AssetLoadOperation);
         }
         #endregion Extensions
+
+        #region Content Catalog
+        private static string GetCatalogExtension()
+        {
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+            return ".bin";
+#else
+            return ".json";
+#endif
+        }
+
+        private static bool TryFindCatalogPath(string path, out string catalogPath)
+        {
+            if (File.Exists(path) && Path.GetExtension(path) == GetCatalogExtension())
+            {
+                catalogPath = path;
+                return true;
+            }
+            if (!Directory.Exists(path))
+            {
+                catalogPath = null;
+                return false;
+            }
+
+            catalogPath = Path.Combine(path, $"catalog{GetCatalogExtension()}");
+            return File.Exists(catalogPath);
+        }
+        
+        /// <summary>
+        /// Load Addressables content catalog from path
+        /// </summary>
+        /// <param name="path">Can be folder path or catalog path</param>
+        /// <returns></returns>
+        public static async UniTask<bool> LoadCatalogAsync(string path)
+        {
+            if (!TryFindCatalogPath(path, out var catalogPath))
+            {
+                Debug.LogError($"[Resource System] No catalog file found in {path}");
+                return false;
+            }
+            
+            path = catalogPath.Replace(@"\", "/");
+            string actualPath = Path.GetDirectoryName(path)!.Replace(@"\", "/");
+
+            try
+            {
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+                await ProcessBinaryCatalog(path, actualPath);
+#else
+                await ProcessJsonCatalog(path, actualPath);
+#endif
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Resource System] Unexpected error during process catalog {path}: {e.Message}");
+                return false;
+            }
+        }
+
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+        private static async Task ProcessBinaryCatalog(string path, string actualPath)
+        {
+            // Load the binary catalog
+            var data = await File.ReadAllBytesAsync(path);
+            var reader = new BinaryStorageBuffer.Reader(data, 1024, 1024, new ContentCatalogData.Serializer().WithInternalIdResolvingDisabled());
+            var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
+
+            // Create locator to access catalog data
+            var locator = catalogData.CreateCustomLocator();
+
+            // Build a map of primary key to location and keys
+            var pkToLoc = new Dictionary<string, (UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation, HashSet<object>)>();
+            foreach (var key in locator.Keys)
+            {
+                if (locator.Locate(key, typeof(object), out var locs))
+                {
+                    foreach (var loc in locs)
+                    {
+                        if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
+                            pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
+                        locKeys.Item2.Add(key);
+                    }
+                }
+            }
+
+            // Create new modified entries
+            var modifiedEntries = new List<ContentCatalogDataEntry>();
+            foreach (var kvp in pkToLoc)
+            {
+                var loc = kvp.Value.Item1;
+                string modifiedInternalId = loc.InternalId.Replace(DynamicLoadPath, actualPath);
+
+                // Collect dependencies
+                List<object> deps = null;
+                if (loc.HasDependencies)
+                {
+                    deps = new List<object>();
+                    foreach (var d in loc.Dependencies)
+                        deps.Add(d.PrimaryKey);
+                }
+
+                // Create new entry with modified InternalId
+                var newEntry = new ContentCatalogDataEntry(
+                    loc.ResourceType,
+                    modifiedInternalId,
+                    loc.ProviderId,
+                    kvp.Value.Item2,
+                    deps,
+                    loc.Data
+                );
+                modifiedEntries.Add(newEntry);
+            }
+
+            // Create new catalog with modified data
+            var newCatalog = new ContentCatalogData(catalogData.ProviderId)
+            {
+                BuildResultHash = catalogData.BuildResultHash,
+                InstanceProviderData = catalogData.InstanceProviderData,
+                SceneProviderData = catalogData.SceneProviderData,
+                ResourceProviderData = catalogData.ResourceProviderData
+            };
+            new ContentCatalogDataWrapper(newCatalog).SetData(modifiedEntries);
+
+            // Serialize and save
+            var wr = new BinaryStorageBuffer.Writer(0, new ContentCatalogData.Serializer());
+            wr.WriteObject(newCatalog, false);
+            await File.WriteAllBytesAsync(path, wr.SerializeToByteArray());
+            Debug.Log($"[Resource System] Load binary content catalog {path}");
+            await Addressables.LoadContentCatalogAsync(path).ToUniTask();
+            await File.WriteAllBytesAsync(path, data);
+        }
+#else
+        private static async Task ProcessJsonCatalog(string path, string actualPath)
+        {
+            string contentCatalog = await File.ReadAllTextAsync(path, Encoding.UTF8);
+            string modifiedCatalog = contentCatalog.Replace(DynamicLoadPath, actualPath);
+            await File.WriteAllTextAsync(path, modifiedCatalog, Encoding.UTF8);
+            Debug.Log($"[Resource System] Load json content catalog {path}");
+            await Addressables.LoadContentCatalogAsync(path).ToUniTask();
+            await File.WriteAllTextAsync(path, contentCatalog, Encoding.UTF8);
+        }
+#endif
+
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+        private readonly struct ContentCatalogDataWrapper
+        {
+            private static readonly FieldInfo EntriesFieldInfo;
+
+            private readonly ContentCatalogData _catalog;
+            
+            static ContentCatalogDataWrapper()
+            {
+                EntriesFieldInfo = typeof(ContentCatalogData).GetField("m_Entries", BindingFlags.Instance | BindingFlags.NonPublic);
+            }
+
+            public ContentCatalogDataWrapper(ContentCatalogData catalogData)
+            {
+                _catalog = catalogData;
+            }
+
+            public void SetData(IList<ContentCatalogDataEntry> entries)
+            {
+                EntriesFieldInfo.SetValue(_catalog, entries);
+            }
+        }
+#endif
+        #endregion Content Catalog
     }
 }
