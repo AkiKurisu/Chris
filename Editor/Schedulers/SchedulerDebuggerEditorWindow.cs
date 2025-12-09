@@ -1,64 +1,63 @@
+using System;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
 using Chris.Editor;
 using Unity.CodeEditor;
+
 namespace Chris.Schedulers.Editor
 {
     // EditorWindow is modified from R3.Unity
     public class SchedulerDebuggerEditorWindow : EditorWindow
     {
-        private SchedulerRunner Manager
-        {
-            get
-            {
-                if (Application.isPlaying)
-                    return SchedulerRunner.Get();
-                else
-                    return null;
-            }
-        }
-        private int ManagedScheduledCount => Manager == null ? 0 : Manager.ScheduledItems.Count;
-        private int ManagedScheduledCapacity => Manager == null ? 0 : Manager.ScheduledItems.InternalCapacity;
-        private static SchedulerDebuggerEditorWindow window;
+        private static SchedulerRunner Runner => Application.isPlaying ? SchedulerRunner.Get() : null;
 
-        [MenuItem("Tools/Chris/Scheduler Debugger")]
+        private static int ManagedScheduledCount => Runner == null ? 0 : Runner.ScheduledItems.Count;
+        
+        private static int ManagedScheduledCapacity => Runner == null ? 0 : Runner.ScheduledItems.InternalCapacity;
+        
+        private static SchedulerDebuggerEditorWindow _window;
+
+        [MenuItem("Tools/Chris/Debug/Scheduler Debugger", false, 1)]
         public static void OpenWindow()
         {
-            if (window != null)
+            if (_window != null)
             {
-                window.Close();
+                _window.Close();
             }
 
             // will called OnEnable(singleton instance will be set).
             GetWindow<SchedulerDebuggerEditorWindow>("Scheduler Debugger").Show();
         }
 
-        private static readonly GUILayoutOption[] EmptyLayoutOption = new GUILayoutOption[0];
+        private static readonly GUILayoutOption[] EmptyLayoutOption = Array.Empty<GUILayoutOption>();
 
-        private SchedulerDebuggerTreeView treeView;
-        private object splitterState;
+        private SchedulerDebuggerTreeView _treeView;
+        
+        private object _splitterState;
 
         private void OnEnable()
         {
-            window = this; // set singleton.
-            splitterState = SplitterGUILayout.CreateSplitterState(new float[] { 75f, 25f }, new int[] { 32, 32 }, null);
-            treeView = new SchedulerDebuggerTreeView();
+            _window = this; // set singleton.
+            _splitterState = SplitterGUILayout.CreateSplitterState(new[] { 75f, 25f }, new[] { 32, 32 }, null);
+            _treeView = new SchedulerDebuggerTreeView();
         }
+        
         private void Update()
         {
-            treeView.ReloadAndSort();
+            _treeView.ReloadAndSort();
             Repaint();
         }
+        
         private void OnGUI()
         {
             // Head
             RenderHeadPanel();
 
             // Splittable
-            SplitterGUILayout.BeginVerticalSplit(splitterState, EmptyLayoutOption);
+            SplitterGUILayout.BeginVerticalSplit(_splitterState, EmptyLayoutOption);
             {
-                // Column Tabble
+                // Column Table
                 RenderTable();
 
                 // StackTrace details
@@ -69,7 +68,7 @@ namespace Chris.Schedulers.Editor
 
         #region HeadPanel
 
-        private static readonly GUIContent CancelAllHeadContent = EditorGUIUtility.TrTextContent("Cancel All", "Cancel all scheduled tasks", (Texture)null);
+        private static readonly GUIContent CancelAllHeadContent = EditorGUIUtility.TrTextContent("Cancel All", "Cancel all scheduled tasks");
 
         private void RenderHeadPanel()
         {
@@ -82,8 +81,8 @@ namespace Chris.Schedulers.Editor
             GUI.enabled = Application.isPlaying;
             if (GUILayout.Button(CancelAllHeadContent, EditorStyles.toolbarButton, EmptyLayoutOption))
             {
-                Manager.CancelAll();
-                treeView.ReloadAndSort();
+                Runner.CancelAll();
+                _treeView.ReloadAndSort();
                 Repaint();
             }
             GUI.enabled = true;
@@ -110,19 +109,19 @@ namespace Chris.Schedulers.Editor
 
             EditorGUILayout.BeginVertical(tableListStyle, EmptyLayoutOption);
 
-            tableScroll = EditorGUILayout.BeginScrollView(tableScroll, new GUILayoutOption[]
+            tableScroll = EditorGUILayout.BeginScrollView(tableScroll, new[]
             {
                 GUILayout.ExpandWidth(true),
                 GUILayout.MaxWidth(2000f)
             });
-            var controlRect = EditorGUILayout.GetControlRect(new GUILayoutOption[]
+            var controlRect = EditorGUILayout.GetControlRect(new[]
             {
                 GUILayout.ExpandHeight(true),
                 GUILayout.ExpandWidth(true)
             });
 
 
-            treeView?.OnGUI(controlRect);
+            _treeView?.OnGUI(controlRect);
 
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
@@ -156,11 +155,11 @@ namespace Chris.Schedulers.Editor
             };
 
             SchedulerDebuggerTreeView.ViewItem viewItem = null;
-            var selected = treeView.state.selectedIDs;
+            var selected = _treeView.state.selectedIDs;
             if (selected.Count > 0)
             {
                 var first = selected[0];
-                if (treeView.CurrentBindingItems.FirstOrDefault(x => x.id == first) is SchedulerDebuggerTreeView.ViewItem item)
+                if (_treeView.CurrentBindingItems.FirstOrDefault(x => x.id == first) is SchedulerDebuggerTreeView.ViewItem item)
                 {
                     viewItem = item;
                 }
@@ -178,16 +177,16 @@ namespace Chris.Schedulers.Editor
                     GUILayout.BeginHorizontal();
                     if (GUILayout.Button("Resume", stackTraceButtonStyle))
                     {
-                        Manager.Resume(viewItem.ScheduledItem.Value.Handle);
+                        Runner.Resume(viewItem.ScheduledItem.Value.Handle);
                     }
                     if (GUILayout.Button("Pause", stackTraceButtonStyle))
                     {
-                        Manager.Pause(viewItem.ScheduledItem.Value.Handle);
+                        Runner.Pause(viewItem.ScheduledItem.Value.Handle);
                     }
                     GUILayout.EndHorizontal();
                     if (GUILayout.Button("Cancel", stackTraceButtonStyle))
                     {
-                        Manager.Cancel(viewItem.ScheduledItem.Value.Handle);
+                        Runner.Cancel(viewItem.ScheduledItem.Value.Handle);
                     }
                 }
                 else

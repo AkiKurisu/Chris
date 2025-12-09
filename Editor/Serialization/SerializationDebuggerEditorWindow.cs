@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
@@ -8,48 +9,51 @@ namespace Chris.Serialization.Editor
     // EditorWindow is modified from R3.Unity
     public class SerializationDebuggerEditorWindow : EditorWindow
     {
-        static SerializationDebuggerEditorWindow window;
+        private static SerializationDebuggerEditorWindow _window;
 
-        [MenuItem("Tools/Chris/Serialization Debugger")]
+        [MenuItem("Tools/Chris/Debug/Serialization Debugger", false, 1)]
         public static void OpenWindow()
         {
-            if (window != null)
+            if (_window != null)
             {
-                window.Close();
+                _window.Close();
             }
 
             // will called OnEnable(singleton instance will be set).
             GetWindow<SerializationDebuggerEditorWindow>("Serialization Debugger").Show();
         }
 
-        static readonly GUILayoutOption[] EmptyLayoutOption = new GUILayoutOption[0];
+        private static readonly GUILayoutOption[] EmptyLayoutOption = Array.Empty<GUILayoutOption>();
 
-        SerializationDebuggerTreeView treeView;
-        object splitterState;
+        private SerializationDebuggerTreeView _treeView;
+        
+        private object _splitterState;
 
         private void OnEnable()
         {
-            window = this; // set singleton.
-            splitterState = SplitterGUILayout.CreateSplitterState(new float[] { 75f, 25f }, new int[] { 32, 32 }, null);
-            treeView = new SerializationDebuggerTreeView();
+            _window = this; // set singleton.
+            _splitterState = SplitterGUILayout.CreateSplitterState(new[] { 75f, 25f }, new[] { 32, 32 }, null);
+            _treeView = new SerializationDebuggerTreeView();
         }
+        
         private void Update()
         {
             if (GlobalObjectManager.CheckAndResetDirty())
             {
-                treeView.ReloadAndSort();
+                _treeView.ReloadAndSort();
                 Repaint();
             }
         }
+        
         private void OnGUI()
         {
             // Head
             RenderHeadPanel();
 
             // Splittable
-            SplitterGUILayout.BeginVerticalSplit(splitterState, EmptyLayoutOption);
+            SplitterGUILayout.BeginVerticalSplit(_splitterState, EmptyLayoutOption);
             {
-                // Column Tabble
+                // Column Table
                 RenderTable();
 
                 // StackTrace details
@@ -60,7 +64,7 @@ namespace Chris.Serialization.Editor
 
         #region HeadPanel
 
-        private static readonly GUIContent CleanupHeadContent = EditorGUIUtility.TrTextContent("Cleanup", "Cleanup Global Objects", (Texture)null);
+        private static readonly GUIContent CleanupHeadContent = EditorGUIUtility.TrTextContent("Cleanup", "Cleanup Global Objects");
 
         private void RenderHeadPanel()
         {
@@ -73,7 +77,7 @@ namespace Chris.Serialization.Editor
             if (GUILayout.Button(CleanupHeadContent, EditorStyles.toolbarButton, EmptyLayoutOption))
             {
                 GlobalObjectManager.Cleanup();
-                treeView.ReloadAndSort();
+                _treeView.ReloadAndSort();
                 Repaint();
             }
 
@@ -85,33 +89,33 @@ namespace Chris.Serialization.Editor
 
         #region TableColumn
 
-        private Vector2 tableScroll;
-        private GUIStyle tableListStyle;
+        private Vector2 _tableScroll;
+        private GUIStyle _tableListStyle;
 
         private void RenderTable()
         {
-            if (tableListStyle == null)
+            if (_tableListStyle == null)
             {
-                tableListStyle = new GUIStyle("CN Box");
-                tableListStyle.margin.top = 0;
-                tableListStyle.padding.left = 3;
+                _tableListStyle = new GUIStyle("CN Box");
+                _tableListStyle.margin.top = 0;
+                _tableListStyle.padding.left = 3;
             }
 
-            EditorGUILayout.BeginVertical(tableListStyle, EmptyLayoutOption);
+            EditorGUILayout.BeginVertical(_tableListStyle, EmptyLayoutOption);
 
-            tableScroll = EditorGUILayout.BeginScrollView(tableScroll, new GUILayoutOption[]
+            _tableScroll = EditorGUILayout.BeginScrollView(_tableScroll, new[]
             {
                 GUILayout.ExpandWidth(true),
                 GUILayout.MaxWidth(2000f)
             });
-            var controlRect = EditorGUILayout.GetControlRect(new GUILayoutOption[]
+            var controlRect = EditorGUILayout.GetControlRect(new[]
             {
                 GUILayout.ExpandHeight(true),
                 GUILayout.ExpandWidth(true)
             });
 
 
-            treeView?.OnGUI(controlRect);
+            _treeView?.OnGUI(controlRect);
 
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
@@ -123,35 +127,35 @@ namespace Chris.Serialization.Editor
 
         #region Details
 
-        private static GUIStyle detailsStyle;
-        private Vector2 detailsScroll;
+        private static GUIStyle _detailsStyle;
+        private Vector2 _detailsScroll;
 
         private void RenderDetailsPanel()
         {
-            if (detailsStyle == null)
+            if (_detailsStyle == null)
             {
-                detailsStyle = new GUIStyle("CN Message")
+                _detailsStyle = new GUIStyle("CN Message")
                 {
                     wordWrap = false,
                     stretchHeight = true
                 };
-                detailsStyle.margin.right = 15;
+                _detailsStyle.margin.right = 15;
             }
 
             string message = "";
-            var selected = treeView.state.selectedIDs;
+            var selected = _treeView.state.selectedIDs;
             if (selected.Count > 0)
             {
                 var first = selected[0];
-                if (treeView.CurrentBindingItems.FirstOrDefault(x => x.id == first) is SerializationDebuggerTreeView.ViewItem item)
+                if (_treeView.CurrentBindingItems.FirstOrDefault(x => x.id == first) is SerializationDebuggerTreeView.ViewItem item)
                 {
                     message = item.Object != null ? item.Object.name : string.Empty;
                 }
             }
 
-            detailsScroll = EditorGUILayout.BeginScrollView(this.detailsScroll, EmptyLayoutOption);
-            var vector = detailsStyle.CalcSize(new GUIContent(message));
-            EditorGUILayout.SelectableLabel(message, detailsStyle, new GUILayoutOption[]
+            _detailsScroll = EditorGUILayout.BeginScrollView(this._detailsScroll, EmptyLayoutOption);
+            var vector = _detailsStyle.CalcSize(new GUIContent(message));
+            EditorGUILayout.SelectableLabel(message, _detailsStyle, new[]
             {
                 GUILayout.ExpandHeight(true),
                 GUILayout.ExpandWidth(true),

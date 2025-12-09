@@ -22,7 +22,7 @@ namespace Chris.DataDriven.Editor
         
         private Vector2 _tableScroll;
         
-        private static readonly GUIContent OpenDataTableContent = EditorGUIUtility.TrTextContent("Open", "Open a DataTable", (Texture)null);
+        private static readonly GUIContent OpenDataTableContent = EditorGUIUtility.TrTextContent("Open", "Open a DataTable");
 
         private const string PathCacheKey = "DataTableEditorWindow_LastPath";
 
@@ -38,7 +38,7 @@ namespace Chris.DataDriven.Editor
 
         private DataTableEditorExtension[] _extensions;
         
-        [MenuItem("Tools/Chris/DataTable Editor")]
+        [MenuItem("Tools/Chris/DataTable Editor", false, 0)]
         public static void OpenWindow()
         {
             if (_window != null)

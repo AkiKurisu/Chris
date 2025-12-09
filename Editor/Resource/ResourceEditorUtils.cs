@@ -81,12 +81,18 @@ namespace Chris.Resource.Editor
         /// Get existing addressable asset group or create a new one if it doesn't exist
         /// </summary>
         /// <param name="groupName">The name of the group to get or create</param>
+        /// <param name="createIfNotExist">Create the group if not exist</param>
         /// <returns>The addressable asset group</returns>
-        public static AddressableAssetGroup GetOrCreateAssetGroup(string groupName)
+        public static AddressableAssetGroup GetOrCreateAssetGroup(string groupName, bool createIfNotExist = true)
         {
             var group = AddressableAssetSettingsDefaultObject.Settings.groups.FirstOrDefault(x => x.name == groupName);
-            if (group) return group;
-            group = AddressableAssetSettingsDefaultObject.Settings.CreateGroup(groupName, false, false, true, AddressableAssetSettingsDefaultObject.Settings.DefaultGroup.Schemas);
+            if (group || !createIfNotExist) return group;
+            
+            group = AddressableAssetSettingsDefaultObject.Settings.CreateGroup(groupName, 
+                false, 
+                false, 
+                true, 
+                AddressableAssetSettingsDefaultObject.Settings.DefaultGroup.Schemas.ToList());
             // Ensure address is included in build
             BundledAssetGroupSchema infoSchema = group.GetSchema<BundledAssetGroupSchema>();
             infoSchema.IncludeAddressInCatalog = true;

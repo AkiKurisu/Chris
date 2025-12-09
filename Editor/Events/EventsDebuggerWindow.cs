@@ -13,6 +13,7 @@ using StringChangeEvent = UnityEngine.UIElements.ChangeEvent<string>;
 using Newtonsoft.Json.Linq;
 using System.Text;
 using Newtonsoft.Json;
+
 namespace Chris.Events.Editor
 {
     internal class EventsDebuggerWindow : EditorWindow
@@ -20,7 +21,7 @@ namespace Chris.Events.Editor
         [SerializeField]
         private EventsDebuggerImpl m_DebuggerImpl;
 
-        [MenuItem("Tools/Chris/Event Debugger")]
+        [MenuItem("Tools/Chris/Debug/Event Debugger", false, 1)]
         public static void ShowEventDebugger()
         {
             var window = GetWindow<EventsDebuggerWindow>();
@@ -29,17 +30,18 @@ namespace Chris.Events.Editor
             window.m_DebuggerImpl.ClearLogs();
         }
 
-        void OnEnable()
+        private void OnEnable()
         {
             m_DebuggerImpl ??= new EventsDebuggerImpl();
             m_DebuggerImpl.Initialize(this, rootVisualElement);
         }
 
-        void OnDisable()
+        private void OnDisable()
         {
             m_DebuggerImpl.OnDisable();
         }
     }
+    
     internal class CodeLine : Label
     {
         private string m_FileName;
@@ -68,7 +70,7 @@ namespace Chris.Events.Editor
     }
 
     [Serializable]
-    class EventsDebuggerImpl : CoordinatorDebugger
+    internal class EventsDebuggerImpl : CoordinatorDebugger
     {
         private const string k_EventsContainerName = "eventsHistogramContainer";
         private const string k_EventsLabelName = "eventsHistogramEntry";
@@ -1201,6 +1203,7 @@ namespace Chris.Events.Editor
             m_SaveReplayButton?.SetEnabled(anySelected);
             m_StartPlaybackButton?.SetEnabled(anySelected && !m_Debugger.IsReplaying);
         }
+        
         private void UpdateEventBaseInfo(EventDebuggerEventRecord eventBase)
         {
             ClearEventBaseInfo();
@@ -1208,6 +1211,7 @@ namespace Chris.Events.Editor
                 return;
             m_EventBaseInfo.text += FormatJson(eventBase.JsonData);
         }
+        
         /// <summary>
         /// Only format for indent level 0
         /// </summary>
