@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Chris.Collections;
 using Chris.Serialization;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Chris.DataDriven
 {
@@ -36,7 +38,8 @@ namespace Chris.DataDriven
                 RowData = SerializedObject<IDataTableRow>.FromObject(row);
             }
 
-            public void InternalUpdate()
+            [Conditional("UNITY_EDITOR")]
+            internal void InternalUpdate()
             {
                 if (RowData.NewObject() is IValidateRow validateRowId)
                 {
@@ -320,6 +323,7 @@ namespace Chris.DataDriven
         /// <summary>
         /// Update dataTable struct and rows
         /// </summary>
+        [Conditional("UNITY_EDITOR")]
         internal void InternalUpdate()
         {
             m_rowType.InternalUpdate();

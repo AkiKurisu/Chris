@@ -2,9 +2,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Chris.Serialization
 {
@@ -291,6 +292,8 @@ namespace Chris.Serialization
     {
 #pragma warning disable CS8632
         private T? _value;
+
+        private Type _type;
 #pragma warning restore CS8632
         
         /// <summary>
@@ -299,12 +302,13 @@ namespace Chris.Serialization
         /// <returns></returns>
         public T GetObject()
         {
+            InternalUpdate();
             if (_value == null)
             {
-                var type = SerializedType.FromString(serializedTypeString);
-                if (type != null)
+                _type = SerializedType.FromString(serializedTypeString);
+                if (_type != null)
                 {
-                    _value = (T)Activator.CreateInstance(type);
+                    _value = (T)Activator.CreateInstance(_type);
                 }
             }
             return _value;
@@ -312,11 +316,12 @@ namespace Chris.Serialization
         
         public override Type GetObjectType()
         {
-            if (_value != null)
+            InternalUpdate();
+            if (_type != null)
             {
-                return _value.GetType();
+                return _type;
             }
-            return SerializedType.FromString(serializedTypeString);
+            return _type = SerializedType.FromString(serializedTypeString);
         }
 
         /// <summary>
@@ -337,11 +342,13 @@ namespace Chris.Serialization
             };
         }
         
+        [Conditional("UNITY_EDITOR")]
         internal void InternalUpdate()
         {
-            if (_value != null && SerializedType.ToString(_value.GetType()) != serializedTypeString)
+            if (_type != null && SerializedType.ToString(_type) != serializedTypeString)
             {
                 _value = default;
+                _type = null;
             }
         }
         
