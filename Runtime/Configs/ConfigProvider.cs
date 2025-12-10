@@ -1,4 +1,5 @@
-﻿using Chris.Serialization;
+﻿using System;
+using Chris.Serialization;
 using UnityEngine;
 
 namespace Chris.Configs
@@ -20,21 +21,24 @@ namespace Chris.Configs
         void MergeConfigFile(IConfigFile targetFile);
     }
 
-    internal class SaveLoadConfigFileProvider : IConfigFileProvider
+    internal abstract class ConfigFileProvider : IConfigFileProvider
     {
-        private readonly SaveLoadSerializer _serializer;
-
-        protected SaveLoadConfigFileProvider(SaveLoadSerializer serializer)
-        {
-            _serializer = serializer;
-        }
+        protected abstract SaveLoadSerializer GetSerializer();
         
         public virtual bool TryGetConfigFile(ConfigFileLocation location, out IConfigFile config)
         {
+            var serializer = GetSerializer();
             ConfigFile configFile = null;
-            if (_serializer.Exists(location.Path))
+            if (serializer.Exists(location.Path))
             {
-                configFile = _serializer.Deserialize<ConfigFile>(location.Path);
+                try
+                {
+                    configFile = serializer.Deserialize<ConfigFile>(location.Path);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
             }
 
             if (configFile != null)
@@ -46,6 +50,21 @@ namespace Chris.Configs
 
             config = null;
             return false;
+        }
+    }
+
+    internal class SaveLoadConfigFileProvider : ConfigFileProvider
+    {
+        private readonly SaveLoadSerializer _serializer;
+
+        protected SaveLoadConfigFileProvider(SaveLoadSerializer serializer)
+        {
+            _serializer = serializer;
+        }
+
+        protected override SaveLoadSerializer GetSerializer()
+        {
+            return  _serializer;
         }
     }
     
@@ -75,10 +94,11 @@ namespace Chris.Configs
     }
 #endif
     
-    internal class PersistentConfigFileProvider : SaveLoadConfigFileProvider
+    internal class PersistentConfigFileProvider : ConfigFileProvider
     {
-        public PersistentConfigFileProvider() : base(ConfigsModule.PersistentSerializer)
+        protected override SaveLoadSerializer GetSerializer()
         {
+            return ConfigsModule.PersistentSerializer;
         }
 
         public override bool TryGetConfigFile(ConfigFileLocation location, out IConfigFile config)

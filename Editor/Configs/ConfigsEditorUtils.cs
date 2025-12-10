@@ -9,12 +9,12 @@ namespace Chris.Configs.Editor
         private static readonly SaveLoadSerializer PlatformSerializer = new(
             ConfigsModule.EditorPlatformDirectory,
             ConfigsModule.Extension,
-            ConfigsConfig.GetConfigSerializer());
+            ConfigsModule.ConfigSerializer);
 
         private static readonly SaveLoadSerializer ProjectWideSerializer = new(
             ConfigsModule.EditorBaseDirectory,
             ConfigsModule.Extension,
-            ConfigsConfig.GetConfigSerializer());
+            ConfigsModule.ConfigSerializer);
 
         /// <summary>
         /// Get config serializer in editor, cache will be clean up before using.
@@ -40,17 +40,17 @@ namespace Chris.Configs.Editor
             var baseSerializer = new SaveLoadSerializer(
                 ConfigsModule.EditorBaseDirectory,
                 ConfigsModule.Extension,
-                ConfigsConfig.GetConfigSerializer());
+                ConfigsModule.ConfigSerializer);
 
             var platformSerializer = new SaveLoadSerializer(
                 ConfigsModule.EditorPlatformDirectory,
                 ConfigsModule.Extension,
-                ConfigsConfig.GetConfigSerializer());
+                ConfigsModule.ConfigSerializer);
 
             var streamingSerializer = new SaveLoadSerializer(
                 ConfigsModule.StreamingDirectory,
                 ConfigsModule.Extension,
-                ConfigsConfig.GetConfigSerializer());
+                ConfigsModule.ConfigSerializer);
 
             // Collect all config file paths from base directory
             var baseConfigFiles = new HashSet<string>();

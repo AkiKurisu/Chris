@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Chris.Serialization;
 using Newtonsoft.Json;
 using R3.Chris;
 
@@ -41,20 +42,26 @@ namespace Chris.Configs
             }
             SerializerSettings.Converters.Add(new ReactivePropertyConverter());
             
-            // Register framework-level config providers first
+            // Register config providers
 #if UNITY_EDITOR
             RegisterConfigFileProvider(new EditorConfigFileProvider(), 200);        // Platform specific
             RegisterConfigFileProvider(new EditorBaseConfigFileProvider(), 300);    // Project Base
 #else
             RegisterConfigFileProvider(new StreamingConfigFileProvider(), 200);
 #endif
+            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
 
             // Pre-load ConfigsConfig to initialize serializer configuration
-            _ = ConfigsConfig.GetConfigSerializer();
-            ClearCache();
-
-            // Register user-level config provider with configurable serializer
-            RegisterConfigFileProvider(new PersistentConfigFileProvider(), 100);
+            var location = Config<ConfigsConfig>.Location;
+            var internalConfigFile = GetConfigFile_Internal(location.FileLocation, true);
+            ConfigsConfig internalConfig = null;
+            if (internalConfigFile.TryGetConfig(location, out var config))
+            {
+                internalConfig = config as ConfigsConfig;
+            }
+            internalConfig ??= new ConfigsConfig();
+            var serializedType = internalConfig.configSerializer;
+            ConfigsModule.ConfigSerializer = serializedType.GetObject() ?? TextSerializeFormatter.Instance;
         }
 
         internal static void ClearCache()
@@ -107,12 +114,7 @@ namespace Chris.Configs
             return new TConfig();
         }
 
-        /// <summary>
-        /// Get <see cref="IConfigFile"/> from <see cref="ConfigFileLocation"/>
-        /// </summary>
-        /// <param name="location"></param>
-        /// <returns></returns>
-        public static IConfigFile GetConfigFile(ConfigFileLocation location)
+        private static IConfigFile GetConfigFile_Internal(ConfigFileLocation location, bool ignoreUserData = false)
         {
             if (ConfigFileCache.TryGetValue(location.Path, out var configFile))
             {
@@ -121,6 +123,8 @@ namespace Chris.Configs
 
             foreach (var provider in ConfigFileProviders)
             {
+                if (provider.FileProvider is PersistentConfigFileProvider && ignoreUserData) continue;
+                
                 // Try to get config file
                 if (provider.FileProvider.TryGetConfigFile(location, out var newConfigFile))
                 {
@@ -137,6 +141,16 @@ namespace Chris.Configs
             configFile ??= new ConfigFile(location);
             ConfigFileCache.Add(location.Path, configFile);
             return configFile;
+        }
+
+        /// <summary>
+        /// Get <see cref="IConfigFile"/> from <see cref="ConfigFileLocation"/>
+        /// </summary>
+        /// <param name="location"></param>
+        /// <returns></returns>
+        public static IConfigFile GetConfigFile(ConfigFileLocation location)
+        {
+            return GetConfigFile_Internal(location);
         }
 
         public static void RegisterConfigFileProvider(IConfigFileProvider fileProvider, int priority = 0)

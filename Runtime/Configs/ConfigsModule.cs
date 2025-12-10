@@ -1,27 +1,24 @@
 ﻿using System.IO;
-using Chris.Modules;
 using Chris.Serialization;
 using UnityEngine;
 using System;
 using UnityEngine.Networking;
-using UnityEngine.Scripting;
 using Debug = UnityEngine.Debug;
 
 namespace Chris.Configs
 {
-    [Preserve]
-    public class ConfigsModule: RuntimeModule
+    public static class ConfigsModule
     {
 #if UNITY_EDITOR || UNITY_STANDALONE_WIN
         public static readonly string ActualStreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
 #else
         public static readonly string ActualStreamingDirectory = Path.Combine(Application.persistentDataPath, "Configs");
 #endif
-        
+
         public static readonly string StreamingDirectory = Path.Combine(Application.streamingAssetsPath, "Configs");
-        
+
         public static readonly string PersistentDirectory = Path.Combine(SaveUtility.SavePath, "Configs");
-        
+
 #if UNITY_EDITOR
         private static string _editorBaseDirectory;
         
@@ -53,7 +50,7 @@ namespace Chris.Configs
             }
         }
 #endif
-        
+
         public const string Extension = "cfg";
 
         private static SaveLoadSerializer _persistentSerializer;
@@ -68,20 +65,35 @@ namespace Chris.Configs
                 return _persistentSerializer ??= new SaveLoadSerializer(
                     PersistentDirectory,
                     Extension,
-                    ConfigsConfig.GetConfigSerializer());
+                    ConfigSerializer);
             }
         }
-        
-        public override int Order => 0;
 
-        public override void Initialize(ModuleConfig config)
+        private static ISerializeFormatter _serializeFormatter = TextSerializeFormatter.Instance;
+        
+        public static ISerializeFormatter ConfigSerializer
+        {
+            get => _serializeFormatter;
+            set
+            {
+                // Update serializer to sync formatter change
+                _serializeFormatter = value;
+                _persistentSerializer = null;
+                ConfigSystem.ClearCache();
+            }
+        }
+
+        /// <summary>
+        /// Initialize config system, should always be called before runtime module loaded.
+        /// </summary>
+        internal static void InitializeInternal()
         {
 #if !UNITY_STANDALONE_WIN || UNITY_EDITOR
             // Transfer streaming configs archive to actual streaming configs directory
             ExtractStreamingConfigs();
 #endif
         }
-        
+
         // ReSharper disable once UnusedMember.Local
         private static void ExtractStreamingConfigs()
         {
@@ -110,7 +122,7 @@ namespace Chris.Configs
             {
                 File.Delete(PersistentDirectory);
             }
-            
+
             if (File.Exists(downloadZipPath))
             {
                 // Prevent unzipping when downloading failed
@@ -127,7 +139,7 @@ namespace Chris.Configs
                 }
                 File.Delete(downloadZipPath);
             }
-            
+
             if (succeed)
             {
                 ConfigSystem.ClearCache();

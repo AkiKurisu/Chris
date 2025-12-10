@@ -24,6 +24,8 @@ namespace Chris.Editor
 
         public SerializedType<ISerializeFormatter> configSerializer = SerializedType<ISerializeFormatter>.FromType(typeof(TextSerializeFormatter));
 
+        public string password;
+        
         internal static void SaveSettings()
         {
             Instance.Save(true);
@@ -42,6 +44,7 @@ namespace Chris.Editor
 
             var configsSettings = ConfigsConfig.Get();
             configsSettings.configSerializer = Instance.configSerializer;
+            configsSettings.password = Instance.password;
             configFile.SetConfig(ConfigsConfig.Location, configsSettings);
 
             Serialize(location, configFile);
@@ -73,6 +76,9 @@ namespace Chris.Editor
 
             public static readonly GUIContent ConfigSerializerLabel = new("Config Serializer",
                 "Set the serializer type for Config files.");
+            
+            public static readonly GUIContent PasswordLabel = new("Encrypt Password",
+                "Set the serializer encrypt password.");
         }
 
         private ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
@@ -91,6 +97,11 @@ namespace Chris.Editor
                 ChrisSettings.SaveSettings();
             }
             _settingsObject = new SerializedObject(ChrisSettings.Instance);
+        }
+
+        public override void OnDeactivate()
+        {
+            ChrisSettings.SaveSettings();
         }
 
         public override void OnGUI(string searchContext)
@@ -139,6 +150,7 @@ namespace Chris.Editor
             GUILayout.Label("Config Settings", titleStyle);
             GUILayout.BeginVertical(GUI.skin.box);
             EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.configSerializer)), Styles.ConfigSerializerLabel);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.password)), Styles.PasswordLabel);
             if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
             {
                 if (!ChrisSettings.Instance.configSerializer.IsValid())
