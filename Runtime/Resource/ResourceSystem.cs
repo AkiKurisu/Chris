@@ -416,7 +416,7 @@ namespace Chris.Resource
         #endregion Extensions
 
         #region Content Catalog
-        private static string GetCatalogExtension()
+        public static string GetCatalogExtension()
         {
 #if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
             return ".bin";

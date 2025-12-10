@@ -75,10 +75,10 @@ namespace Chris.Editor
                 "Enable to make the DataTableRow in the inspector list view read-only.");
 
             public static readonly GUIContent ConfigSerializerLabel = new("Config Serializer",
-                "Set the serializer type for Config files.");
+                "Set the serializer type for user data config files.");
             
             public static readonly GUIContent PasswordLabel = new("Encrypt Password",
-                "Set the serializer encrypt password.");
+                "Set the user data serializer encrypt password.");
         }
 
         private ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
