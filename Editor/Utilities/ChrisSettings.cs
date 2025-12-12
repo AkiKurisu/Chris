@@ -31,7 +31,7 @@ namespace Chris.Editor
             Instance.Save(true);
 
             ConfigFileLocation location = "Chris";
-            var configFile = ConfigSystem.GetConfigFile(location);
+            var configFile = ConfigSystem.GetProjectConfigFile(location);
 
             var schedulerSettings = SchedulerConfig.Get();
             schedulerSettings.enableStackTrace = Instance.schedulerStackTrace;

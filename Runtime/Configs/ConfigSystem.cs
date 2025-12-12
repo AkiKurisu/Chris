@@ -53,9 +53,9 @@ namespace Chris.Configs
 
             // Pre-load ConfigsConfig to initialize serializer configuration
             var location = Config<ConfigsConfig>.Location;
-            var internalConfigFile = GetConfigFile_Internal(location.FileLocation, true);
+            var projectConfigFile = GetProjectConfigFile(location.FileLocation);
             ConfigsConfig internalConfig = null;
-            if (internalConfigFile.TryGetConfig(location, out var config))
+            if (projectConfigFile.TryGetConfig(location, out var config))
             {
                 internalConfig = config as ConfigsConfig;
             }
@@ -151,6 +151,16 @@ namespace Chris.Configs
         public static IConfigFile GetConfigFile(ConfigFileLocation location)
         {
             return GetConfigFile_Internal(location);
+        }
+        
+        /// <summary>
+        /// Get <see cref="IConfigFile"/> from <see cref="ConfigFileLocation"/> without userData
+        /// </summary>
+        /// <param name="location"></param>
+        /// <returns></returns>
+        public static IConfigFile GetProjectConfigFile(ConfigFileLocation location)
+        {
+            return GetConfigFile_Internal(location, true);
         }
 
         public static void RegisterConfigFileProvider(IConfigFileProvider fileProvider, int priority = 0)
