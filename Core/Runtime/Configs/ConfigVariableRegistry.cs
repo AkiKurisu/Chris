@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using R3;
 
 namespace Chris.Configs
 {
@@ -111,7 +112,7 @@ namespace Chris.Configs
                 return;
             }
 #endif
-            
+
             var memberType = memberAccessor.MemberType;
 
             try
@@ -135,17 +136,34 @@ namespace Chris.Configs
             }
         }
 
-        private static ConfigVariable CreateConsoleVariable_Internal(Type configType, MemberAccessor memberAccessor, 
-            Type memberType,string variableName)
+        private static ConfigVariable CreateConsoleVariable_Internal(Type configType, MemberAccessor memberAccessor,
+            Type memberType, string variableName)
         {
-            // Redirect enum to int
-            if (memberType.IsEnum)
+            // Check if the member type is ReactiveProperty<T>
+            Type valueType;
+            MemberAccessor accessorToUse = memberAccessor;
+
+            if (memberType.IsGenericType && memberType.GetGenericTypeDefinition() == typeof(ReactiveProperty<>))
             {
-                memberType = typeof(int);
+                // Extract the generic type argument from ReactiveProperty<T>
+                valueType = memberType.GetGenericArguments()[0];
+
+                // Create a wrapper accessor that accesses .Value
+                accessorToUse = new ReactivePropertyAccessor(memberAccessor, memberType);
+            }
+            else
+            {
+                valueType = memberType;
             }
 
-            var variable = TypeToConsoleVariableMap.TryGetValue(memberType, out var consoleVariableType)
-                ? CreateTypedConsoleVariable(configType, memberAccessor, variableName, consoleVariableType)
+            // Redirect enum to int
+            if (valueType.IsEnum)
+            {
+                valueType = typeof(int);
+            }
+
+            var variable = TypeToConsoleVariableMap.TryGetValue(valueType, out var consoleVariableType)
+                ? CreateTypedConsoleVariable(configType, accessorToUse, variableName, consoleVariableType)
                 : null;
             return variable;
         }

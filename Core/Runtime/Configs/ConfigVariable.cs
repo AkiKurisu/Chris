@@ -10,11 +10,11 @@ namespace Chris.Configs
     public abstract class MemberAccessor
     {
         public abstract Type MemberType { get; }
-        
+
         public abstract string Name { get; }
-        
+
         public abstract object GetValue(object target);
-        
+
         public abstract void SetValue(object target, object value);
     }
 
@@ -31,7 +31,7 @@ namespace Chris.Configs
         }
 
         public override Type MemberType => _fieldInfo.FieldType;
-        
+
         public override string Name => _fieldInfo.Name;
 
         public override object GetValue(object target)
@@ -58,7 +58,7 @@ namespace Chris.Configs
         }
 
         public override Type MemberType => _propertyInfo.PropertyType;
-        
+
         public override string Name => _propertyInfo.Name;
 
         public override object GetValue(object target)
@@ -69,6 +69,64 @@ namespace Chris.Configs
         public override void SetValue(object target, object value)
         {
             _propertyInfo.SetValue(target, value);
+        }
+    }
+
+    /// <summary>
+    /// Accessor for ReactiveProperty&lt;T&gt; that accesses the .Value property
+    /// </summary>
+    public class ReactivePropertyAccessor : MemberAccessor
+    {
+        private readonly MemberAccessor _innerAccessor;
+        
+        private readonly PropertyInfo _valueProperty;
+        
+        private readonly Type _valueType;
+
+        public ReactivePropertyAccessor(MemberAccessor innerAccessor, Type reactivePropertyType)
+        {
+            _innerAccessor = innerAccessor;
+
+            // Extract the generic type argument from ReactiveProperty<T>
+            _valueType = reactivePropertyType.GetGenericArguments()[0];
+
+            // Get the Value property from ReactiveProperty<T>
+            _valueProperty = reactivePropertyType.GetProperty("Value");
+            if (_valueProperty == null)
+            {
+                throw new InvalidOperationException($"ReactiveProperty type {reactivePropertyType} does not have a Value property");
+            }
+        }
+
+        public override Type MemberType => _valueType;
+
+        public override string Name => _innerAccessor.Name;
+
+        public override object GetValue(object target)
+        {
+            // Get the ReactiveProperty<T> instance
+            var reactiveProperty = _innerAccessor.GetValue(target);
+            if (reactiveProperty == null)
+            {
+                return null;
+            }
+
+            // Get the .Value property from ReactiveProperty<T>
+            return _valueProperty.GetValue(reactiveProperty);
+        }
+
+        public override void SetValue(object target, object value)
+        {
+            // Get the ReactiveProperty<T> instance
+            var reactiveProperty = _innerAccessor.GetValue(target);
+            if (reactiveProperty == null)
+            {
+                Debug.LogWarning($"[Chris] ReactiveProperty {Name} is null, cannot set value");
+                return;
+            }
+
+            // Set the .Value property on ReactiveProperty<T>
+            _valueProperty.SetValue(reactiveProperty, value);
         }
     }
 
