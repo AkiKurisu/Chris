@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if CERES_INSTALL
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Ceres.Graph.Flow;
@@ -126,3 +127,4 @@ namespace Chris.Gameplay
         }
     }
 }
+#endif

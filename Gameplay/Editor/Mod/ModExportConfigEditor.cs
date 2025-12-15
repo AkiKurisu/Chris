@@ -1,5 +1,7 @@
+#if CERES_INSTALL
 using Ceres.Editor.Graph.Flow;
 using Ceres.Graph.Flow;
+#endif
 using UnityEditor;
 using UnityEngine;
 
@@ -24,8 +26,10 @@ namespace Chris.Gameplay.Mod.Editor
             public static readonly GUIStyle HeaderStyle;
             public static readonly GUIStyle BoxStyle;
             public static readonly GUIStyle InfoLabelStyle;
+#if CERES_INSTALL
             public static readonly GUIStyle FlowGraphButtonStyle;
             public static readonly Texture2D FlowGraphIcon;
+#endif
             
             static Styles()
             {
@@ -46,7 +50,7 @@ namespace Chris.Gameplay.Mod.Editor
                     fontSize = 11,
                     padding = new RectOffset(5, 5, 5, 5)
                 };
-                
+#if CERES_INSTALL 
                 FlowGraphButtonStyle = new GUIStyle(GUI.skin.button)
                 {
                     fontSize = 12,
@@ -56,6 +60,7 @@ namespace Chris.Gameplay.Mod.Editor
                 };
                 
                 FlowGraphIcon = Resources.Load<Texture2D>("Ceres/editor_icon");
+#endif
             }
         }
         
@@ -101,7 +106,9 @@ namespace Chris.Gameplay.Mod.Editor
                 DrawBasicInfoEdit();
                 DrawDescriptionEdit();
                 DrawCustomBuildersEdit();
+#if CERES_INSTALL
                 DrawFlowGraphButton();
+#endif
                 DrawValidationInfo();
             }
             else
@@ -109,13 +116,16 @@ namespace Chris.Gameplay.Mod.Editor
                 DrawBasicInfoReadOnly();
                 DrawDescriptionReadOnly();
                 DrawCustomBuildersReadOnly();
+#if CERES_INSTALL
                 DrawFlowGraphButton();
+#endif
                 DrawOpenInWindowButton();
             }
             
             serializedObject.ApplyModifiedProperties();
         }
         
+#if CERES_INSTALL
         private void DrawFlowGraphButton()
         {
             var originalColor = GUI.backgroundColor;
@@ -132,6 +142,7 @@ namespace Chris.Gameplay.Mod.Editor
             
             GUI.backgroundColor = originalColor;
         }
+#endif
         
         private void DrawBasicInfoEdit()
         {

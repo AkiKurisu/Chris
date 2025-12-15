@@ -35,6 +35,11 @@
             "name": "com.kurisu.illusion-render-pipelines",
             "expression": "1.0.0",
             "define": "ILLUSION_RP_INSTALL"
+        },
+        {
+            "name": "com.kurisu.ceres",
+            "expression": "0.6.1",
+            "define": "CERES_INSTALL"
         }
     ],
     "noEngineReferences": false

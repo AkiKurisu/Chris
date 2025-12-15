@@ -174,5 +174,120 @@ namespace Chris.Gameplay.Capture
                 callback.Invoke(destination);
             }
         }
+        
+                
+        /// <summary>
+        /// Capture raw screenshot from renderer to a new <see cref="Texture2D"/>.
+        /// </summary>
+        /// <param name="camera"></param>
+        /// <param name="size"></param>
+        /// <param name="depthBuffer"></param>
+        /// <param name="renderTextureFormat"></param>
+        /// <returns></returns>
+        public static Texture2D CaptureRawScreenshot(Camera camera, Vector2 size, 
+            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32)
+        {
+            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
+            var screenTexture = RenderTexture.GetTemporary((int)size.x, (int)size.y, 
+                depthBuffer, renderTextureFormat, RenderTextureReadWrite.Default, antiAliasing);
+            CaptureScreenshot(new ScreenshotRequest
+            {
+                Camera = camera,
+                Destination = screenTexture,
+                Mode = ScreenshotMode.Camera
+            }); 
+            var captureTex = screenTexture.ToTexture2D();
+            RenderTexture.ReleaseTemporary(screenTexture);
+            return captureTex;
+        }
+
+        /// <summary>
+        /// Capture raw screenshot from renderer to a new <see cref="Texture2D"/> in async.
+        /// </summary>
+        /// <param name="camera"></param>
+        /// <param name="size"></param>
+        /// <param name="depthBuffer"></param>
+        /// <param name="renderTextureFormat"></param>
+        /// <param name="onComplete"></param>
+        /// <returns></returns>
+        public static void CaptureRawScreenshotAsync(Camera camera, Vector2 size, 
+            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, Action<Texture2D> onComplete = null)
+        {
+            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
+            var screenTexture = RenderTexture.GetTemporary((int)size.x, (int)size.y, 
+                depthBuffer, renderTextureFormat, RenderTextureReadWrite.Default, antiAliasing);
+            CaptureScreenshot(new ScreenshotRequest
+            {
+                Camera = camera,
+                Destination = screenTexture,
+                Mode = ScreenshotMode.Camera
+            }); 
+            
+#if UNITY_EDITOR
+            if (Application.isEditor)
+            {
+                var result = screenTexture.ToTexture2D();
+                onComplete?.Invoke(result);
+                RenderTexture.ReleaseTemporary(screenTexture);
+                return;
+            }
+#endif
+            screenTexture.ToTexture2DAsync(result =>
+            {
+                onComplete?.Invoke(result);
+                RenderTexture.ReleaseTemporary(screenTexture);
+            });
+        }
+        
+        /// <summary>
+        /// Capture screenshot to a new <see cref="Texture2D"/>. Need be called at the end of frame.
+        /// </summary>
+        /// <returns></returns>
+        public static Texture2D CaptureScreenShotFromScreen()
+        {
+            var screenSize = GameViewUtils.GetSizeOfMainGameView();
+#if UNITY_EDITOR
+            return CaptureActiveRenderTexture((int)screenSize.x, (int)screenSize.y);
+#else
+            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
+            var screenTexture = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y, 
+                24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, antiAliasing);
+            CaptureScreenshot(new ScreenshotRequest
+            {
+                Destination = screenTexture,
+                Mode = ScreenshotMode.Screen
+            }); 
+            var captureTex = screenTexture.ToTexture2D();
+            RenderTexture.ReleaseTemporary(screenTexture);
+            return captureTex;
+#endif
+        }
+        
+        /// <summary>
+        /// Capture screenshot to a new <see cref="Texture2D"/> in async. Need be called at the end of frame.
+        /// </summary>
+        /// <param name="onComplete"></param>
+        public static void CaptureScreenshotAsync(Action<Texture2D> onComplete)
+        {
+            Assert.IsNotNull(onComplete);
+            var screenSize = GameViewUtils.GetSizeOfMainGameView();
+#if UNITY_EDITOR
+            onComplete(CaptureActiveRenderTexture((int)screenSize.x, (int)screenSize.y));
+#else
+            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
+            var screenTexture = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y, 
+                24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, antiAliasing);
+            CaptureScreenshot(new ScreenshotRequest
+            {
+                Destination = screenTexture,
+                Mode = ScreenshotMode.Screen
+            }); 
+            screenTexture.ToTexture2DAsync(result =>
+            {
+                onComplete.Invoke(result);
+                RenderTexture.ReleaseTemporary(screenTexture);
+            });
+#endif
+        }
     }
 }

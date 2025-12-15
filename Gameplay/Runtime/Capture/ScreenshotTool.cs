@@ -1,7 +1,8 @@
 ﻿using System.Collections;
+#if CERES_INSTALL
 using Ceres.Graph.Flow;
+#endif
 using Ceres.Graph.Flow.Annotations;
-using Chris.Gameplay.Flow.Utilities;
 using Chris.RuntimeConsole;
 using R3;
 using UnityEngine;
@@ -10,7 +11,12 @@ using UObject = UnityEngine.Object;
 
 namespace Chris.Gameplay.Capture
 {
-    public class ScreenshotTool : FlowGraphObject
+    public class ScreenshotTool : 
+#if CERES_INSTALL
+        FlowGraphObject
+#else
+        MonoBehaviour
+#endif
     {
         [Range(1, 4)]
         [SerializeField]
@@ -93,11 +99,11 @@ namespace Chris.Gameplay.Capture
             // Capture
             if (ScreenshotMode == ScreenshotMode.Screen)
             {
-                GameplayExecutableLibrary.Flow_CaptureScreenshotAsync(ProcessPicture);
+                ScreenshotUtility.CaptureScreenshotAsync(ProcessPicture);
             }
             else
             {
-                GameplayExecutableLibrary.Flow_CaptureRawScreenshotAsync(GetCamera(), screenSize,
+                ScreenshotUtility.CaptureRawScreenshotAsync(GetCamera(), screenSize,
                     renderTextureFormat: EnableHDR ? RenderTextureFormat.ARGBFloat : RenderTextureFormat.ARGB32,
                     onComplete: ProcessPicture);
             }
@@ -196,7 +202,9 @@ namespace Chris.Gameplay.Capture
                 var tool = new GameObject().AddComponent<ScreenshotTool>();
                 tool.superSize = superSize;
                 tool.screenshotMode = includeUI ? ScreenshotMode.Screen : ScreenshotMode.Camera;
+#if CERES_INSTALL
                 tool.SetGraphData(new FlowGraphData()); // Empty graph
+#endif
                 tool.TakeScreenshot();
                 tool._onScreenshotEnd.DelayFrame(1).Subscribe(_ => Destroy(tool.gameObject)).AddTo(tool);
             }

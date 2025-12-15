@@ -1,3 +1,4 @@
+#if CERES_INSTALL
 using Ceres.Graph;
 using Chris.Gameplay.Animations;
 using Chris.Modules;
@@ -19,3 +20,4 @@ namespace Chris.Gameplay.Flow
         }
     }
 }
+#endif

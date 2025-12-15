@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿#if CERES_INSTALL
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -88,3 +89,4 @@ namespace Chris.Gameplay.Editor
         }
     }
 }
+#endif

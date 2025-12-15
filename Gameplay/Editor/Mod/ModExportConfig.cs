@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+#if CERES_INSTALL
 using Ceres.Graph.Flow;
+#endif
 using Ceres.Graph.Flow.Annotations;
 using Chris.Resource.Editor;
 using Chris.Serialization;
@@ -16,7 +18,12 @@ namespace Chris.Gameplay.Mod.Editor
     /// Scriptable mod export configuration
     /// </summary>
     [CreateAssetMenu(fileName = "ModExportConfig", menuName = "Chris/Mod/Export Config")]
-    public class ModExportConfig : FlowGraphScriptableObject
+    public class ModExportConfig : 
+#if CERES_INSTALL
+        FlowGraphScriptableObject
+#else
+        ScriptableObject
+#endif
     {
         private class InternalBuilder : IResourceBuilder
         {

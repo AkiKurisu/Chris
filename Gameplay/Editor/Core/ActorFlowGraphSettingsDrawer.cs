@@ -1,3 +1,4 @@
+#if CERES_INSTALL
 using Ceres.Graph.Flow;
 using UnityEditor;
 using UnityEngine;
@@ -62,3 +63,4 @@ namespace Chris.Gameplay.Editor
         }
     }
 }
+#endif

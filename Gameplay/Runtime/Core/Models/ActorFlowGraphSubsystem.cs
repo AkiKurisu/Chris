@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿#if CERES_INSTALL
+using System.Collections.Generic;
 using System.IO;
 using Ceres.Graph.Flow;
 using Chris.Serialization;
@@ -86,3 +87,4 @@ namespace Chris.Gameplay
         }
     }
 }
+#endif

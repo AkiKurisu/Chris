@@ -1,3 +1,4 @@
+#if CERES_INSTALL
 using System;
 using Ceres.Annotations;
 using Ceres.Graph.Flow.Annotations;
@@ -9,7 +10,6 @@ using Chris.Gameplay.Level;
 using Chris.Serialization;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Assertions;
 
 namespace Chris.Gameplay.Flow.Utilities
 {
@@ -157,18 +157,7 @@ namespace Chris.Gameplay.Flow.Utilities
         public static Texture2D Flow_CaptureRawScreenshot(Camera camera, Vector2 size, 
             int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32)
         {
-            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
-            var screenTexture = RenderTexture.GetTemporary((int)size.x, (int)size.y, 
-                depthBuffer, renderTextureFormat, RenderTextureReadWrite.Default, antiAliasing);
-            ScreenshotUtility.CaptureScreenshot(new ScreenshotRequest
-            {
-                Camera = camera,
-                Destination = screenTexture,
-                Mode = ScreenshotMode.Camera
-            }); 
-            var captureTex = screenTexture.ToTexture2D();
-            RenderTexture.ReleaseTemporary(screenTexture);
-            return captureTex;
+            return ScreenshotUtility.CaptureRawScreenshot(camera, size, depthBuffer, renderTextureFormat);
         }
 
         /// <summary>
@@ -184,30 +173,7 @@ namespace Chris.Gameplay.Flow.Utilities
         public static void Flow_CaptureRawScreenshotAsync(Camera camera, Vector2 size, 
             int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, Action<Texture2D> onComplete = null)
         {
-            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
-            var screenTexture = RenderTexture.GetTemporary((int)size.x, (int)size.y, 
-                depthBuffer, renderTextureFormat, RenderTextureReadWrite.Default, antiAliasing);
-            ScreenshotUtility.CaptureScreenshot(new ScreenshotRequest
-            {
-                Camera = camera,
-                Destination = screenTexture,
-                Mode = ScreenshotMode.Camera
-            }); 
-            
-#if UNITY_EDITOR
-            if (Application.isEditor)
-            {
-                var result = screenTexture.ToTexture2D();
-                onComplete?.Invoke(result);
-                RenderTexture.ReleaseTemporary(screenTexture);
-                return;
-            }
-#endif
-            screenTexture.ToTexture2DAsync(result =>
-            {
-                onComplete?.Invoke(result);
-                RenderTexture.ReleaseTemporary(screenTexture);
-            });
+            ScreenshotUtility.CaptureRawScreenshotAsync(camera, size, depthBuffer, renderTextureFormat, onComplete);
         }
         
         /// <summary>
@@ -217,22 +183,7 @@ namespace Chris.Gameplay.Flow.Utilities
         [ExecutableFunction, CeresLabel("Capture Screenshot"), CeresGroup("Gameplay/Capture")]
         public static Texture2D Flow_CaptureScreenShotFromScreen()
         {
-            var screenSize = GameViewUtils.GetSizeOfMainGameView();
-#if UNITY_EDITOR
-            return ScreenshotUtility.CaptureActiveRenderTexture((int)screenSize.x, (int)screenSize.y);
-#else
-            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
-            var screenTexture = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y, 
-                24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, antiAliasing);
-            ScreenshotUtility.CaptureScreenshot(new ScreenshotRequest
-            {
-                Destination = screenTexture,
-                Mode = ScreenshotMode.Screen
-            }); 
-            var captureTex = screenTexture.ToTexture2D();
-            RenderTexture.ReleaseTemporary(screenTexture);
-            return captureTex;
-#endif
+            return ScreenshotUtility.CaptureScreenShotFromScreen();
         }
         
         /// <summary>
@@ -242,27 +193,10 @@ namespace Chris.Gameplay.Flow.Utilities
         [ExecutableFunction, CeresLabel("Capture Screenshot Async"), CeresGroup("Gameplay/Capture")]
         public static void Flow_CaptureScreenshotAsync(Action<Texture2D> onComplete)
         {
-            Assert.IsNotNull(onComplete);
-            var screenSize = GameViewUtils.GetSizeOfMainGameView();
-#if UNITY_EDITOR
-            onComplete(ScreenshotUtility.CaptureActiveRenderTexture((int)screenSize.x, (int)screenSize.y));
-#else
-            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
-            var screenTexture = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y, 
-                24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, antiAliasing);
-            ScreenshotUtility.CaptureScreenshot(new ScreenshotRequest
-            {
-                Destination = screenTexture,
-                Mode = ScreenshotMode.Screen
-            }); 
-            screenTexture.ToTexture2DAsync(result =>
-            {
-                onComplete.Invoke(result);
-                RenderTexture.ReleaseTemporary(screenTexture);
-            });
-#endif
+            ScreenshotUtility.CaptureScreenshotAsync(onComplete);
         }
         
         #endregion Capture
     }
 }
+#endif

@@ -46,7 +46,11 @@ namespace Chris.Gameplay.Mod.Editor
         [OnOpenAsset(-1000)]
         private static bool OnOpenAsset(int instanceId, int _)
         {
+#if UNITY_6000_0_OR_NEWER
+            var asset = EditorUtility.EntityIdToObject(instanceId);
+#else
             var asset = EditorUtility.InstanceIDToObject(instanceId);
+#endif
             if (asset is not ModExportConfig config) return false;
 
             OpenWithConfig(config);

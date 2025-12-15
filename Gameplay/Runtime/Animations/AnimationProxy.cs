@@ -1,17 +1,16 @@
 using System;
-using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Assertions;
 using UnityEngine.Playables;
+
 namespace Chris.Gameplay.Animations
 {
     /// <summary>
     /// Animation proxy can blend multi <see cref="RuntimeAnimatorController"/> 
     /// and <see cref="AnimationClip"/> in hierarchy.
     /// </summary>
-    /// <remarks>Exposed to <see cref="FlowGraph"/>.</remarks>
     public partial class AnimationProxy : IDisposable
     {
         /// <summary>
@@ -323,7 +322,9 @@ namespace Chris.Gameplay.Animations
         /// </summary>
         protected virtual void SetOutGraph()
         {
+#if CERES_INSTALL
             StopAllAnimationSequences();
+#endif
             IsBlendOut = false;
             _eventTickHandle.Cancel();
             Graph.Stop();
@@ -430,7 +431,9 @@ namespace Chris.Gameplay.Animations
         /// </summary>
         public virtual void Dispose()
         {
+#if CERES_INSTALL
             StopAllAnimationSequences();
+#endif
             _notifierContexts.Clear();
             _eventTickHandle.Dispose();
             SourceController = null;

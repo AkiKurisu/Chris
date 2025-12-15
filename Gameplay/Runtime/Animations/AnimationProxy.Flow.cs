@@ -1,17 +1,17 @@
+#if CERES_INSTALL
 using System;
 using System.Collections.Generic;
 using Ceres.Graph.Flow;
 using Ceres.Graph.Flow.Annotations;
 using Chris.Tasks;
 using UnityEngine;
+
 namespace Chris.Gameplay.Animations
 {
     public partial class AnimationProxy
     {
         private readonly Dictionary<AnimationClip, SequenceTask> _runningSequences = new();
-        
-        #region Flow API
-        
+
         // ============================== Sequence ========================== //
         /* Following API only works on default layer */
         
@@ -99,8 +99,6 @@ namespace Chris.Gameplay.Animations
             RemoveNotifier(notifier, layerHandle);
         }
         // ============================== Event ========================== //
-        
-        #endregion Flow API
 
         /// <summary>
         /// Stop all running animation sequences created by this proxy
@@ -116,3 +114,4 @@ namespace Chris.Gameplay.Animations
         }
     }
 }
+#endif

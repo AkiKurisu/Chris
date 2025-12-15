@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+#if CERES_INSTALL
 using Ceres.Graph.Flow;
+#endif
 using Ceres.Graph.Flow.Annotations;
 using Chris.Serialization;
 using UnityEngine;
@@ -11,8 +13,14 @@ namespace Chris.Gameplay
     /// <summary>
     /// Actor is a MonoBehaviour to place GameObject in Gameplay level.
     /// </summary>
-    public class Actor : FlowGraphObject
+    public class Actor :
+#if CERES_INSTALL
+        FlowGraphObject
+#else
+        MonoBehaviour
+#endif
     {
+#if CERES_INSTALL
         /// <summary>
         /// Settings contains multi-types of flow graph dependencies for <see cref="Actor"/>
         /// </summary>
@@ -25,6 +33,7 @@ namespace Chris.Gameplay
             [Tooltip("Address for sharing flow graph dependencies from DataTable")]
             public string actorAddress;
         }
+#endif
         
         private WorldContext _worldContext;
         
@@ -34,61 +43,64 @@ namespace Chris.Gameplay
         
         private readonly HashSet<ActorComponent> _actorComponents = new();
 
+#if CERES_INSTALL
         [Tooltip("Advanced settings for loading and updating flow graph")]
         public FlowGraphSettings advancedSettings = new();
+#endif
 
         [ImplementableEvent]
         protected virtual void Awake()
         {
             RegisterActor(this);
-            this.ProcessEvent();
         }
         
         [ImplementableEvent]
         protected virtual void OnEnable()
         {
-            this.ProcessEvent();
+
         }
 
         [ImplementableEvent]
         protected virtual void Start()
         {
-            this.ProcessEvent();
+
         }
         
         [ImplementableEvent]
         protected virtual void OnDisable()
         {
-            this.ProcessEvent();
+
         }
         
         [ImplementableEvent]
         protected virtual void Update()
         {
-            this.ProcessEvent();
+
         }
         
         [ImplementableEvent]
         protected virtual void FixedUpdate()
         {
-            this.ProcessEvent();
+
         }
         
         [ImplementableEvent]
         protected virtual void LateUpdate()
         {
-            this.ProcessEvent();
+
         }
 
         [ImplementableEvent]
         protected virtual void OnDestroy()
         {
-            this.ProcessEvent();
             UnregisterActor(this);
+#if CERES_INSTALL
             ReleaseGraph();
+#endif
             _actorComponents.Clear();
         }
         
+#if CERES_INSTALL
         public override FlowGraph GetFlowGraph()
         {
             if (Application.isPlaying)
@@ -106,6 +118,7 @@ namespace Chris.Gameplay
 
             return base.GetFlowGraph();
         }
+#endif
         
         /// <summary>
         /// Get actor's world
