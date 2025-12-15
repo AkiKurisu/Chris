@@ -22,6 +22,11 @@
     "defineConstraints": [],
     "versionDefines": [
         {
+            "name": "com.unity.render-pipelines.universal",
+            "expression": "14.0.12",
+            "define": "URP_INSTALL"
+        },
+        {
             "name": "com.kurisu.ceres",
             "expression": "0.6.1",
             "define": "CERES_INSTALL"

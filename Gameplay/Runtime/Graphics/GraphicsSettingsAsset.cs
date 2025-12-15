@@ -1,3 +1,4 @@
+#if URP_INSTALL
 using System;
 using Chris.Serialization;
 using UnityEngine;
@@ -43,3 +44,4 @@ namespace Chris.Gameplay.Graphics
         }
     }
 }
+#endif

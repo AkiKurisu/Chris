@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if URP_INSTALL
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
@@ -276,3 +277,4 @@ namespace Chris.Gameplay.Graphics.Editor
         }
     }
 }
+#endif

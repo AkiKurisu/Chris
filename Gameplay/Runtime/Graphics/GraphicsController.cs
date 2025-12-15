@@ -1,3 +1,4 @@
+#if URP_INSTALL
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -458,3 +459,4 @@ namespace Chris.Gameplay.Graphics
 #endif
     }
 }
+#endif

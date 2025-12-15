@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if URP_INSTALL
+using System;
 
 namespace Chris.Gameplay.Graphics
 {
@@ -18,3 +19,4 @@ namespace Chris.Gameplay.Graphics
         }
     }
 }
+#endif
