@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UObject = UnityEngine.Object;
+
 namespace Chris
 {
     public static class ReflectionUtility
@@ -67,12 +68,11 @@ namespace Chris
             }
 
             // Array
-
             if (type.IsArray)
             {
                 Type elementType = type.GetElementType();
-                var array = obj as Array;
-                Array copied = Array.CreateInstance(elementType, array.Length);
+                var array = (Array)obj;
+                Array copied = Array.CreateInstance(elementType!, array.Length);
                 for (int i = 0; i < array.Length; i++)
                 {
                     copied.SetValue(DoCopy(array.GetValue(i)), i);

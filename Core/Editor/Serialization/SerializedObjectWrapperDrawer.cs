@@ -1,10 +1,11 @@
+// Credits: https://gist.github.com/tomkail/ba4136e6aa990f4dc94e0d39ec6a058c
 using Chris.Editor;
 using UnityEngine;
 using UnityEditor;
 using Newtonsoft.Json;
+
 namespace Chris.Serialization.Editor
 {
-    // Thanks to https://gist.github.com/tomkail/ba4136e6aa990f4dc94e0d39ec6a058c
     public static class SerializedObjectWrapperDrawer
     {
         public static float CalculatePropertyHeight(ScriptableObject data)
@@ -35,6 +36,7 @@ namespace Chris.Serialization.Editor
                 serializedObject.Dispose();
             }
         }
+        
         public static float CalculatePropertyHeightLayout(ScriptableObject data)
         {
             if (data == null) return 0;
@@ -63,6 +65,7 @@ namespace Chris.Serialization.Editor
                 serializedObject.Dispose();
             }
         }
+        
         /// <summary>
         /// Draw wrapper in horizontal layout
         /// </summary>
@@ -85,6 +88,7 @@ namespace Chris.Serialization.Editor
             serializedObject.ApplyModifiedProperties();
             serializedObject.Dispose();
         }
+        
         /// <summary>
         /// Draw read-only wrapper in horizontal layout
         /// </summary>
@@ -114,6 +118,7 @@ namespace Chris.Serialization.Editor
             }
             serializedObject.Dispose();
         }
+        
         /// <summary>
         ///  Draw wrapper in input rect
         /// </summary>
@@ -137,6 +142,7 @@ namespace Chris.Serialization.Editor
             serializedObject.ApplyModifiedProperties();
             serializedObject.Dispose();
         }
+        
         /// <summary>
         /// Draw wrapper in a GUILayout scope
         /// </summary>
