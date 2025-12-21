@@ -240,35 +240,35 @@ namespace Chris.RuntimeConsole
 				// Register setter command (variable name with parameter)
 				if (valueType == typeof(int))
 				{
-					AddCommand($"{variableName}=", $"Set {variableName} (int)", (int value) =>
+					AddCommand(variableName, $"Set {variableName} (int)", (int value) =>
 					{
 						variable.SetValue(value);
 					});
 				}
 				else if (valueType == typeof(float))
 				{
-					AddCommand($"{variableName}=", $"Set {variableName} (float)", (float value) =>
+					AddCommand(variableName, $"Set {variableName} (float)", (float value) =>
 					{
 						variable.SetValue(value);
 					});
 				}
 				else if (valueType == typeof(bool))
 				{
-					AddCommand($"{variableName}=", $"Set {variableName} (bool)", (int value) =>
+					AddCommand(variableName, $"Set {variableName} (bool)", (int value) =>
 					{
 						variable.SetValue(value != 0);
 					});
 				}
 				else if (valueType == typeof(string))
 				{
-					AddCommand($"{variableName}=", $"Set {variableName} (string)", (string value) =>
+					AddCommand(variableName, $"Set {variableName} (string)", (string value) =>
 					{
 						variable.SetValue(value);
 					});
 				}
 				else if (valueType.IsEnum)
 				{
-					AddCommand($"{variableName}=", $"Set {variableName} (int)", (int value) =>
+					AddCommand(variableName, $"Set {variableName} (int)", (int value) =>
 					{
 						variable.SetValue(value);
 					});
@@ -541,8 +541,6 @@ namespace Chris.RuntimeConsole
 
 			// Fetch the parameters of the class
 			ParameterInfo[] parameters = method.GetParameters();
-			if (parameters == null)
-				parameters = new ParameterInfo[0];
 
 			// Store the parameter types in an array
 			Type[] parameterTypes = new Type[parameters.Length];
