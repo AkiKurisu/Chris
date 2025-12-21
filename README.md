@@ -69,17 +69,17 @@ Use git URL to download package by Unity Package Manager ```https://github.com/A
 
 ### Gameplay Module
 
-To enable Gameplay Module, add following dependencies to `manifest.json`.
+[Gameplay](./Documentation~/Gameplay.md)
+
+> Actor based gameplay architecture like Unreal, integrate Ceres to support visual scripting.
+>
+> To integrate Ceres, add following dependencies to the `manifest.json`.
 
 ```json
 "dependencies": {
     "com.kurisu.ceres":"https://github.com/AkiKurisu/Ceres.git"
   }
 ```
-
-[Gameplay](./Documentation~/Gameplay.md)
-
-> Actor based gameplay architecture like Unreal, integrate Ceres to support visual scripting.
 
 ![Visual Scripting](./Documentation~/Images/visual_scripting.png)
 
