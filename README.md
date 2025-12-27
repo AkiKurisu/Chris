@@ -4,8 +4,9 @@
 
 A Unity development framework designed for efficient, flexible and professional workflows.
 
-</div>
+![banner](./Documentation~/Images/banner.png)
 
+</div>
 
 ## Dependencies
 
