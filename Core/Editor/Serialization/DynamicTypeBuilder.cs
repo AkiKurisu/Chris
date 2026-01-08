@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -10,6 +11,8 @@ namespace Chris.Serialization.Editor
         private const string kDynamicTypeBuilderAssemblyName = "Chris.Emit";
         
         private static ModuleBuilder m_ModuleBuilder;
+        
+        private static readonly ConcurrentDictionary<string, Type> s_TypeCache = new();
 
         private static ModuleBuilder CreateModuleBuilder()
         {
@@ -29,8 +32,6 @@ namespace Chris.Serialization.Editor
             string tAssemblyName = parameterType.Assembly.GetName().Name;
             string typeName = $"{baseClass.Namespace}_{baseClass.Name}";
 
-            string currentAssemblyName = typeof(DynamicTypeBuilder).Assembly.GetName().Name.Replace('.', '_');
-
             if (baseClass.IsGenericType)
             {
                 //Get rid of the '`N' after the class name for the # of generic args
@@ -43,21 +44,21 @@ namespace Chris.Serialization.Editor
 
             typeName = $"{tAssemblyName}_{typeName}";
             typeName = typeName.Replace('.', '_');
-            Type[] moduleBuilderTypes = moduleBuilder.GetTypes();
-
-
-            var existingType = moduleBuilderTypes.SingleOrDefault(t => t.Name.EndsWith(typeNameWithoutAssembly) && !t.Name.StartsWith($"{currentAssemblyName}"));
-            if (existingType != null)
+            
+            // Check cache first using the full type name
+            if (s_TypeCache.TryGetValue(typeName, out var cachedType))
             {
-                return existingType;
+                return cachedType;
+            }
+            
+            // Also check cache for alternative naming pattern (for backward compatibility)
+            // This matches the original logic that searched for types ending with typeNameWithoutAssembly
+            var alternativeKey = $"{tAssemblyName}_{typeNameWithoutAssembly}";
+            if (s_TypeCache.TryGetValue(alternativeKey, out var cachedTypeAlt))
+            {
+                return cachedTypeAlt;
             }
 
-
-            existingType = moduleBuilderTypes.SingleOrDefault(t => t.Name == typeName);
-            if (existingType != null)
-            {
-                return existingType;
-            }
             var baseConstructor = baseClass.GetConstructor(BindingFlags.Public | BindingFlags.FlattenHierarchy | BindingFlags.Instance, null, new Type[0], null);
             var typeBuilder = moduleBuilder.DefineType(typeName, TypeAttributes.Class | TypeAttributes.Public, baseClass);
             var constructor = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, null);
@@ -72,7 +73,13 @@ namespace Chris.Serialization.Editor
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Ret);
-            return typeBuilder.CreateType();
+            var createdType = typeBuilder.CreateType();
+            
+            // Cache the created type
+            s_TypeCache.TryAdd(typeName, createdType);
+            s_TypeCache.TryAdd(alternativeKey, createdType);
+            
+            return createdType;
         }
     }
 }

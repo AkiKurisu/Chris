@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using R3;
 using UnityEngine;
+
 namespace Chris.Serialization.Editor
 {
     [Serializable]
@@ -32,6 +34,15 @@ namespace Chris.Serialization.Editor
     /// </summary>
     public static class SerializedObjectWrapperManager
     {
+        // Cache for MakeGenericType results
+        private static readonly ConcurrentDictionary<Type, Type> s_GenericTypeCache = new();
+        
+        // Cache for GetField results
+        private static readonly ConcurrentDictionary<Type, FieldInfo> s_FieldInfoCache = new();
+        
+        // Cache for GetCustomAttributes results
+        private static readonly ConcurrentDictionary<FieldInfo, Attribute[]> s_AttributesCache = new();
+        
         /// <summary>
         /// Create an editor wrapper for providing <see cref="Type"/> and track it by <see cref="SoftObjectHandle"/>
         /// </summary>
@@ -46,7 +57,9 @@ namespace Chris.Serialization.Editor
             // Validate wrapped type
             if (!wrapper || wrapper.Value.GetType() != type || wrapper.FieldInfo != null)
             {
-                wrapper = Wrap(type, ReflectionUtility.CreateDefaultValue(type));
+                // Delay CreateDefaultValue call until we actually need to create wrapper
+                var defaultValue = ReflectionUtility.CreateDefaultValue(type);
+                wrapper = Wrap(type, defaultValue);
                 GlobalObjectManager.UnregisterObject(softObjectHandle);
                 GlobalObjectManager.RegisterObject(wrapper, ref softObjectHandle);
             }
@@ -67,7 +80,9 @@ namespace Chris.Serialization.Editor
             // Validate wrapped type
             if (!wrapper || wrapper.Value.GetType() != fieldInfo.FieldType || wrapper.FieldInfo != fieldInfo)
             {
-                wrapper = Wrap(fieldInfo.FieldType, ReflectionUtility.CreateDefaultValue(fieldInfo.FieldType), fieldInfo);
+                // Delay CreateDefaultValue call until we actually need to create wrapper
+                var defaultValue = ReflectionUtility.CreateDefaultValue(fieldInfo.FieldType);
+                wrapper = Wrap(fieldInfo.FieldType, defaultValue, fieldInfo);
                 GlobalObjectManager.UnregisterObject(softObjectHandle);
                 GlobalObjectManager.RegisterObject(wrapper, ref softObjectHandle);
             }
@@ -103,14 +118,24 @@ namespace Chris.Serialization.Editor
 
         private static SerializedObjectWrapper Wrap(Type valueType, object value = null, FieldInfo fieldInfo = null)
         {
-            var genericType = typeof(SerializedObjectWrapper<>).MakeGenericType(valueType);
+            // Cache MakeGenericType result
+            var genericType = s_GenericTypeCache.GetOrAdd(valueType, t => typeof(SerializedObjectWrapper<>).MakeGenericType(t));
             var dynamicType = DynamicTypeBuilder.MakeDerivedType(genericType, valueType);
             if (fieldInfo != null)
             {
-                var valueFieldInfo = genericType.GetField("m_Value", BindingFlags.NonPublic | BindingFlags.Instance);
-                var attributes = fieldInfo.GetCustomAttributes().ToList();
-                attributes.RemoveAll(x => x is SerializeField);
-                TypeDescriptor.AddAttributes(valueFieldInfo!, attributes.ToArray());
+                // Cache GetField result
+                var valueFieldInfo = s_FieldInfoCache.GetOrAdd(genericType, gt => gt.GetField("m_Value", BindingFlags.NonPublic | BindingFlags.Instance));
+                if (valueFieldInfo != null)
+                {
+                    // Cache GetCustomAttributes result
+                    var attributes = s_AttributesCache.GetOrAdd(fieldInfo, fi =>
+                    {
+                        var attrs = fi.GetCustomAttributes().ToList();
+                        attrs.RemoveAll(x => x is SerializeField);
+                        return attrs.ToArray();
+                    });
+                    TypeDescriptor.AddAttributes(valueFieldInfo, attributes);
+                }
             }
             var dynamicTypeInstance = ScriptableObject.CreateInstance(dynamicType);
             if (dynamicTypeInstance is not SerializedObjectWrapper wrapper)

@@ -7,6 +7,7 @@ using Chris.Resource.Editor;
 using UnityEditor;
 using UnityEngine;
 using UObject = UnityEngine.Object;
+
 namespace Chris.DataDriven.Editor
 {
     /// <summary>
