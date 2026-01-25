@@ -1,3 +1,4 @@
+#if URP_INSTALL
 using Chris.Configs;
 using Chris.Serialization;
 using Newtonsoft.Json;
@@ -65,3 +66,4 @@ namespace Chris.Gameplay.Graphics
         internal bool DisplayFPS { get; set; }
     }
 }
+#endif
