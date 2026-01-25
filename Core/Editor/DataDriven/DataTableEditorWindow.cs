@@ -41,7 +41,7 @@ namespace Chris.DataDriven.Editor
         [MenuItem("Tools/Chris/DataTable Editor", false, 0)]
         public static void OpenWindow()
         {
-            if (_window != null)
+            if (_window)
             {
                 _window.Close();
             }
@@ -54,7 +54,7 @@ namespace Chris.DataDriven.Editor
         /// <param name="dataTable"></param>
         public static void OpenWindow(DataTable dataTable)
         {
-            if (_window != null)
+            if (_window)
             {
                 _window.Close();
             }
@@ -70,7 +70,7 @@ namespace Chris.DataDriven.Editor
         /// <param name="extensions"></param>
         public static void OpenWindowWithExtensions(DataTable dataTable, params DataTableEditorExtension[] extensions)
         {
-            if (_window != null)
+            if (_window)
             {
                 _window.Close();
             }
@@ -202,7 +202,11 @@ namespace Chris.DataDriven.Editor
         [OnOpenAsset]
         private static bool OnOpenAsset(int instanceId, int _)
         {
+#if UNITY_6000_3_OR_NEWER
+            var asset = EditorUtility.EntityIdToObject(instanceId);
+#else
             var asset = EditorUtility.InstanceIDToObject(instanceId);
+#endif
             if (asset is DataTable dataTable && (dataTable.hideFlags & HideFlags.HideInInspector) == 0)
             {
                 OpenWindow(dataTable);
