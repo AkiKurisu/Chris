@@ -13,21 +13,21 @@ namespace Chris.Modules
             ConfigsModule.InitializeInternal();
             var config = ModuleConfig.Get();
             var modules = AppDomain.CurrentDomain.GetAssemblies()
-                .Where(x =>
+                .Where(assembly =>
                 {
 #if UNITY_EDITOR
-                    if (x.GetName().Name.Contains(".Editor"))
+                    if (assembly.GetName().Name.Contains(".Editor"))
                     {
                         return false;
                     }
 #endif
 
-                    return x.GetReferencedAssemblies().Any(name => name.Name == nameof(Chris)) 
-                           || x.GetName().Name == nameof(Chris);
+                    return assembly.GetReferencedAssemblies().Any(name => name.Name == nameof(Chris)) 
+                           || assembly.GetName().Name == nameof(Chris);
                 })
-                .SelectMany(x => x.GetTypes())
-                .Where(x => typeof(RuntimeModule).IsAssignableFrom(x) && !x.IsAbstract)
-                .Select(t => (RuntimeModule)Activator.CreateInstance(t))
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => typeof(RuntimeModule).IsAssignableFrom(type) && !type.IsAbstract)
+                .Select(type => (RuntimeModule)Activator.CreateInstance(type))
                 .OrderBy(module => module.Order)
                 .ToArray();
 
