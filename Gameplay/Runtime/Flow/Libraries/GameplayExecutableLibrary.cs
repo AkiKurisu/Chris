@@ -6,6 +6,7 @@ using Ceres.Graph.Flow.Utilities;
 using Chris.Gameplay.Audios;
 using Chris.Gameplay.Capture;
 using Chris.Gameplay.FX;
+using Chris.Gameplay.Graphics;
 using Chris.Gameplay.Level;
 using Chris.Serialization;
 using Cysharp.Threading.Tasks;
@@ -197,6 +198,23 @@ namespace Chris.Gameplay.Flow.Utilities
         }
         
         #endregion Capture
+
+        #region Graphics
+#if UNITY_6000_3_OR_NEWER
+        /// <summary>
+        /// Start warmup or tracing Graphics State.
+        /// </summary>
+        /// <param name="onWarmupProgress"></param>
+        [ExecutableFunction, CeresLabel("Start Graphics State Collect Async"), CeresGroup("Gameplay/Graphics")]
+        public static void Flow_StartGraphicsStateCollectAsync(Action<GraphicsStateWarmUpProgress> onWarmupProgress)
+        {
+            if (GraphicsStateCollectionManager.Instance)
+            {
+                GraphicsStateCollectionManager.Instance.StartGraphicsStateCollectAsync(onWarmupProgress).Forget();
+            }
+        }
+#endif
+        #endregion Graphics
     }
 }
 #endif
