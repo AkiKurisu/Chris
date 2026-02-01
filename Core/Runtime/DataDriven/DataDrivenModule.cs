@@ -6,7 +6,7 @@ namespace Chris.DataDriven
     [Preserve]
     internal class DataDrivenModule: RuntimeModule
     {
-        public override void Initialize(ModuleConfig config)
+        public override void Initialize()
         {
             if (DataDrivenConfig.InitializeDataTableManagerOnLoad)
             {

@@ -9,7 +9,7 @@ namespace Chris.Gameplay.Flow
     [Preserve]
     internal class GameplayFlowModule: RuntimeModule
     {
-        public override void Initialize(ModuleConfig config)
+        public override void Initialize()
         {
             /* Register port implicit conversation */
             // ========================= Animation =========================== //

@@ -11,7 +11,6 @@ namespace Chris.Modules
         private static void InitializeModules()
         {
             ConfigsModule.InitializeInternal();
-            var config = ModuleConfig.Get();
             var modules = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(assembly =>
                 {
@@ -33,9 +32,8 @@ namespace Chris.Modules
 
             foreach (var module in modules)
             {
-                module.Initialize(config);
+                module.Initialize();
             }
-            config.Save();
         }
     }
 }
