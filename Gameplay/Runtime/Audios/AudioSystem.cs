@@ -5,6 +5,7 @@ using R3.Chris;
 using System;
 using UnityEngine.Assertions;
 using System.Collections.Generic;
+using System.Linq;
 using Chris.Pool;
 using Chris.Resource;
 using Chris.Schedulers;
@@ -22,8 +23,8 @@ namespace Chris.Gameplay.Audios
 #if UNITY_EDITOR
             if (!Application.isPlaying) return null;
 #endif
-            if (_hookRoot != null) return _hookRoot;
-            _hookRoot = GameWorld.Get().Cast().transform;
+            if (_hookRoot) return _hookRoot;
+            _hookRoot = GameObjectPoolManager.Instance.transform;
             Disposable.Create(ReleaseAll).AddTo(_hookRoot);
             return _hookRoot;
         }
@@ -70,22 +71,22 @@ namespace Chris.Gameplay.Audios
             }
         }
         
-        private static readonly Dictionary<AudioKey, IDisposable> DisposableCache = new(new AudioKey.Comparer());
+        private static readonly Dictionary<AudioKey, PooledAudioSource> AudioCache = new(new AudioKey.Comparer());
         
-        private static void Register(AudioKey key, IDisposable disposable)
+        private static void Register(AudioKey key, PooledAudioSource audioSource)
         {
-            Assert.IsNotNull(disposable);
-            if (DisposableCache.TryGetValue(key, out var latestHandle)) latestHandle?.Dispose();
-            DisposableCache[key] = disposable;
+            Assert.IsNotNull(audioSource);
+            if (AudioCache.TryGetValue(key, out var latestHandle)) latestHandle?.Dispose();
+            AudioCache[key] = audioSource;
         }
         
-        private static void Unregister(AudioKey key, IDisposable disposable)
+        private static void Unregister(AudioKey key, PooledAudioSource audioSource)
         {
-            Assert.IsNotNull(disposable);
-            if (!DisposableCache.TryGetValue(key, out var latestHandle)) return;
-            if (Equals(latestHandle, disposable))
+            Assert.IsNotNull(audioSource);
+            if (!AudioCache.TryGetValue(key, out var latestHandle)) return;
+            if (Equals(latestHandle, audioSource))
             {
-                DisposableCache.Remove(key);
+                AudioCache.Remove(key);
             }
         }
         
@@ -93,33 +94,53 @@ namespace Chris.Gameplay.Audios
         /// Stop an addressable audio source
         /// </summary>
         /// <param name="address"></param>
-        public static void StopAudioClip(string address)
+        public static void StopAudio(string address)
         {
             var key = new AudioKey(address);
-            if (!DisposableCache.TryGetValue(key, out var latestHandle)) return;
+            if (!AudioCache.TryGetValue(key, out var latestHandle)) return;
             latestHandle?.Dispose();
-            DisposableCache.Remove(key);
+            AudioCache.Remove(key);
         }
         
         /// <summary>
-        /// Stop an addressable audio source from audio <see cref="AudioClip.name"/>
+        /// Stop an addressable audio source from audio <see cref="AudioClip"/>
         /// </summary>
         /// <param name="audioClip"></param>
-        public static void StopAudioClip(AudioClip audioClip)
+        public static void StopAudio(AudioClip audioClip)
         {
             var key = new AudioKey(audioClip.GetInstanceID());
-            if (!DisposableCache.TryGetValue(key, out var latestHandle)) return;
+            if (!AudioCache.TryGetValue(key, out var latestHandle)) return;
             latestHandle?.Dispose();
-            DisposableCache.Remove(key);
+            AudioCache.Remove(key);
+        }
+        
+        /// <summary>
+        /// Find an addressable audio source
+        /// </summary>
+        /// <param name="address"></param>
+        public static AudioSource FindAudio(string address)
+        {
+            var key = new AudioKey(address);
+            return AudioCache.GetValueOrDefault(key)?.Component;
+        }
+        
+        /// <summary>
+        /// Find an addressable audio source from audio <see cref="AudioClip"/>
+        /// </summary>
+        /// <param name="audioClip"></param>
+        public static AudioSource FindAudio(AudioClip audioClip)
+        {
+            var key = new AudioKey(audioClip.GetInstanceID());
+            return AudioCache.GetValueOrDefault(key)?.Component;
         }
         
         private static void ReleaseAll()
         {
-            foreach (var handle in DisposableCache.Values)
+            foreach (var handle in AudioCache.Values.ToArray())
             {
-                handle.Dispose();
+                handle?.Dispose();
             }
-            DisposableCache.Clear();
+            AudioCache.Clear();
         }
 
         /// <summary>
@@ -144,22 +165,78 @@ namespace Chris.Gameplay.Audios
         /// <param name="volume"></param>
         /// <param name="spatialBlend"></param>
         /// <param name="minDistance"></param>
-        public static void PlayClipAtPoint(AudioClip audioClip, Vector3 position, float volume = 1f, float spatialBlend = 1f, float minDistance = 10f)
+        public static AudioSource PlayClipAtPoint(AudioClip audioClip, Vector3 position, float volume = 1f, float spatialBlend = 1f, float minDistance = 10f)
         {
             var audioObject = PooledAudioSource.Get(new AudioKey(audioClip.GetInstanceID()), GetRoot(), volume, spatialBlend, minDistance);
-            PlayClipAtPoint(audioClip, audioObject, position);
+            return PlayClipAtPoint(audioClip, audioObject, position);
         }
         
-        private static async UniTask PlayClipAtPointAsync(string audioClipAddress, Vector3 position, float volume, float spatialBlend, float minDistance)
+        /// <summary>
+        /// Play audioClip async from address at point
+        /// </summary>
+        /// <param name="audioClipAddress"></param>
+        /// <param name="position"></param>
+        /// <param name="volume"></param>
+        /// <param name="spatialBlend"></param>
+        /// <param name="minDistance"></param>
+        /// <returns></returns>
+        public static async UniTask<AudioSource> PlayClipAtPointAsync(string audioClipAddress, Vector3 position, float volume = 1f, 
+            float spatialBlend = 1f, float minDistance = 10f)
         {
             var audioObject = PooledAudioSource.Get(new AudioKey(audioClipAddress), GetRoot(), volume, spatialBlend, minDistance);
             var handle = ResourceSystem.LoadAssetAsync<AudioClip>(audioClipAddress).AddTo(audioObject);
             var audioClip = await handle;
-            PlayClipAtPoint(audioClip, audioObject, position);
+            return PlayClipAtPoint(audioClip, audioObject, position);
+        }
+        
+        /// <summary>
+        /// Play loop audioClip from address at point, stop it using <see cref="StopAudio(string)"/>. 
+        /// </summary>
+        /// <param name="audioClipAddress"></param>
+        /// <param name="position"></param>
+        /// <param name="volume"></param>
+        /// <param name="spatialBlend"></param>
+        /// <param name="minDistance"></param>
+        /// <returns></returns>
+        public static void PlayLoopClipAtPoint(string audioClipAddress, Vector3 position, float volume = 1f, float spatialBlend = 1f, float minDistance = 10f)
+        {
+            PlayLoopClipAtPointAsync(audioClipAddress, position, volume, spatialBlend, minDistance).Forget();
         }
 
         /// <summary>
-        /// Schedule audioClip from address at point, stop it using <see cref="StopAudioClip(string)"/>. 
+        /// Play loop audioClip at point, stop it using <see cref="StopAudio(UnityEngine.AudioClip)"/>. 
+        /// </summary>
+        /// <param name="audioClip"></param>
+        /// <param name="position"></param>
+        /// <param name="volume"></param>
+        /// <param name="spatialBlend"></param>
+        /// <param name="minDistance"></param>
+        public static AudioSource PlayLoopClipAtPoint(AudioClip audioClip, Vector3 position, float volume = 1f, float spatialBlend = 1f, float minDistance = 10f)
+        {
+            var audioObject = PooledAudioSource.Get(new AudioKey(audioClip.GetInstanceID()), GetRoot(), volume, spatialBlend, minDistance);
+            return PlayLoopClipAtPoint(audioClip, audioObject, position);
+        }
+        
+        /// <summary>
+        /// Play loop audioClip from address at point async, stop it using <see cref="StopAudio(string)"/>. 
+        /// </summary>
+        /// <param name="audioClipAddress"></param>
+        /// <param name="position"></param>
+        /// <param name="volume"></param>
+        /// <param name="spatialBlend"></param>
+        /// <param name="minDistance"></param>
+        /// <returns></returns>
+        public static async UniTask<AudioSource> PlayLoopClipAtPointAsync(string audioClipAddress, Vector3 position, float volume = 1f, 
+            float spatialBlend = 1f, float minDistance = 10f)
+        {
+            var audioObject = PooledAudioSource.Get(new AudioKey(audioClipAddress), GetRoot(), volume, spatialBlend, minDistance);
+            var handle = ResourceSystem.LoadAssetAsync<AudioClip>(audioClipAddress).AddTo(audioObject);
+            var audioClip = await handle;
+            return PlayLoopClipAtPoint(audioClip, audioObject, position);
+        }
+
+        /// <summary>
+        /// Schedule audioClip from address at point, stop it using <see cref="StopAudio(string)"/>. 
         /// </summary>
         /// <param name="audioClipAddress"></param>
         /// <param name="position"></param>
@@ -168,13 +245,14 @@ namespace Chris.Gameplay.Audios
         /// <param name="spatialBlend"></param>
         /// <param name="minDistance"></param>
         /// <returns></returns>
-        public static void ScheduleClipAtPoint(string audioClipAddress, Vector3 position, float scheduleTime, float volume = 1f, float spatialBlend = 1f, float minDistance = 10f)
+        public static void ScheduleClipAtPoint(string audioClipAddress, Vector3 position, float scheduleTime, float volume = 1f, 
+            float spatialBlend = 1f, float minDistance = 10f)
         {
             ScheduleClipAtPointAsync(audioClipAddress, position, scheduleTime, volume, spatialBlend, minDistance).Forget();
         }
 
         /// <summary>
-        ///  Schedule audioClip at point, stop it using <see cref="StopAudioClip(UnityEngine.AudioClip)"/>. 
+        ///  Schedule audioClip at point, stop it using <see cref="StopAudio(UnityEngine.AudioClip)"/>. 
         /// </summary>
         /// <param name="audioClip"></param>
         /// <param name="position"></param>
@@ -182,18 +260,30 @@ namespace Chris.Gameplay.Audios
         /// <param name="volume"></param>
         /// <param name="spatialBlend"></param>
         /// <param name="minDistance"></param>
-        public static void ScheduleClipAtPoint(AudioClip audioClip, Vector3 position, float scheduleTime, float volume = 1f, float spatialBlend = 1f, float minDistance = 10f)
+        public static AudioSource ScheduleClipAtPoint(AudioClip audioClip, Vector3 position, float scheduleTime, float volume = 1f, 
+            float spatialBlend = 1f, float minDistance = 10f)
         {
             var audioObject = PooledAudioSource.Get(new AudioKey(audioClip.name),GetRoot(), volume, spatialBlend, minDistance);
-            ScheduleClipAtPoint(audioClip, audioObject, position, scheduleTime);
+            return ScheduleClipAtPoint(audioClip, audioObject, position, scheduleTime);
         }
         
-        private static async UniTask ScheduleClipAtPointAsync(string audioClipAddress, Vector3 position, float scheduleTime, float volume, float spatialBlend = 1f, float minDistance = 10f)
+        /// <summary>
+        /// Schedule audioClip async from address at point, stop it using <see cref="StopAudio(string)"/>. 
+        /// </summary>
+        /// <param name="audioClipAddress"></param>
+        /// <param name="position"></param>
+        /// <param name="scheduleTime"></param>
+        /// <param name="volume"></param>
+        /// <param name="spatialBlend"></param>
+        /// <param name="minDistance"></param>
+        /// <returns></returns>
+        public static async UniTask<AudioSource> ScheduleClipAtPointAsync(string audioClipAddress, Vector3 position, float scheduleTime, float volume, 
+            float spatialBlend = 1f, float minDistance = 10f)
         {
             var audioObject = PooledAudioSource.Get(new AudioKey(audioClipAddress),GetRoot(), volume, spatialBlend, minDistance);
             var handle = ResourceSystem.LoadAssetAsync<AudioClip>(audioClipAddress).AddTo(audioObject);
             var audioClip = await handle;
-            ScheduleClipAtPoint(audioClip, audioObject, position, scheduleTime);
+            return ScheduleClipAtPoint(audioClip, audioObject, position, scheduleTime);
         }
 
         private static float GetDuration(AudioClip clip)
@@ -201,23 +291,32 @@ namespace Chris.Gameplay.Audios
             return clip.length * (Time.timeScale < 0.01f ? 0.01f : Time.timeScale);
         }
         
-        private static void PlayClipAtPoint(AudioClip clip, PooledAudioSource audioObject, Vector3 position)
+        private static AudioSource PlayClipAtPoint(AudioClip clip, PooledAudioSource audioObject, Vector3 position)
         {
             var gameObject = audioObject.GameObject;
             gameObject.transform.position = position;
             audioObject.Component.clip = clip;
-            audioObject.Component.Play();
-            audioObject.Destroy(GetDuration(clip));
+            audioObject.PlayDuration(GetDuration(clip));
+            return audioObject.Component;
+        }
+                
+        private static AudioSource PlayLoopClipAtPoint(AudioClip clip, PooledAudioSource audioObject, Vector3 position)
+        {
+            var gameObject = audioObject.GameObject;
+            gameObject.transform.position = position;
+            audioObject.Component.clip = clip;
+            audioObject.PlayLoop();
+            return audioObject.Component;
         }
         
-        private static void ScheduleClipAtPoint(AudioClip clip, PooledAudioSource audioObject, Vector3 position, float scheduleTime)
+        private static AudioSource ScheduleClipAtPoint(AudioClip clip, PooledAudioSource audioObject, Vector3 position, float scheduleTime)
         {
             var gameObject = audioObject.GameObject;
             gameObject.transform.position = position;
             audioObject.Component.clip = clip;
-            audioObject.Component.Play();
             scheduleTime += GetDuration(clip);
             audioObject.SchedulePlay(scheduleTime);
+            return audioObject.Component;
         }
         
         private sealed class PooledAudioSource : PooledComponent<PooledAudioSource, AudioSource>
@@ -228,6 +327,7 @@ namespace Chris.Gameplay.Audios
             {
                 var pooledAudioSource = Get(parent);
                 pooledAudioSource._audioKey = key;
+                pooledAudioSource.Component.loop = false;
                 pooledAudioSource.Component.spatialBlend = 1f;
                 pooledAudioSource.Component.volume = volume;
                 pooledAudioSource.Component.spatialBlend = spatialBlend;
@@ -240,6 +340,20 @@ namespace Chris.Gameplay.Audios
                 var handle = Scheduler.DelayUnsafe(scheduleTime, new SchedulerUnsafeBinding(this, &Play_Imp), isLooped: true);
                 Add(handle);
                 Register(_audioKey, this);
+                Component.Play();
+            }
+                        
+            public void PlayLoop()
+            {
+                Register(_audioKey, this);
+                Component.loop = true;
+                Component.Play();
+            }
+
+            public void PlayDuration(float duration)
+            {
+                Destroy(duration);
+                Component.Play();
             }
             
             private static void Play_Imp(object @object)

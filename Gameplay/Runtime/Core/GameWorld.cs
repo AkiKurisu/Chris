@@ -140,7 +140,7 @@ namespace Chris.Gameplay
             {
                 _current = new GameObject(nameof(GameWorld))
                 {
-                    hideFlags = HideFlags.HideInHierarchy | HideFlags.NotEditable
+                    hideFlags = HideFlags.NotEditable
                 }.AddComponent<GameWorld>();
 #if UNITY_EDITOR
                 // Mark world as an editor only object to ignore editor validation error

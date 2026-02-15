@@ -89,13 +89,13 @@ namespace Chris.Gameplay.Flow.Utilities
         [ExecutableFunction, CeresLabel("Stop AudioClip"), CeresGroup("Gameplay/Audios")]
         public static void Flow_StopAudioClip(AudioClip audioClip)
         {
-            AudioSystem.StopAudioClip(audioClip);
+            AudioSystem.StopAudio(audioClip);
         }
         
         [ExecutableFunction, CeresLabel("Stop AudioClip from Address"), CeresGroup("Gameplay/Audios")]
         public static void Flow_StopAudioClip(string audioClipAddress)
         {
-            AudioSystem.StopAudioClip(audioClipAddress);
+            AudioSystem.StopAudio(audioClipAddress);
         }
 
         #endregion
