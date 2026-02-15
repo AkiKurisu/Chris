@@ -166,6 +166,12 @@ namespace Chris.Gameplay.Graphics
                 _isWarmed = true;
                 // Find the existing collection file based on current settings.
                 GraphicsStateCollection collection = FindExistingCollection();
+                if (!collection)
+                {
+                    if (verbose) Debug.LogWarning("GraphicsStateCollection does not exist.");
+                    return;
+                }
+                
                 int total = collection.totalGraphicsStateCount;
                 int num = 0;
                 while (num < total)
