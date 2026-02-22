@@ -14,16 +14,9 @@ namespace Chris.Gameplay.Animations
         
     }
     
-    public class AnimationNotifyEvent : EventBase<AnimationNotifyEvent>, IAnimationProxyEvent
+    public partial class AnimationNotifyEvent : EventBase<AnimationNotifyEvent>, IAnimationProxyEvent
     {
         public AnimationNotifier Notifier { get; private set; }
-        
-        public static AnimationNotifyEvent GetPooled(AnimationNotifier notifier)
-        {
-            var evt = GetPooled();
-            evt.Notifier = notifier;
-            return evt;
-        }
     }
     
     /// <summary>
@@ -117,16 +110,9 @@ namespace Chris.Gameplay.Animations
             public float LastTime;
         }
         
-        private class AnimationPreStopEvent : EventBase<AnimationPreStopEvent>, IAnimationProxyEvent
+        internal partial class AnimationPreStopEvent : EventBase<AnimationPreStopEvent>, IAnimationProxyEvent
         {
             public float BlendOutDuration { get; private set; }
-            
-            public static AnimationPreStopEvent GetPooled(float blendOutDuration)
-            {
-                var evt = GetPooled();
-                evt.BlendOutDuration = blendOutDuration;
-                return evt;
-            }
         }
         
         public class AnimationEventHandler : CallbackEventHandler
@@ -205,7 +191,7 @@ namespace Chris.Gameplay.Animations
                 /* Whether event should be fired */
                 if (notifier.CanNotify(this, context.LayerHandle, context.LastTime))
                 {
-                    using var evt = AnimationNotifyEvent.GetPooled(notifier);
+                    using var evt = AnimationNotifyEvent.Create(notifier);
                     GetEventHandler().SendEvent(evt);
                 }
                 context.LastTime = normalizedTime;
@@ -224,7 +210,7 @@ namespace Chris.Gameplay.Animations
         
         private void DispatchStopEvent(float blendOutDuration)
         {
-            using var evt = AnimationPreStopEvent.GetPooled(blendOutDuration);
+            using var evt = AnimationPreStopEvent.Create(blendOutDuration);
             GetEventHandler().SendEvent(evt, DispatchMode.Default, MonoDispatchType.Update);
         }
         

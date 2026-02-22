@@ -1,2 +1,7 @@
 /ThirdParty/UnityRuntimeInspector/*
 /ThirdParty/UnityRuntimeInspector.meta
+.vscode
+.idea
+.vs
+obj
+bin
