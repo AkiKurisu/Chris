@@ -8,8 +8,7 @@ namespace Chris.Gameplay.Level
     public enum LoadLevelMode
     {
         Single,
-        Additive,
-        Dynamic
+        Additive
     }
     
     [Flags]
