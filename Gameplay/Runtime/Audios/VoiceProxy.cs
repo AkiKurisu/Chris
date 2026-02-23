@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Chris.Collections;
-using Chris.Gameplay.Resource;
 using Chris.Resource;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
+
 namespace Chris.Gameplay.Audios
 {
     /// <summary>
@@ -108,7 +108,7 @@ namespace Chris.Gameplay.Audios
         
         private VoiceCommand _playingCommand;
         
-        private readonly AudioClipCache _voiceCache = new();
+        private readonly ResourceCache<AudioClip> _voiceCache = new();
         public VoiceStatus Status { get; private set; } = VoiceStatus.Stopped;
         
         public bool IsPlaying => Status == VoiceStatus.Playing;
