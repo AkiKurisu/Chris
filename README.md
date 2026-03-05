@@ -14,7 +14,7 @@ A Unity development framework designed for efficient, flexible and professional 
 
 ## Dependencies
 
-Add following dependencies to `manifest.json`.
+1. Add following dependencies to `manifest.json`.
 
 ```json
 "dependencies": {
@@ -22,7 +22,9 @@ Add following dependencies to `manifest.json`.
   }
 ```
 
-Use git URL to download package by Unity Package Manager ```https://github.com/AkiKurisu/Chris.git```.
+2. Install `R3` from NuGet using NuGetForUnity Open Window from NuGet -> Manage NuGet Packages, Search "R3" and Press Install.
+
+3. Use git URL to download package by Unity Package Manager ```https://github.com/AkiKurisu/Chris.git```.
 
 ## Core Features
 

@@ -55,7 +55,7 @@ namespace NativeGalleryNamespace
 		[SettingsProvider]
 		public static SettingsProvider CreatePreferencesGUI()
 		{
-			return new SettingsProvider( "Project/yasirkula/Native Gallery", SettingsScope.Project )
+			return new SettingsProvider( "Project/Chris/Native Gallery", SettingsScope.Project )
 			{
 				guiHandler = ( searchContext ) => PreferencesGUI(),
 				keywords = new System.Collections.Generic.HashSet<string>() { "Native", "Gallery", "Android", "iOS" }

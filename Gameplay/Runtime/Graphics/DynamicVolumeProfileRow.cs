@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if URP_INSTALL
+using System;
 using System.Collections.Generic;
 using Chris.DataDriven;
 using Chris.Pool;
@@ -146,3 +147,4 @@ namespace Chris.Gameplay.Graphics
         }
     }
 }
+#endif

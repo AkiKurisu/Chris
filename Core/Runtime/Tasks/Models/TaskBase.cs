@@ -46,7 +46,7 @@ namespace Chris.Tasks
         [JsonIgnore]
         public readonly List<TaskBase> Listeners = new();
         
-        public static TaskCompleteEvent GetPooled(TaskBase task)
+        public static TaskCompleteEvent Create(TaskBase task)
         {
             var evt = GetPooled();
             evt.Task = task;
@@ -114,7 +114,7 @@ namespace Chris.Tasks
         
         protected virtual void Init()
         {
-            _completeEvent = TaskCompleteEvent.GetPooled(this);
+            _completeEvent = TaskCompleteEvent.Create(this);
             _coordinator = EventSystem.Instance;
             Status = TaskStatus.Stopped;
         }

@@ -81,23 +81,23 @@ namespace Chris.Pool
     
     public sealed class GameObjectPoolManager : MonoBehaviour
     {
-        private static GameObjectPoolManager Instance
+        internal static GameObjectPoolManager Instance
         {
             get
             {
-                if (_instance == null)
+                if (!_instance)
                 {
                     GameObject managerObject = new()
                     {
                         name = nameof(GameObjectPoolManager),
-                        hideFlags = HideFlags.DontSave
+                        hideFlags = HideFlags.DontSave | HideFlags.NotEditable
                     };
                     _instance = managerObject.AddComponent<GameObjectPoolManager>();
                 }
                 return _instance;
             }
         }
-        public static bool IsInstantiated => _instance != null;
+        public static bool IsInstantiated => _instance;
         
         private static GameObjectPoolManager _instance;
         
@@ -143,10 +143,10 @@ namespace Chris.Pool
         public static void Release(GameObject obj, PoolKey address = default, IPooledMetadata pooledMetadata = null)
         {
             if (address.IsNull())
-                address = new(obj.name);
+                address = new PoolKey(obj.name);
             if (!Instance._poolDic.TryGetValue(address, out GameObjectPool poolData))
             {
-                poolData = Instance._poolDic[address] = new GameObjectPool(address, Instance.transform);
+                poolData = Instance._poolDic[address] = new GameObjectPool(Instance.transform);
             }
             poolData.PushObj(obj, pooledMetadata);
         }
@@ -159,7 +159,7 @@ namespace Chris.Pool
         {
             if (Instance._poolDic.TryGetValue(address, out var pool))
             {
-                Destroy(pool.FatherObj);
+                pool.Release();
                 Instance._poolDic.Remove(address);
             }
         }
@@ -183,23 +183,25 @@ namespace Chris.Pool
         
         private class GameObjectPool
         {
-            public readonly GameObject FatherObj;
+            private readonly Transform _root;
             
             public readonly Queue<GameObject> PoolQueue = new();
             
             private readonly Dictionary<GameObject, IPooledMetadata> _metaData = new();
             
-            public GameObjectPool(PoolKey address, Transform poolRoot)
+            public GameObjectPool(Transform poolRoot)
             {
-                FatherObj = new GameObject((address).ToString());
-                FatherObj.transform.SetParent(poolRoot);
+                _root = poolRoot;
             }
             
             public void PushObj(GameObject obj, IPooledMetadata pooledMetadata)
             {
                 PoolQueue.Enqueue(obj);
                 _metaData[obj] = pooledMetadata;
-                obj.transform.SetParent(FatherObj.transform);
+                if (_root != obj.transform.parent)
+                {
+                    obj.transform.SetParent(_root);
+                }
                 obj.SetActive(false);
             }
             
@@ -208,12 +210,24 @@ namespace Chris.Pool
                 var obj = PoolQueue.Dequeue();
                 _metaData.Remove(obj, out pooledMetadata);
                 obj.SetActive(true);
-                obj.transform.SetParent(parent);
-                if (parent == null)
+                if (parent != obj.transform.parent)
+                {
+                    obj.transform.SetParent(parent);
+                }
+                if (!parent)
                 {
                     SceneManager.MoveGameObjectToScene(obj, SceneManager.GetActiveScene());
                 }
                 return obj;
+            }
+
+            public void Release()
+            {
+                while (PoolQueue.TryDequeue(out var instance))
+                {
+                    Destroy(instance);
+                }
+                PoolQueue.Clear();
             }
         }
     }

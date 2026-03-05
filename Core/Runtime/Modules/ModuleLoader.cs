@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Chris.Configs;
 using UnityEngine;
@@ -11,31 +11,39 @@ namespace Chris.Modules
         private static void InitializeModules()
         {
             ConfigsModule.InitializeInternal();
+            
             var config = ModuleConfig.Get();
-            var modules = AppDomain.CurrentDomain.GetAssemblies()
-                .Where(x =>
-                {
-#if UNITY_EDITOR
-                    if (x.GetName().Name.Contains(".Editor"))
-                    {
-                        return false;
-                    }
-#endif
-
-                    return x.GetReferencedAssemblies().Any(name => name.Name == nameof(Chris)) 
-                           || x.GetName().Name == nameof(Chris);
-                })
-                .SelectMany(x => x.GetTypes())
-                .Where(x => typeof(RuntimeModule).IsAssignableFrom(x) && !x.IsAbstract)
-                .Select(t => (RuntimeModule)Activator.CreateInstance(t))
-                .OrderBy(module => module.Order)
-                .ToArray();
-
+            var modules = config.Modules.Length > 0
+                ? GetModulesFromConfig(config)
+                : GetModulesFromAssemblies();
+            
             foreach (var module in modules)
             {
-                module.Initialize(config);
+                module.Initialize();
             }
-            config.Save();
+        }
+
+        private static RuntimeModule[] GetModulesFromConfig(ModuleConfig config)
+        {
+            return config.Modules
+                .Select(st => st.GetObjectType())
+                .Where(type => type != null)
+                .Select(type => (RuntimeModule)Activator.CreateInstance(type))
+                .OrderBy(module => module.Order)
+                .ToArray();
+        }
+
+        private static RuntimeModule[] GetModulesFromAssemblies()
+        {
+            return AppDomain.CurrentDomain.GetAssemblies()
+#if UNITY_EDITOR
+                .Where(assembly => !assembly.GetName().Name.Contains(".Editor"))
+#endif
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => typeof(RuntimeModule).IsAssignableFrom(type) && !type.IsAbstract)
+                .Select(type => (RuntimeModule)Activator.CreateInstance(type))
+                .OrderBy(module => module.Order)
+                .ToArray();
         }
     }
 }

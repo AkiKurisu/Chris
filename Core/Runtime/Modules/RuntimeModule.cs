@@ -9,11 +9,10 @@ namespace Chris.Modules
         /// Module initialization order
         /// </summary>
         public virtual int Order { get; } = 100;
-        
+
         /// <summary>
         /// Module initialization entry
         /// </summary>
-        /// <param name="config"></param>
-        public abstract void Initialize(ModuleConfig config);
+        public abstract void Initialize();
     }
 }

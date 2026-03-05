@@ -8,28 +8,32 @@ namespace Chris.Gameplay.Resource
     /// <summary>
     /// Singleton <see cref="ResourceCache{TAsset}"/> for sharing storage in <see cref="GameWorld"/> lifetime scope
     /// </summary>
-    /// <typeparam name="TCache"></typeparam>
     /// <typeparam name="TAsset"></typeparam>
-    public abstract class SingletonCache<TCache, TAsset> : ResourceCache<TAsset> 
-        where TAsset: UObject
-        where TCache: SingletonCache<TCache, TAsset>, new()
+    public class SingletonCache<TAsset> : ResourceCache<TAsset> where TAsset: UObject
     {
-        private static TCache _cache;
+        private static SingletonCache<TAsset> _cache;
 
         private bool _isGlobal;
-        
+
         /// <summary>
         /// Get singleton cache for sharing storage in <see cref="GameWorld"/> lifetime scope
         /// </summary>
-        /// <returns></returns>
-        public static TCache GetInstance()
+        public static ResourceCache<TAsset> Instance => GetOrCreateInstance();
+        
+        private SingletonCache()
+        {
+            
+        }
+
+        private static ResourceCache<TAsset> GetOrCreateInstance()
         {
             if (!Application.isPlaying)
             {
-                return new TCache();
+                return new ResourceCache<TAsset>();
             }
+
             if (_cache != null) return _cache;
-            _cache = new TCache();
+            _cache = new SingletonCache<TAsset>();
             _cache._isGlobal = true;
             Disposable.Create(() =>
             {
@@ -47,48 +51,4 @@ namespace Chris.Gameplay.Resource
             base.Dispose();
         }
     }
-    
-    #region Common Unity Assets
-    
-    /// <summary>
-    /// Resource cache for <see cref="AudioClip"/>
-    /// </summary>
-    public class AudioClipCache : SingletonCache<AudioClipCache, AudioClip>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="Texture2D"/>
-    /// </summary>
-    public class Texture2DCache : SingletonCache<Texture2DCache, Texture2D>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="AnimationClip"/>
-    /// </summary>
-    public class AnimationClipCache : SingletonCache<AnimationClipCache, AnimationClip>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="RuntimeAnimatorController"/>
-    /// </summary>
-    public class RuntimeAnimatorControllerCache : SingletonCache<RuntimeAnimatorControllerCache, RuntimeAnimatorController>
-    {
-
-    }
-    
-    /// <summary>
-    /// Resource cache for <see cref="TextAsset"/>
-    /// </summary>
-    public class TextAssetCache : SingletonCache<TextAssetCache, TextAsset>
-    {
-
-    }
-
-    #endregion
 }

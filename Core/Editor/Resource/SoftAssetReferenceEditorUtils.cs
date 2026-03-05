@@ -55,7 +55,7 @@ namespace Chris.Resource.Editor
         /// </summary>
         /// <param name="softAssetReference">The soft asset reference to load</param>
         /// <returns>The loaded asset or null if not found</returns>
-        public static UObject GetAsset(SoftAssetReference softAssetReference)
+        public static UObject GetAsset(SoftAssetReferenceBase softAssetReference)
         {
             if (string.IsNullOrEmpty(softAssetReference.Address)) return null;
             var asset = GetAssetFromGUID(softAssetReference.Guid);

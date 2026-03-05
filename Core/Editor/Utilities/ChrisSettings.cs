@@ -1,6 +1,9 @@
+using System;
+using System.Linq;
 using Chris.Configs;
 using Chris.DataDriven;
 using Chris.DataDriven.Editor;
+using Chris.Modules;
 using Chris.Schedulers;
 using Chris.Serialization;
 using UnityEditor;
@@ -12,6 +15,8 @@ namespace Chris.Editor
     [BaseConfig]
     public class ChrisSettings : ConfigSingleton<ChrisSettings>
     {
+        public SerializedType<RuntimeModule>[] modules;
+
         public bool schedulerStackTrace = true;
 
         public bool initializeDataTableManagerOnLoad;
@@ -47,6 +52,10 @@ namespace Chris.Editor
             configsSettings.password = Instance.password;
             configFile.SetConfig(ConfigsConfig.Location, configsSettings);
 
+            var moduleConfig = ModuleConfig.Get();
+            moduleConfig.Modules = Instance.modules.ToArray();
+            configFile.SetConfig(ModuleConfig.Location, moduleConfig);
+
             Serialize(location, configFile);
         }
     }
@@ -79,6 +88,13 @@ namespace Chris.Editor
             
             public static readonly GUIContent PasswordLabel = new("Encrypt Password",
                 "Set the user data serializer encrypt password.");
+
+            public static readonly GUIContent ModulesLabel = new("Modules",
+                "List of RuntimeModule types to initialize at startup. " +
+                "Used instead of assembly scanning under IL2CPP to ensure reliable module discovery.");
+
+            public static readonly GUIContent RegisterAllModulesButton = new("Register All",
+                "Scan all non-Editor assemblies and register every RuntimeModule subclass.");
         }
 
         private ChrisSettingsProvider(string path, SettingsScope scope = SettingsScope.User) : base(path, scope) { }
@@ -106,9 +122,45 @@ namespace Chris.Editor
 
         public override void OnGUI(string searchContext)
         {
+            DrawModuleSettings();
             DrawSchedulerSettings();
             DrawDataTableSettings();
             DrawConfigSettings();
+        }
+
+        private void DrawModuleSettings()
+        {
+            var titleStyle = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
+            GUILayout.Label("Module Settings", titleStyle);
+            GUILayout.BeginVertical(GUI.skin.box);
+            EditorGUILayout.PropertyField(_settingsObject.FindProperty(nameof(ChrisSettings.modules)), Styles.ModulesLabel, true);
+            if (_settingsObject.ApplyModifiedPropertiesWithoutUndo())
+            {
+                ChrisSettings.SaveSettings();
+            }
+            if (GUILayout.Button(Styles.RegisterAllModulesButton))
+            {
+                RegisterAllModules();
+            }
+            GUILayout.EndVertical();
+        }
+
+        private void RegisterAllModules()
+        {
+            var types = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => !a.GetName().Name.Contains(".Editor"))
+                .SelectMany(a => a.GetTypes())
+                .Where(t => typeof(RuntimeModule).IsAssignableFrom(t) && !t.IsAbstract && t.IsClass)
+                .OrderBy(t => t.FullName)
+                .ToArray();
+
+            ChrisSettings.Instance.modules = types
+                .Select(SerializedType<RuntimeModule>.FromType)
+                .ToArray();
+
+            EditorUtility.SetDirty(ChrisSettings.Instance);
+            ChrisSettings.SaveSettings();
+            _settingsObject.Update();
         }
 
         private void DrawSchedulerSettings()
