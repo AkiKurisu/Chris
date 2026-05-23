@@ -38,6 +38,11 @@ namespace Chris.Gameplay.Capture
         /// Define capture destination
         /// </summary>
         public RenderTexture Destination;
+
+        /// <summary>
+        /// Define capture delay frames, ignored when using synchronization methods
+        /// </summary>
+        public int DelayFrames;
     }
     
     public static class ScreenshotUtility
@@ -54,37 +59,112 @@ namespace Chris.Gameplay.Capture
             }
         }
         
-        private static void CameraScreenshot(RenderTexture renderTarget, Camera camera)
+        public abstract class ScreenshotHandler : IDisposable
         {
-            camera.targetTexture = renderTarget;
-            camera.Render();
-            camera.targetTexture = null;
-        }
-        
-        private static void CaptureScreenshot(RenderTexture renderTarget)
-        {
-            var screenSize = GameViewUtils.GetSizeOfMainGameView();
-            RenderTexture cameraTarget = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y, 
-                0, RenderTextureFormat.ARGB32);
-            ScreenCapture.CaptureScreenshotIntoRenderTexture(cameraTarget);
-            UGraphics.Blit(cameraTarget, renderTarget, new Vector2(1f, -1f), new Vector2(0.0f, 1f)); // Flip in DX12 and Vulkan
-            RenderTexture.ReleaseTemporary(cameraTarget);
+            protected RenderTexture RenderTarget { get; }
+
+            protected ScreenshotHandler(RenderTexture renderTarget)
+            {
+                RenderTarget = renderTarget;
+            }
+            
+            public abstract void Execute();
+
+            public abstract void Dispose();
         }
 
-        public static RenderTexture CaptureScreenshot(ScreenshotRequest request)
+        private sealed class CameraScreenshotHandler : ScreenshotHandler
+        {
+            private readonly Camera _camera;
+            
+            private readonly bool _async;
+
+            public CameraScreenshotHandler(Camera camera, RenderTexture destination, bool async)
+                : base(destination)
+            {
+                _camera = camera;
+                _async = async;
+            }
+
+            public override void Execute()
+            {
+                _camera.targetTexture = RenderTarget;
+                if (!_async)
+                {
+                    _camera.Render();
+                }
+            }
+
+            public override void Dispose()
+            {
+                _camera.targetTexture = null;
+            }
+        }
+
+        private sealed class ScreenScreenshotHandler : ScreenshotHandler
+        {
+            private RenderTexture _scratch;
+            
+            private bool _disposed;
+
+            public ScreenScreenshotHandler(RenderTexture destination): base(destination)
+            {
+
+            }
+
+            public override void Execute()
+            {
+                var screenSize = GameViewUtils.GetSizeOfMainGameView();
+                _scratch = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y,
+                    0, RenderTextureFormat.ARGB32);
+                ScreenCapture.CaptureScreenshotIntoRenderTexture(_scratch);
+                UGraphics.Blit(_scratch, RenderTarget, new Vector2(1f, -1f), new Vector2(0.0f, 1f)); // Flip in DX12 and Vulkan
+            }
+
+            public override void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                if (_scratch)
+                {
+                    RenderTexture.ReleaseTemporary(_scratch);
+                    _scratch = null;
+                }
+            }
+        }
+
+        private static ScreenshotHandler CreateHandler(ScreenshotRequest request, bool async)
+        {
+            if (request.Mode == ScreenshotMode.Camera)
+            {
+                return new CameraScreenshotHandler(request.Camera, request.Destination, async);
+            }
+
+            return new ScreenScreenshotHandler(request.Destination);
+        }
+        
+        public static ScreenshotHandler CaptureScreenshot(ScreenshotRequest request)
         {
             var destination = request.Destination;
             Assert.IsTrue((bool)destination);
-            if (request.Mode == ScreenshotMode.Camera)
-            {
-                CameraScreenshot(destination, request.Camera);
-            }
-            else
-            {
-                CaptureScreenshot(destination);
-            }
-
-            return destination;
+            var handler = CreateHandler(request, false);
+            handler.Execute();
+            return handler;
+        }
+        
+        public static async UniTask<ScreenshotHandler> CaptureScreenshotAsync(ScreenshotRequest request)
+        {
+            var destination = request.Destination;
+            Assert.IsTrue((bool)destination);
+            var handler = CreateHandler(request, true);
+            handler.Execute();
+            await UniTask.WaitForEndOfFrame();
+            await UniTask.DelayFrame(request.DelayFrames, PlayerLoopTiming.PostLateUpdate);
+            return handler;
         }
 
         public static Texture2D CaptureActiveRenderTexture(int width, int height, TextureFormat format = TextureFormat.RGBA32)
@@ -190,15 +270,21 @@ namespace Chris.Gameplay.Capture
             int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
             var screenTexture = RenderTexture.GetTemporary((int)size.x, (int)size.y, 
                 depthBuffer, renderTextureFormat, RenderTextureReadWrite.Default, antiAliasing);
-            CaptureScreenshot(new ScreenshotRequest
+            var handler = CaptureScreenshot(new ScreenshotRequest
             {
                 Camera = camera,
                 Destination = screenTexture,
                 Mode = ScreenshotMode.Camera
-            }); 
-            var captureTex = screenTexture.ToTexture2D();
-            RenderTexture.ReleaseTemporary(screenTexture);
-            return captureTex;
+            });
+            try
+            {
+                return screenTexture.ToTexture2D();
+            }
+            finally
+            {
+                handler.Dispose();
+                RenderTexture.ReleaseTemporary(screenTexture);
+            }
         }
 
         /// <summary>
@@ -208,33 +294,42 @@ namespace Chris.Gameplay.Capture
         /// <param name="size"></param>
         /// <param name="depthBuffer"></param>
         /// <param name="renderTextureFormat"></param>
+        /// <param name="delayFrames"></param>
         /// <param name="onComplete"></param>
         /// <returns></returns>
-        public static void CaptureRawScreenshotAsync(Camera camera, Vector2 size, 
-            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, Action<Texture2D> onComplete = null)
+        public static async UniTask CaptureRawScreenshotAsync(Camera camera, Vector2 size, 
+            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, int delayFrames = 1, Action<Texture2D> onComplete = null)
         {
             int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
             var screenTexture = RenderTexture.GetTemporary((int)size.x, (int)size.y, 
                 depthBuffer, renderTextureFormat, RenderTextureReadWrite.Default, antiAliasing);
-            CaptureScreenshot(new ScreenshotRequest
+            var handler = await CaptureScreenshotAsync(new ScreenshotRequest
             {
                 Camera = camera,
                 Destination = screenTexture,
-                Mode = ScreenshotMode.Camera
-            }); 
-            
+                Mode = ScreenshotMode.Camera,
+                DelayFrames = delayFrames
+            });
 #if UNITY_EDITOR
             if (Application.isEditor)
             {
-                var result = screenTexture.ToTexture2D();
-                onComplete?.Invoke(result);
-                RenderTexture.ReleaseTemporary(screenTexture);
+                try
+                {
+                    var result = screenTexture.ToTexture2D();
+                    onComplete?.Invoke(result);
+                }
+                finally
+                {
+                    handler.Dispose();
+                    RenderTexture.ReleaseTemporary(screenTexture);
+                }
                 return;
             }
 #endif
             screenTexture.ToTexture2DAsync(result =>
             {
                 onComplete?.Invoke(result);
+                handler.Dispose();
                 RenderTexture.ReleaseTemporary(screenTexture);
             });
         }
@@ -252,14 +347,20 @@ namespace Chris.Gameplay.Capture
             int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
             var screenTexture = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y, 
                 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, antiAliasing);
-            CaptureScreenshot(new ScreenshotRequest
+            var handler = CaptureScreenshot(new ScreenshotRequest
             {
                 Destination = screenTexture,
                 Mode = ScreenshotMode.Screen
-            }); 
-            var captureTex = screenTexture.ToTexture2D();
-            RenderTexture.ReleaseTemporary(screenTexture);
-            return captureTex;
+            });
+            try
+            {
+                return screenTexture.ToTexture2D();
+            }
+            finally
+            {
+                handler.Dispose();
+                RenderTexture.ReleaseTemporary(screenTexture);
+            }
 #endif
         }
         
@@ -267,24 +368,26 @@ namespace Chris.Gameplay.Capture
         /// Capture screenshot to a new <see cref="Texture2D"/> in async. Need be called at the end of frame.
         /// </summary>
         /// <param name="onComplete"></param>
-        public static void CaptureScreenshotAsync(Action<Texture2D> onComplete)
+        public static async UniTask CaptureScreenshotAsync(Action<Texture2D> onComplete)
         {
             Assert.IsNotNull(onComplete);
             var screenSize = GameViewUtils.GetSizeOfMainGameView();
 #if UNITY_EDITOR
             onComplete(CaptureActiveRenderTexture((int)screenSize.x, (int)screenSize.y));
+            await UniTask.Yield();
 #else
             int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
             var screenTexture = RenderTexture.GetTemporary((int)screenSize.x, (int)screenSize.y, 
                 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, antiAliasing);
-            CaptureScreenshot(new ScreenshotRequest
+            var handler = await CaptureScreenshotAsync(new ScreenshotRequest
             {
                 Destination = screenTexture,
                 Mode = ScreenshotMode.Screen
-            }); 
+            });
             screenTexture.ToTexture2DAsync(result =>
             {
                 onComplete.Invoke(result);
+                handler.Dispose();
                 RenderTexture.ReleaseTemporary(screenTexture);
             });
 #endif

@@ -1,6 +1,5 @@
 #if URP_INSTALL
 using System;
-using Chris.Serialization;
 using UnityEngine;
 
 namespace Chris.Gameplay.Graphics
@@ -30,10 +29,6 @@ namespace Chris.Gameplay.Graphics
         // Quality Settings
         [Header("Quality Settings")]
         public int[] frameRateOptions = { 30, 60, -1 };
-
-        // Extra Settings
-        [Header("Extra Settings")]
-        public SerializedType<GraphicsModule>[] graphicsModules;
 
         [SerializeField]
         private GraphicsFeatures disableFeatures;

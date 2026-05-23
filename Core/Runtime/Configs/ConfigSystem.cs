@@ -114,18 +114,17 @@ namespace Chris.Configs
             return new TConfig();
         }
 
-        private static IConfigFile GetConfigFile_Internal(ConfigFileLocation location, bool ignoreUserData = false)
+        /// <summary>
+        /// Merge config files from registered providers. Does not use <see cref="ConfigFileCache"/>.
+        /// </summary>
+        private static IConfigFile BuildConfigFileFromProviders(ConfigFileLocation location, bool ignoreUserData)
         {
-            if (ConfigFileCache.TryGetValue(location.Path, out var configFile))
-            {
-                return configFile;
-            }
-
+            IConfigFile configFile = null;
             foreach (var provider in ConfigFileProviders)
             {
-                if (provider.FileProvider is PersistentConfigFileProvider && ignoreUserData) continue;
-                
-                // Try to get config file
+                if (provider.FileProvider is PersistentConfigFileProvider && ignoreUserData)
+                    continue;
+
                 if (provider.FileProvider.TryGetConfigFile(location, out var newConfigFile))
                 {
                     if (configFile == null)
@@ -138,7 +137,20 @@ namespace Chris.Configs
                 }
             }
 
-            configFile ??= new ConfigFile(location);
+            return configFile ?? new ConfigFile(location);
+        }
+
+        private static IConfigFile GetConfigFile_Internal(ConfigFileLocation location, bool ignoreUserData = false)
+        {
+            // Project-only view must not share ConfigFileCache with GetConfigFile (merged + userData), or
+            // Persistent-merged keys could be written to project-level files. Rebuild each time; cost is low in editor.
+            if (ignoreUserData)
+                return BuildConfigFileFromProviders(location, true);
+
+            if (ConfigFileCache.TryGetValue(location.Path, out var cached))
+                return cached;
+
+            var configFile = BuildConfigFileFromProviders(location, false);
             ConfigFileCache.Add(location.Path, configFile);
             return configFile;
         }
@@ -154,7 +166,8 @@ namespace Chris.Configs
         }
         
         /// <summary>
-        /// Get <see cref="IConfigFile"/> from <see cref="ConfigFileLocation"/> without userData
+        /// Get <see cref="IConfigFile"/> from <see cref="ConfigFileLocation"/> without userData (skips persistent storage).
+        /// Not cached: always a fresh merge of editor/project providers so it cannot pick up a merged instance from <see cref="GetConfigFile"/>.
         /// </summary>
         /// <param name="location"></param>
         /// <returns></returns>

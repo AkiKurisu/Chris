@@ -4,6 +4,7 @@ using Ceres.Graph.Flow;
 #endif
 using Ceres.Graph.Flow.Annotations;
 using Chris.RuntimeConsole;
+using Cysharp.Threading.Tasks;
 using R3;
 using UnityEngine;
 using UnityEngine.Scripting;
@@ -11,7 +12,7 @@ using UObject = UnityEngine.Object;
 
 namespace Chris.Gameplay.Capture
 {
-    public class ScreenshotTool : 
+    public sealed class ScreenshotTool : 
 #if CERES_INSTALL
         FlowGraphObject
 #else
@@ -54,6 +55,16 @@ namespace Chris.Gameplay.Capture
             get => enableHDR;
             set => enableHDR = value;
         }
+        
+        [Range(1, 30)]
+        [SerializeField] 
+        private int delayFrames = 1;
+
+        public int DelayFrames
+        {
+            get => delayFrames;
+            set => delayFrames = value;
+        }
 
         private Texture2D _captureTex;
 
@@ -62,20 +73,22 @@ namespace Chris.Gameplay.Capture
         private bool openFolderAfterCapture = true;
 #endif
         
-        private Subject<Unit> _onScreenshotStart = new();
+        private static readonly Subject<Unit> OnScreenshotStartSubject = new();
+        
+        private static readonly Subject<Unit> OnScreenshotEndSubject = new();
+        
+        /// <summary>
+        /// Fired on any screenshot start.
+        /// </summary>
+        public static Observable<Unit> OnScreenshotStart => OnScreenshotStartSubject;
 
-        public Observable<Unit> OnScreenshotStart => _onScreenshotEnd;
-
-        private Subject<Unit> _onScreenshotEnd = new();
-
-        public Observable<Unit> OnScreenshotEnd => _onScreenshotEnd;
+        /// <summary>
+        /// Fired on any screenshot end.
+        /// </summary>
+        public static Observable<Unit> OnScreenshotEnd => OnScreenshotEndSubject;
 
         private void OnDestroy()
         {
-            _onScreenshotStart.Dispose();
-            _onScreenshotStart = null;
-            _onScreenshotEnd.Dispose();
-            _onScreenshotEnd = null;
             DestroySafe(_captureTex);
         }
 
@@ -93,19 +106,19 @@ namespace Chris.Gameplay.Capture
 
             // Can modify settings here
             OnTakeScreenshotStart();
-
-            var screenSize = GameViewUtils.GetSizeOfMainGameView() * SuperSize;
-
+            
             // Capture
             if (ScreenshotMode == ScreenshotMode.Screen)
             {
-                ScreenshotUtility.CaptureScreenshotAsync(ProcessPicture);
+                ScreenshotUtility.CaptureScreenshotAsync(ProcessPicture).Forget();
             }
             else
             {
+                var screenSize = GameViewUtils.GetSizeOfMainGameView() * SuperSize;
                 ScreenshotUtility.CaptureRawScreenshotAsync(GetCamera(), screenSize,
                     renderTextureFormat: EnableHDR ? RenderTextureFormat.ARGBFloat : RenderTextureFormat.ARGB32,
-                    onComplete: ProcessPicture);
+                    delayFrames: DelayFrames,
+                    onComplete: ProcessPicture).Forget();
             }
         }
 
@@ -169,34 +182,34 @@ namespace Chris.Gameplay.Capture
         /// Process before taken screenshot
         /// </summary>
         [ImplementableEvent]
-        public virtual void OnTakeScreenshotStart()
+        public void OnTakeScreenshotStart()
         {
-            _onScreenshotStart.OnNext(Unit.Default);
+            OnScreenshotStartSubject.OnNext(Unit.Default);
         }
 
         /// <summary>
         /// Process after taken screenshot
         /// </summary>
         [ImplementableEvent]
-        public virtual void OnTakeScreenshotEnd()
+        public void OnTakeScreenshotEnd()
         {
-            _onScreenshotEnd.OnNext(Unit.Default);
+            OnScreenshotEndSubject.OnNext(Unit.Default);
         }
         
         [Preserve]
         public static class ScreenshotCommands
         {
             [Preserve]
-            [ConsoleMethod("screen.capture", "Take a screenshot")]
+            [ConsoleMethod("screenshot", "Take a screenshot")]
             public static void TakeScreenshot()
             {
                 TakeScreenshot(false, 1);
             }
 
             [Preserve]
-            [ConsoleMethod("screen.capture", "Take a screenshot with more settings. " +
-                                             "Include UI: Whether to include ui; " +
-                                             "SuperSize: Image Supersize when Include UI is off.")]
+            [ConsoleMethod("screenshot", "Take a screenshot with more settings. " +
+                                             "includeUI: Whether to include overlay ui; " +
+                                             "superSize: Image supersize when `includeUI` is off.")]
             public static void TakeScreenshot(bool includeUI, int superSize)
             {
                 var tool = new GameObject().AddComponent<ScreenshotTool>();
@@ -206,7 +219,7 @@ namespace Chris.Gameplay.Capture
                 tool.SetGraphData(new FlowGraphData()); // Empty graph
 #endif
                 tool.TakeScreenshot();
-                tool._onScreenshotEnd.DelayFrame(1).Subscribe(_ => Destroy(tool.gameObject)).AddTo(tool);
+                OnScreenshotEnd.DelayFrame(1).Subscribe(_ => Destroy(tool.gameObject)).AddTo(tool);
             }
         }
     }

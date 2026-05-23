@@ -44,8 +44,6 @@ namespace Chris.Gameplay.Graphics
 
         public GraphicsSettingsAsset settingsAsset;
         
-        private GraphicsModule[] _graphicsModules;
-        
         private GraphicsConfig _config;
         
         private UniversalRenderPipelineAsset _urpAsset;
@@ -105,13 +103,7 @@ namespace Chris.Gameplay.Graphics
             if (!gameObject.scene.IsValid()) return;
             if (!Application.isPlaying) return;
 #endif
-            if (_graphicsModules != null)
-            {
-                foreach (var module in _graphicsModules)
-                {
-                    module?.Dispose();
-                }
-            }
+
             _config?.Save();
             ContainerSubsystem.Get().Unregister(this);
         }
@@ -208,15 +200,7 @@ namespace Chris.Gameplay.Graphics
                 _config.VolumetricFog.Subscribe(SetVolumetricFog).AddTo(ref d);
             }
 #endif
-            
-            _graphicsModules = settingsAsset.graphicsModules.Select(serializedType => serializedType.GetObject()).ToArray();
             d.Build().AddTo(this);
-            
-            // Initialize sub-modules
-            foreach (var module in _graphicsModules)
-            {
-                module?.Initialize(this, _config);
-            }
         }
 
         private void SetFrameRate(int index)

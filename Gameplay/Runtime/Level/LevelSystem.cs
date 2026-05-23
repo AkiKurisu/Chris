@@ -14,6 +14,33 @@ using UnityEngine.SceneManagement;
 namespace Chris.Gameplay.Level
 {
     /// <summary>
+    /// Semantic role of an additively loaded scene in the stack (for selective unload).
+    /// </summary>
+    public enum AdditiveSceneRole
+    {
+        /// <summary>Additive load that does not become the active scene.</summary>
+        Additive = 0,
+
+        /// <summary>Additive load that became the active scene after load.</summary>
+        Override = 1,
+    }
+
+    /// <summary>
+    /// Addressables handle plus <see cref="AdditiveSceneRole"/> for each additive scene entry.
+    /// </summary>
+    public readonly struct AdditiveSceneEntry
+    {
+        public readonly AsyncOperationHandle<SceneInstance> Handle;
+        public readonly AdditiveSceneRole Role;
+
+        public AdditiveSceneEntry(AsyncOperationHandle<SceneInstance> handle, AdditiveSceneRole role)
+        {
+            Handle = handle;
+            Role = role;
+        }
+    }
+
+    /// <summary>
     /// Reference to gameplay level structure
     /// </summary>
     public class LevelReference
@@ -146,15 +173,77 @@ namespace Chris.Gameplay.Level
         /// </summary>
         public static ReadOnlyReactiveProperty<float> LoadingProgress => LoadingProgressProperty;
 
-        // Handles for all additive scenes loaded as part of the current level,
-        // ordered by load time (last element = most recently loaded).
+        // Additive scenes loaded on top of the current level, ordered by load time (last = most recent).
         // Cleared and released whenever a new Single-mode scene takes over.
-        private static readonly List<AsyncOperationHandle<SceneInstance>> AdditiveHandles = new();
+        private static readonly List<AdditiveSceneEntry> AdditiveSceneEntries = new();
+
+        /// <summary>
+        /// Scene to set active when unloading runtime additively loaded content, if <see cref="UnloadLastAdditiveAsync"/> is used with base restore.
+        /// Set via <see cref="RegisterBaseScene"/> before loading content not from the level table.
+        /// </summary>
+        private static Scene _registeredBaseScene;
 
         /// <summary>
         /// Number of additive scenes currently loaded on top of the current level's base scene.
         /// </summary>
-        public static int AdditiveSceneCount => AdditiveHandles.Count;
+        public static int AdditiveSceneCount => AdditiveSceneEntries.Count;
+
+        /// <summary>
+        /// Registers the scene that should become active again when using <see cref="UnloadLastAdditiveAsync"/> with base restore (typically the Single-mode base scene).
+        /// </summary>
+        public static void RegisterBaseScene(Scene baseScene)
+        {
+            if (baseScene.IsValid())
+                _registeredBaseScene = baseScene;
+        }
+
+        /// <summary>
+        /// Loads one additive scene by Addressables address (not from <see cref="LevelSceneDataTableManager"/>). Does not change <see cref="CurrentLevel"/> or fire level load events.
+        /// </summary>
+        /// <param name="sceneAddress">Addressables scene address.</param>
+        /// <param name="setActiveAfterLoad">When true, sets this scene as the active scene after load.</param>
+        public static async UniTask LoadAdditiveByAddressAsync(string sceneAddress, bool setActiveAfterLoad)
+        {
+            if (string.IsNullOrEmpty(sceneAddress))
+                return;
+
+            LoadingProgressProperty.Value = 0f;
+            var handle = Addressables.LoadSceneAsync(sceneAddress, LoadSceneMode.Additive);
+            var role = setActiveAfterLoad ? AdditiveSceneRole.Override : AdditiveSceneRole.Additive;
+            AdditiveSceneEntries.Add(new AdditiveSceneEntry(handle, role));
+
+            try
+            {
+                await handle.ToUniTask(progress: new Progress<float>(p => LoadingProgressProperty.Value = p));
+
+                if (handle.Status != AsyncOperationStatus.Succeeded)
+                {
+                    PopLastFailedAdditiveHandleAndRelease();
+                    LoadingProgressProperty.Value = 0f;
+                    return;
+                }
+
+                LoadingProgressProperty.Value = 1f;
+
+                if (setActiveAfterLoad)
+                    SceneManager.SetActiveScene(handle.Result.Scene);
+            }
+            catch (Exception)
+            {
+                PopLastFailedAdditiveHandleAndRelease();
+                LoadingProgressProperty.Value = 0f;
+                throw;
+            }
+        }
+
+        private static void PopLastFailedAdditiveHandleAndRelease()
+        {
+            if (AdditiveSceneEntries.Count == 0) return;
+            var handle = AdditiveSceneEntries[^1].Handle;
+            AdditiveSceneEntries.RemoveAt(AdditiveSceneEntries.Count - 1);
+            if (handle.IsValid())
+                Addressables.Release(handle);
+        }
 
         /// <summary>
         /// Load level by name
@@ -208,7 +297,7 @@ namespace Chris.Gameplay.Level
             foreach (var scene in additiveScenes)
             {
                 var handle = Addressables.LoadSceneAsync(scene.reference.Address, LoadSceneMode.Additive);
-                AdditiveHandles.Add(handle);
+                AdditiveSceneEntries.Add(new AdditiveSceneEntry(handle, AdditiveSceneRole.Additive));
                 parallel.Add(handle.ToUniTask(progress: aggregate?.GetSlotProgress(slotIndex++)));
             }
             await parallel;
@@ -218,16 +307,52 @@ namespace Chris.Gameplay.Level
         }
 
         /// <summary>
-        /// Unload only the most recently loaded additive scene of the current level.
-        /// Returns true if a scene was unloaded, false if no additive scenes are loaded.
+        /// Unloads one additive scene. By default removes the stack top (LIFO).
+        /// When <paramref name="unloadOnlyRole"/> is set, removes the topmost entry whose role matches (scan from most recent downward).
         /// </summary>
-        public static async UniTask<bool> UnloadLastAdditiveAsync()
+        /// <param name="restoreRegisteredBaseBeforeUnload">When true, sets <see cref="RegisterBaseScene"/> as active before unloading (if registered). For role-filtered unload, applies when the removed entry is <see cref="AdditiveSceneRole.Override"/>.</param>
+        /// <param name="unloadOnlyRole">When null, unloads the top of the stack only. When set, unloads the first matching role from the top.</param>
+        /// <returns>True if a scene was unloaded, false if none matched or the stack is empty.</returns>
+        public static async UniTask<bool> UnloadLastAdditiveAsync(
+            bool restoreRegisteredBaseBeforeUnload = false,
+            AdditiveSceneRole? unloadOnlyRole = null)
         {
-            if (AdditiveHandles.Count == 0) return false;
+            if (AdditiveSceneEntries.Count == 0) return false;
 
-            var lastIndex = AdditiveHandles.Count - 1;
-            var handle = AdditiveHandles[lastIndex];
-            AdditiveHandles.RemoveAt(lastIndex);
+            int indexToRemove;
+            if (unloadOnlyRole == null)
+            {
+                indexToRemove = AdditiveSceneEntries.Count - 1;
+            }
+            else
+            {
+                indexToRemove = -1;
+                for (var i = AdditiveSceneEntries.Count - 1; i >= 0; i--)
+                {
+                    if (AdditiveSceneEntries[i].Role == unloadOnlyRole.Value)
+                    {
+                        indexToRemove = i;
+                        break;
+                    }
+                }
+
+                if (indexToRemove < 0) return false;
+            }
+
+            var entry = AdditiveSceneEntries[indexToRemove];
+            if (unloadOnlyRole != null)
+            {
+                if (restoreRegisteredBaseBeforeUnload && entry.Role == AdditiveSceneRole.Override && _registeredBaseScene.IsValid())
+                    SceneManager.SetActiveScene(_registeredBaseScene);
+            }
+            else
+            {
+                if (restoreRegisteredBaseBeforeUnload && _registeredBaseScene.IsValid())
+                    SceneManager.SetActiveScene(_registeredBaseScene);
+            }
+
+            AdditiveSceneEntries.RemoveAt(indexToRemove);
+            var handle = entry.Handle;
 
             if (handle.IsValid())
             {
@@ -239,18 +364,28 @@ namespace Chris.Gameplay.Level
         }
 
         /// <summary>
+        /// Unloads runtime map stack: optional secondary additive first, then primary with base-scene restore.
+        /// </summary>
+        public static async UniTask UnloadRuntimeAdditiveStackAsync(bool hasSecondary)
+        {
+            if (hasSecondary && AdditiveSceneEntries.Count > 1)
+                await UnloadLastAdditiveAsync();
+            await UnloadLastAdditiveAsync(true);
+        }
+
+        /// <summary>
         /// Explicitly unload all additive scenes belonging to the current level.
         /// </summary>
         public static async UniTask UnloadAdditiveAsync()
         {
-            var handles = AdditiveHandles.ToArray();
-            AdditiveHandles.Clear();
+            var entries = AdditiveSceneEntries.ToArray();
+            AdditiveSceneEntries.Clear();
 
-            foreach (var handle in handles)
+            foreach (var entry in entries)
             {
-                if (handle.IsValid())
+                if (entry.Handle.IsValid())
                 {
-                    await Addressables.UnloadSceneAsync(handle).ToUniTask();
+                    await Addressables.UnloadSceneAsync(entry.Handle).ToUniTask();
                 }
             }
 
@@ -261,14 +396,14 @@ namespace Chris.Gameplay.Level
         // (used when Unity is already unloading those scenes via a Single-mode load).
         private static void ReleaseAdditiveHandles()
         {
-            foreach (var handle in AdditiveHandles)
+            foreach (var entry in AdditiveSceneEntries)
             {
-                if (handle.IsValid())
+                if (entry.Handle.IsValid())
                 {
-                    Addressables.Release(handle);
+                    Addressables.Release(entry.Handle);
                 }
             }
-            AdditiveHandles.Clear();
+            AdditiveSceneEntries.Clear();
         }
 
         // Aggregates progress from N independent scene-loading slots into a single ReactiveProperty.

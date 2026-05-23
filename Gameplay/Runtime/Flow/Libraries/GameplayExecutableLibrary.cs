@@ -167,13 +167,14 @@ namespace Chris.Gameplay.Flow.Utilities
         /// <param name="size"></param>
         /// <param name="depthBuffer"></param>
         /// <param name="renderTextureFormat"></param>
+        /// <param name="delayFrames"></param>
         /// <param name="onComplete"></param>
         /// <returns></returns>
         [ExecutableFunction, CeresLabel("Capture Raw Screenshot"), CeresGroup("Gameplay/Capture")]
         public static void Flow_CaptureRawScreenshotAsync(Camera camera, Vector2 size, 
-            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, Action<Texture2D> onComplete = null)
+            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, int delayFrames = 1, Action<Texture2D> onComplete = null)
         {
-            ScreenshotUtility.CaptureRawScreenshotAsync(camera, size, depthBuffer, renderTextureFormat, onComplete);
+            ScreenshotUtility.CaptureRawScreenshotAsync(camera, size, depthBuffer, renderTextureFormat, delayFrames, onComplete).Forget();
         }
         
         /// <summary>
@@ -193,7 +194,7 @@ namespace Chris.Gameplay.Flow.Utilities
         [ExecutableFunction, CeresLabel("Capture Screenshot Async"), CeresGroup("Gameplay/Capture")]
         public static void Flow_CaptureScreenshotAsync(Action<Texture2D> onComplete)
         {
-            ScreenshotUtility.CaptureScreenshotAsync(onComplete);
+            ScreenshotUtility.CaptureScreenshotAsync(onComplete).Forget();
         }
         
         #endregion Capture
