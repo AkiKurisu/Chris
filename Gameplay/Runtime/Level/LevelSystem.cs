@@ -23,6 +23,12 @@ namespace Chris.Gameplay.Level
 
         /// <summary>Additive load that became the active scene after load.</summary>
         Override = 1,
+
+        /// <summary>Runtime additive content that does not become the active scene.</summary>
+        RuntimeAdditive = 2,
+
+        /// <summary>Runtime additive content that became the active scene after load.</summary>
+        RuntimeOverride = 3,
     }
 
     /// <summary>
@@ -202,14 +208,17 @@ namespace Chris.Gameplay.Level
         /// </summary>
         /// <param name="sceneAddress">Addressables scene address.</param>
         /// <param name="setActiveAfterLoad">When true, sets this scene as the active scene after load.</param>
-        public static async UniTask LoadAdditiveByAddressAsync(string sceneAddress, bool setActiveAfterLoad)
+        public static async UniTask LoadAdditiveByAddressAsync(
+            string sceneAddress,
+            bool setActiveAfterLoad,
+            AdditiveSceneRole? roleOverride = null)
         {
             if (string.IsNullOrEmpty(sceneAddress))
                 return;
 
             LoadingProgressProperty.Value = 0f;
             var handle = Addressables.LoadSceneAsync(sceneAddress, LoadSceneMode.Additive);
-            var role = setActiveAfterLoad ? AdditiveSceneRole.Override : AdditiveSceneRole.Additive;
+            var role = roleOverride ?? (setActiveAfterLoad ? AdditiveSceneRole.Override : AdditiveSceneRole.Additive);
             AdditiveSceneEntries.Add(new AdditiveSceneEntry(handle, role));
 
             try
@@ -310,7 +319,7 @@ namespace Chris.Gameplay.Level
         /// Unloads one additive scene. By default removes the stack top (LIFO).
         /// When <paramref name="unloadOnlyRole"/> is set, removes the topmost entry whose role matches (scan from most recent downward).
         /// </summary>
-        /// <param name="restoreRegisteredBaseBeforeUnload">When true, sets <see cref="RegisterBaseScene"/> as active before unloading (if registered). For role-filtered unload, applies when the removed entry is <see cref="AdditiveSceneRole.Override"/>.</param>
+        /// <param name="restoreRegisteredBaseBeforeUnload">When true, sets <see cref="RegisterBaseScene"/> as active before unloading (if registered). For role-filtered unload, applies when the removed entry is an override role.</param>
         /// <param name="unloadOnlyRole">When null, unloads the top of the stack only. When set, unloads the first matching role from the top.</param>
         /// <returns>True if a scene was unloaded, false if none matched or the stack is empty.</returns>
         public static async UniTask<bool> UnloadLastAdditiveAsync(
@@ -342,7 +351,7 @@ namespace Chris.Gameplay.Level
             var entry = AdditiveSceneEntries[indexToRemove];
             if (unloadOnlyRole != null)
             {
-                if (restoreRegisteredBaseBeforeUnload && entry.Role == AdditiveSceneRole.Override && _registeredBaseScene.IsValid())
+                if (restoreRegisteredBaseBeforeUnload && IsOverrideRole(entry.Role) && _registeredBaseScene.IsValid())
                     SceneManager.SetActiveScene(_registeredBaseScene);
             }
             else
@@ -363,14 +372,19 @@ namespace Chris.Gameplay.Level
             return true;
         }
 
+        private static bool IsOverrideRole(AdditiveSceneRole role)
+        {
+            return role == AdditiveSceneRole.Override || role == AdditiveSceneRole.RuntimeOverride;
+        }
+
         /// <summary>
         /// Unloads runtime map stack: optional secondary additive first, then primary with base-scene restore.
         /// </summary>
         public static async UniTask UnloadRuntimeAdditiveStackAsync(bool hasSecondary)
         {
-            if (hasSecondary && AdditiveSceneEntries.Count > 1)
-                await UnloadLastAdditiveAsync();
-            await UnloadLastAdditiveAsync(true);
+            if (hasSecondary)
+                await UnloadLastAdditiveAsync(false, AdditiveSceneRole.RuntimeAdditive);
+            await UnloadLastAdditiveAsync(true, AdditiveSceneRole.RuntimeOverride);
         }
 
         /// <summary>
