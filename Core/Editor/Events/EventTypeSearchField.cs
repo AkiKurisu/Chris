@@ -33,11 +33,16 @@ namespace Chris.Events.Editor
         }
     }
 
-    internal class EventTypeSearchField : ToolbarSearchField
+#if UNITY_6000_0_OR_NEWER
+    [UxmlElement]
+#endif
+    public partial class EventTypeSearchField : ToolbarSearchField
     {
+#if !UNITY_6000_0_OR_NEWER
         public new class UxmlFactory : UxmlFactory<EventTypeSearchField, UxmlTraits> { }
 
         public new class UxmlTraits : VisualElement.UxmlTraits { }
+#endif
 
         private const int k_MaxTooltipLines = 40;
         private const
