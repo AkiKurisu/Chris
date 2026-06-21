@@ -6,6 +6,15 @@ using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Rendering;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+#if ILLUSION_RP_INSTALL
+using Illusion.Rendering;
+#endif
+#if URP_INSTALL
+using UnityEngine.Rendering.Universal;
+#endif
 using UGraphics = UnityEngine.Graphics;
 
 namespace Chris.Gameplay.Capture
@@ -40,13 +49,44 @@ namespace Chris.Gameplay.Capture
         public RenderTexture Destination;
 
         /// <summary>
-        /// Define capture delay frames, ignored when using synchronization methods
+        /// Define minimum camera capture warmup frames.
         /// </summary>
         public int DelayFrames;
+
+        /// <summary>
+        /// Maximum camera capture warmup frames.
+        /// </summary>
+        public int MaxWarmupFrames;
     }
     
     public static class ScreenshotUtility
     {
+#if UNITY_EDITOR
+        /// <summary>
+        /// Pumps an Editor update so camera warmup can progress when the Game view is not repainting.
+        /// </summary>
+        private static UniTask WaitForNextEditorTickAsync()
+        {
+            if (Application.isBatchMode)
+            {
+                return UniTask.CompletedTask;
+            }
+
+            var completionSource = new UniTaskCompletionSource();
+
+            void OnUpdate()
+            {
+                EditorApplication.update -= OnUpdate;
+                completionSource.TrySetResult();
+            }
+
+            EditorApplication.update += OnUpdate;
+            EditorApplication.QueuePlayerLoopUpdate();
+            SceneView.RepaintAll();
+            return completionSource.Task;
+        }
+#endif
+
         [BurstCompile]
         private struct LinearToGammaConvertJob : IJobParallelFor
         {
@@ -70,6 +110,16 @@ namespace Chris.Gameplay.Capture
             
             public abstract void Execute();
 
+            public virtual async UniTask ExecuteAsync(ScreenshotRequest request)
+            {
+                Execute();
+                await UniTask.WaitForEndOfFrame();
+                if (request.DelayFrames > 0)
+                {
+                    await UniTask.DelayFrame(request.DelayFrames, PlayerLoopTiming.PostLateUpdate);
+                }
+            }
+
             public abstract void Dispose();
         }
 
@@ -78,6 +128,23 @@ namespace Chris.Gameplay.Capture
             private readonly Camera _camera;
             
             private readonly bool _async;
+
+            private Camera _renderCamera;
+
+            private GameObject _captureCameraObject;
+
+            private static bool UseEditorManualRenderLoop
+            {
+                get
+                {
+#if UNITY_EDITOR
+                    // In the Editor, WaitForEndOfFrame can stall outside the Game view.
+                    return Application.isEditor;
+#else
+                    return false;
+#endif
+                }
+            }
 
             public CameraScreenshotHandler(Camera camera, RenderTexture destination, bool async)
                 : base(destination)
@@ -88,17 +155,213 @@ namespace Chris.Gameplay.Capture
 
             public override void Execute()
             {
-                _camera.targetTexture = RenderTarget;
+                _renderCamera = CreateIsolatedCamera(_camera);
+                SyncRenderCamera();
                 if (!_async)
                 {
-                    _camera.Render();
+                    _renderCamera.Render();
+                }
+            }
+
+            public override async UniTask ExecuteAsync(ScreenshotRequest request)
+            {
+                Execute();
+
+                int waitedFrames = 0;
+                int fixedDelayFrames = Mathf.Max(0, request.DelayFrames);
+                int maxWarmupFrames = Mathf.Max(fixedDelayFrames, request.MaxWarmupFrames > 0 ? request.MaxWarmupFrames : 32);
+                string lastBlockers = "None";
+
+                while (true)
+                {
+                    SyncRenderCamera();
+                    await RenderWarmupFrameAsync();
+                    waitedFrames++;
+
+                    if (IsStableTemporalReady(request, waitedFrames, out lastBlockers))
+                    {
+                        break;
+                    }
+
+                    if (waitedFrames >= maxWarmupFrames)
+                    {
+                        Debug.LogWarning($"Screenshot camera capture reached max warmup frames ({maxWarmupFrames}). Last blockers: {lastBlockers}.");
+                        break;
+                    }
                 }
             }
 
             public override void Dispose()
             {
-                _camera.targetTexture = null;
+                if (_renderCamera && _renderCamera.targetTexture == RenderTarget)
+                {
+                    _renderCamera.targetTexture = null;
+                }
+
+                if (_captureCameraObject)
+                {
+                    if (Application.isPlaying)
+                    {
+                        UnityEngine.Object.Destroy(_captureCameraObject);
+                    }
+                    else
+                    {
+                        UnityEngine.Object.DestroyImmediate(_captureCameraObject);
+                    }
+
+                    _captureCameraObject = null;
+                }
+
+                _renderCamera = null;
             }
+
+            private void SyncRenderCamera()
+            {
+                if (!_renderCamera)
+                {
+                    return;
+                }
+
+                _renderCamera.CopyFrom(_camera);
+                _renderCamera.cameraType = CameraType.Game;
+                // Editor warmup renders explicitly via Camera.Render to avoid waiting on Game view repaint.
+                _renderCamera.enabled = !UseEditorManualRenderLoop;
+                _renderCamera.transform.SetPositionAndRotation(_camera.transform.position, _camera.transform.rotation);
+                CopyUniversalAdditionalCameraData(_camera, _renderCamera);
+
+                _renderCamera.targetTexture = RenderTarget;
+            }
+
+            private Camera CreateIsolatedCamera(Camera source)
+            {
+                var captureObject = new GameObject($"{source.name} Screenshot Camera")
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                _captureCameraObject = captureObject;
+                var camera = captureObject.AddComponent<Camera>();
+                camera.CopyFrom(source);
+                camera.cameraType = CameraType.Game;
+                camera.enabled = !UseEditorManualRenderLoop;
+                camera.targetTexture = RenderTarget;
+                CopyUniversalAdditionalCameraData(source, camera);
+                return camera;
+            }
+
+            private async UniTask RenderWarmupFrameAsync()
+            {
+#if UNITY_EDITOR
+                if (UseEditorManualRenderLoop)
+                {
+                    // Drive one editor update, then render the hidden camera once into the capture target.
+                    await WaitForNextEditorTickAsync();
+                    SyncRenderCamera();
+                    _renderCamera.Render();
+                    return;
+                }
+#endif
+                await UniTask.WaitForEndOfFrame();
+            }
+
+            private bool IsStableTemporalReady(ScreenshotRequest request, int waitedFrames, out string blockers)
+            {
+                blockers = "None";
+                if (waitedFrames < Mathf.Max(0, request.DelayFrames))
+                {
+                    blockers = "WarmingUp";
+                    return false;
+                }
+
+#if ILLUSION_RP_INSTALL
+                if (IllusionRendererData.Active != null
+                    && IllusionRendererData.Active.TryGetTemporalCaptureStatus(_renderCamera, out var status))
+                {
+                    var statusBlockers = status.Blockers;
+                    if (status.FrameCount < Mathf.Max(status.RecommendedWarmupFrames, request.DelayFrames))
+                    {
+                        statusBlockers |= IllusionTemporalCaptureBlockers.WarmingUp;
+                    }
+                    blockers = statusBlockers.ToString();
+                    return statusBlockers == IllusionTemporalCaptureBlockers.None;
+                }
+#endif
+                return waitedFrames >= Mathf.Max(1, request.DelayFrames);
+            }
+
+#if URP_INSTALL
+            private static void CopyUniversalAdditionalCameraData(Camera source, Camera target)
+            {
+                if (!source.TryGetComponent(out UniversalAdditionalCameraData sourceData))
+                {
+                    return;
+                }
+
+                var targetData = target.GetComponent<UniversalAdditionalCameraData>();
+                if (!targetData)
+                {
+                    targetData = target.gameObject.AddComponent<UniversalAdditionalCameraData>();
+                }
+
+                targetData.renderShadows = sourceData.renderShadows;
+                targetData.requiresDepthOption = sourceData.requiresDepthOption;
+                targetData.requiresColorOption = sourceData.requiresColorOption;
+                targetData.renderType = CameraRenderType.Base;
+                targetData.cameraStack?.Clear();
+                targetData.volumeLayerMask = sourceData.volumeLayerMask;
+                targetData.volumeTrigger = sourceData.volumeTrigger ? sourceData.volumeTrigger : source.transform;
+                targetData.renderPostProcessing = sourceData.renderPostProcessing;
+                targetData.antialiasing = sourceData.antialiasing;
+                targetData.antialiasingQuality = sourceData.antialiasingQuality;
+                targetData.stopNaN = sourceData.stopNaN;
+                targetData.dithering = sourceData.dithering;
+                targetData.allowXRRendering = false;
+                targetData.allowHDROutput = sourceData.allowHDROutput;
+                targetData.useScreenCoordOverride = sourceData.useScreenCoordOverride;
+                targetData.screenSizeOverride = sourceData.screenSizeOverride;
+                targetData.screenCoordScaleBias = sourceData.screenCoordScaleBias;
+                CopyTemporalAASettings(sourceData, targetData);
+                CopyRenderer(sourceData, targetData);
+            }
+
+            private static void CopyTemporalAASettings(UniversalAdditionalCameraData sourceData,
+                UniversalAdditionalCameraData targetData)
+            {
+                ref var sourceSettings = ref sourceData.taaSettings;
+                ref var targetSettings = ref targetData.taaSettings;
+                targetSettings.quality = sourceSettings.quality;
+                targetSettings.baseBlendFactor = sourceSettings.baseBlendFactor;
+                targetSettings.jitterScale = sourceSettings.jitterScale;
+                targetSettings.mipBias = sourceSettings.mipBias;
+                targetSettings.varianceClampScale = sourceSettings.varianceClampScale;
+                targetSettings.contrastAdaptiveSharpening = sourceSettings.contrastAdaptiveSharpening;
+            }
+
+            private static void CopyRenderer(UniversalAdditionalCameraData sourceData,
+                UniversalAdditionalCameraData targetData)
+            {
+                var asset = UniversalRenderPipeline.asset;
+                var renderer = sourceData.scriptableRenderer;
+                if (!asset || renderer == null)
+                {
+                    return;
+                }
+
+                var renderers = asset.renderers;
+                for (int i = 0; i < renderers.Length; i++)
+                {
+                    if (renderers[i] == renderer)
+                    {
+                        targetData.SetRenderer(i);
+                        return;
+                    }
+                }
+            }
+#else
+            private static void CopyUniversalAdditionalCameraData(Camera source, Camera target)
+            {
+                // No URP camera data to copy.
+            }
+#endif
         }
 
         private sealed class ScreenScreenshotHandler : ScreenshotHandler
@@ -119,6 +382,12 @@ namespace Chris.Gameplay.Capture
                     0, RenderTextureFormat.ARGB32);
                 ScreenCapture.CaptureScreenshotIntoRenderTexture(_scratch);
                 UGraphics.Blit(_scratch, RenderTarget, new Vector2(1f, -1f), new Vector2(0.0f, 1f)); // Flip in DX12 and Vulkan
+            }
+
+            public override async UniTask ExecuteAsync(ScreenshotRequest request)
+            {
+                await UniTask.WaitForEndOfFrame();
+                Execute();
             }
 
             public override void Dispose()
@@ -161,9 +430,7 @@ namespace Chris.Gameplay.Capture
             var destination = request.Destination;
             Assert.IsTrue((bool)destination);
             var handler = CreateHandler(request, true);
-            handler.Execute();
-            await UniTask.WaitForEndOfFrame();
-            await UniTask.DelayFrame(request.DelayFrames, PlayerLoopTiming.PostLateUpdate);
+            await handler.ExecuteAsync(request);
             return handler;
         }
 
@@ -296,11 +563,13 @@ namespace Chris.Gameplay.Capture
         /// <param name="renderTextureFormat"></param>
         /// <param name="delayFrames"></param>
         /// <param name="onComplete"></param>
+        /// <param name="maxWarmupFrames"></param>
         /// <returns></returns>
         public static async UniTask CaptureRawScreenshotAsync(Camera camera, Vector2 size, 
-            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, int delayFrames = 1, Action<Texture2D> onComplete = null)
+            int depthBuffer = 24, RenderTextureFormat renderTextureFormat = RenderTextureFormat.ARGB32, int delayFrames = 1,
+            Action<Texture2D> onComplete = null, int maxWarmupFrames = 32)
         {
-            int antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
+            int antiAliasing = 1;
             var screenTexture = RenderTexture.GetTemporary((int)size.x, (int)size.y, 
                 depthBuffer, renderTextureFormat, RenderTextureReadWrite.Default, antiAliasing);
             var handler = await CaptureScreenshotAsync(new ScreenshotRequest
@@ -308,7 +577,8 @@ namespace Chris.Gameplay.Capture
                 Camera = camera,
                 Destination = screenTexture,
                 Mode = ScreenshotMode.Camera,
-                DelayFrames = delayFrames
+                DelayFrames = delayFrames,
+                MaxWarmupFrames = maxWarmupFrames
             });
 #if UNITY_EDITOR
             if (Application.isEditor)

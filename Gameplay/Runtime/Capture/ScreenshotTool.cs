@@ -66,6 +66,16 @@ namespace Chris.Gameplay.Capture
             set => delayFrames = value;
         }
 
+        [Range(1, 120)]
+        [SerializeField]
+        private int maxWarmupFrames = 32;
+
+        public int MaxWarmupFrames
+        {
+            get => maxWarmupFrames;
+            set => maxWarmupFrames = Mathf.Clamp(value, 1, 120);
+        }
+
         private Texture2D _captureTex;
 
 #if UNITY_EDITOR
@@ -100,8 +110,6 @@ namespace Chris.Gameplay.Capture
 
         private IEnumerator TakeScreenshotCoroutine()
         {
-            yield return new WaitForEndOfFrame();
-
             DestroySafe(_captureTex);
 
             // Can modify settings here
@@ -110,6 +118,7 @@ namespace Chris.Gameplay.Capture
             // Capture
             if (ScreenshotMode == ScreenshotMode.Screen)
             {
+                yield return new WaitForEndOfFrame();
                 ScreenshotUtility.CaptureScreenshotAsync(ProcessPicture).Forget();
             }
             else
@@ -118,7 +127,8 @@ namespace Chris.Gameplay.Capture
                 ScreenshotUtility.CaptureRawScreenshotAsync(GetCamera(), screenSize,
                     renderTextureFormat: EnableHDR ? RenderTextureFormat.ARGBFloat : RenderTextureFormat.ARGB32,
                     delayFrames: DelayFrames,
-                    onComplete: ProcessPicture).Forget();
+                    onComplete: ProcessPicture,
+                    maxWarmupFrames: MaxWarmupFrames).Forget();
             }
         }
 
