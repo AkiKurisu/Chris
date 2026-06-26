@@ -48,6 +48,12 @@ namespace Chris.Gameplay
             _systems.Add(typeof(T), subsystem);
             subsystem.InternalInit();
         }
+
+        internal void RegisterSubsystem(Type type, SubsystemBase subsystem)
+        {
+            _systems.Add(type, subsystem);
+            subsystem.InternalInit();
+        }
         
         internal void Rebuild()
         {
@@ -262,7 +268,7 @@ namespace Chris.Gameplay
             if (!system.CanCreate(worldContext)) return null;
             
             system.SetWorld(worldContext);
-            worldContext.RegisterSubsystem(system);
+            worldContext.RegisterSubsystem(type, system);
             return system;
         }
 

@@ -82,6 +82,17 @@ namespace Chris.Gameplay
             if (!IsValid()) return;
             _world.RegisterSubsystem(subsystem);
         }
+
+        /// <summary>
+        /// Register a <see cref="SubsystemBase"/> with runtime type.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="subsystem"></param>
+        public void RegisterSubsystem(Type type, SubsystemBase subsystem)
+        {
+            if (!IsValid()) return;
+            _world.RegisterSubsystem(type, subsystem);
+        }
         
         public bool IsValid()
         {

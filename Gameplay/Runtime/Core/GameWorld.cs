@@ -208,5 +208,12 @@ namespace Chris.Gameplay
             _subsystemCollection.RegisterSubsystem(subsystem);
             _isSystemDirty = true;
         }
+
+        internal void RegisterSubsystem(Type type, SubsystemBase subsystem)
+        {
+            Assert.IsFalse(IsDestroyed);
+            _subsystemCollection.RegisterSubsystem(type, subsystem);
+            _isSystemDirty = true;
+        }
     }
 }
