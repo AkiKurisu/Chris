@@ -104,7 +104,8 @@ namespace Chris.Resource.Editor
             {
                 OutputRoot = profile.GetOutputRootFullPath(),
                 ZipOutput = profile.ZipOutput,
-                DeleteBuildDirectoryAfterZip = false
+                DeleteBuildDirectoryAfterZip = false,
+                EnableAddressablesDiagnostics = true
             };
 
             var exporter = CreateFromContext(context, new IResourceBuilder[]
@@ -198,6 +199,7 @@ namespace Chris.Resource.Editor
             bool pipelineStarted = false;
             try
             {
+                _context.SkipCatalogPostprocess = true;
                 pipelineStarted = true;
                 foreach (var builder in _builders)
                 {
@@ -205,12 +207,23 @@ namespace Chris.Resource.Editor
                     builder.Build(_context);
                 }
 
-                AddressableAssetSettings.BuildPlayerContent(out AddressablesPlayerBuildResult addressablesResult);
+                AddressablesPlayerBuildResult addressablesResult = _options.EnableAddressablesDiagnostics
+                    ? BuildPlayerContentWithDiagnostics()
+                    : BuildPlayerContent();
                 result.AddressablesResult = addressablesResult;
+                if (addressablesResult == null)
+                {
+                    result.Error = "Addressables build returned no result.";
+                    return;
+                }
+
                 if (!string.IsNullOrEmpty(addressablesResult.Error))
                 {
                     result.Error = addressablesResult.Error;
+                    return;
                 }
+
+                _context.SkipCatalogPostprocess = false;
             }
             finally
             {
@@ -221,10 +234,62 @@ namespace Chris.Resource.Editor
             }
         }
 
+        private static AddressablesPlayerBuildResult BuildPlayerContent()
+        {
+            AddressableAssetSettings.BuildPlayerContent(out AddressablesPlayerBuildResult addressablesResult);
+            return addressablesResult;
+        }
+
+        private static AddressablesPlayerBuildResult BuildPlayerContentWithDiagnostics()
+        {
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            if (!settings)
+            {
+                return new AddressablesPlayerBuildResult
+                {
+                    Error = "AddressableAssetSettings is missing."
+                };
+            }
+
+            var builders = settings.DataBuilders;
+            int originalBuilderIndex = settings.ActivePlayerDataBuilderIndex;
+            var diagnosticBuilder = ScriptableObject.CreateInstance<ChrisAddressablesDiagnosticBuildScript>();
+            diagnosticBuilder.hideFlags = HideFlags.HideAndDontSave;
+            diagnosticBuilder.name = "Chris Addressables Diagnostics";
+            ChrisAddressablesDiagnosticBuildScript.ClearLastException();
+
+            try
+            {
+                builders.Add(diagnosticBuilder);
+                settings.ActivePlayerDataBuilderIndex = builders.Count - 1;
+
+                AddressableAssetSettings.BuildPlayerContent(out AddressablesPlayerBuildResult addressablesResult);
+                if (ChrisAddressablesDiagnosticBuildScript.LastException != null)
+                {
+                    Debug.LogError($"[Chris] BuildPlayerContent returned a shallow error result. Full exception was logged above. Error: {addressablesResult?.Error}");
+                }
+
+                return addressablesResult;
+            }
+            finally
+            {
+                if (originalBuilderIndex >= 0 && originalBuilderIndex < builders.Count)
+                {
+                    settings.ActivePlayerDataBuilderIndex = originalBuilderIndex;
+                }
+
+                builders.Remove(diagnosticBuilder);
+                UnityEngine.Object.DestroyImmediate(diagnosticBuilder);
+                EditorUtility.SetDirty(settings);
+                AssetDatabase.SaveAssetIfDirty(settings);
+            }
+        }
+
         private void CleanupPipeline(List<IResourceBuilder> builders, ResourceExportResult result)
         {
-            foreach (var builder in builders)
+            for (int i = builders.Count - 1; i >= 0; i--)
             {
+                var builder = builders[i];
                 if (builder == null)
                 {
                     continue;
@@ -275,6 +340,8 @@ namespace Chris.Resource.Editor
         public bool ZipOutput { get; set; } = true;
 
         public bool DeleteBuildDirectoryAfterZip { get; set; } = true;
+
+        internal bool EnableAddressablesDiagnostics { get; set; }
 
         internal string GetOutputRoot()
         {

@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
+using UnityEditor.AddressableAssets.Build;
+using UnityEditor.AddressableAssets.Build.DataBuilders;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 using UnityEngine;
@@ -60,8 +62,40 @@ namespace Chris.Resource.Editor
             _includeInBuildMap.Clear();
             EditorUtility.SetDirty(AddressableAssetSettingsDefaultObject.Settings);
             AssetDatabase.SaveAssetIfDirty(AddressableAssetSettingsDefaultObject.Settings);
+            if (context.SkipCatalogPostprocess)
+            {
+                Debug.LogWarning("<color=#ffd45a>Addressable Asset Builder</color>: Addressables build failed, catalog postprocess skipped.");
+                return;
+            }
+
             var result = AddressableCatalogPostprocessor.Postprocess(context.BuildPath);
-            UnityEngine.Debug.Log($"<color=#3aff48>Addressable Asset Builder</color>: Catalog postprocessed, {result.BundleReferenceCount} bundle locations normalized, {result.CopiedBundleCount} dependency bundles copied.");
+            Debug.Log($"<color=#3aff48>Addressable Asset Builder</color>: Catalog postprocessed, {result.BundleReferenceCount} bundle locations normalized, {result.CopiedBundleCount} dependency bundles copied.");
+        }
+    }
+
+    internal sealed class ChrisAddressablesDiagnosticBuildScript : BuildScriptPackedMode
+    {
+        public static Exception LastException { get; private set; }
+
+        public override string Name => "Chris Addressables Diagnostics";
+
+        public static void ClearLastException()
+        {
+            LastException = null;
+        }
+
+        protected override TResult BuildDataImplementation<TResult>(AddressablesDataBuilderInput builderInput)
+        {
+            try
+            {
+                return base.BuildDataImplementation<TResult>(builderInput);
+            }
+            catch (Exception exception)
+            {
+                LastException = exception;
+                Debug.LogException(exception);
+                throw;
+            }
         }
     }
 

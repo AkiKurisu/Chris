@@ -22,5 +22,7 @@ namespace Chris.Resource.Editor
         /// Filter func for get <see cref="AddressableAssetGroup"/>s to export
         /// </summary>
         public Func<AddressableAssetGroup, bool> AssetGroupFilter { get; set; }
+
+        internal bool SkipCatalogPostprocess { get; set; }
     }
 }
