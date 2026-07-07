@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -5,14 +6,11 @@ using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.AddressableAssets.Settings.GroupSchemas;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
-#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
 using UnityEngine.ResourceManagement.ResourceLocations;
 using UnityEngine.ResourceManagement.Util;
-#else
-using UnityEngine;
-#endif
 
 namespace Chris.Resource.Editor
 {
@@ -24,7 +22,6 @@ namespace Chris.Resource.Editor
 
         public void Build(ResourceExportContext context)
         {
-            string buildPath = context.BuildPath;
             // Force enable remote catalog
             _buildRemoteCatalog = AddressableAssetSettingsDefaultObject.Settings.BuildRemoteCatalog;
             AddressableAssetSettingsDefaultObject.Settings.BuildRemoteCatalog = true;
@@ -44,7 +41,7 @@ namespace Chris.Resource.Editor
 
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             settings.profileSettings.SetValue(settings.activeProfileId, "Remote.LoadPath", ResourceSystem.DynamicLoadPath);
-            settings.profileSettings.SetValue(settings.activeProfileId, "Remote.BuildPath", buildPath);
+            settings.profileSettings.SetValue(settings.activeProfileId, "Remote.BuildPath", context.BuildPath);
         }
 
         public void Cleanup(ResourceExportContext context)
@@ -63,125 +60,207 @@ namespace Chris.Resource.Editor
             _includeInBuildMap.Clear();
             EditorUtility.SetDirty(AddressableAssetSettingsDefaultObject.Settings);
             AssetDatabase.SaveAssetIfDirty(AddressableAssetSettingsDefaultObject.Settings);
+            var result = AddressableCatalogPostprocessor.Postprocess(context.BuildPath);
+            UnityEngine.Debug.Log($"<color=#3aff48>Addressable Asset Builder</color>: Catalog postprocessed, {result.BundleReferenceCount} bundle locations normalized, {result.CopiedBundleCount} dependency bundles copied.");
+        }
+    }
+
+    internal sealed class AddressableCatalogPostprocessResult
+    {
+        public int BundleReferenceCount { get; set; }
+
+        public int CopiedBundleCount { get; set; }
+    }
+
+    internal static class AddressableCatalogPostprocessor
+    {
+        private const string BundleExtension = ".bundle";
+
+        public static AddressableCatalogPostprocessResult Postprocess(string buildPath)
+        {
+            NormalizeCatalogFiles(buildPath);
+
+            string catalogPath = Path.Combine(buildPath, $"catalog{ResourceSystem.GetCatalogExtension()}");
+
+            if (!File.Exists(catalogPath))
             {
-                var bundles = Directory.GetFiles(Addressables.BuildPath, "*.bundle", SearchOption.AllDirectories);
-                var bundleNames = bundles.Select(Path.GetFileName).ToList();
-                // Copy default bundles to build path
-                foreach (string bundleFilePath in bundles)
+                throw new FileNotFoundException($"Addressables content catalog was not found: {catalogPath}");
+            }
+
+            var result = new AddressableCatalogPostprocessResult();
+            var bundleNames = CopyAddressablesBuildBundles(buildPath, result);
+
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+            ProcessBinaryCatalog(catalogPath, bundleNames, result);
+#else
+            ProcessJsonCatalog(catalogPath, bundleNames, result);
+#endif
+
+            return result;
+        }
+
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+        private static void ProcessBinaryCatalog(string catalogPath, IReadOnlyCollection<string> bundleNames, AddressableCatalogPostprocessResult result)
+        {
+            var data = File.ReadAllBytes(catalogPath);
+            var reader = new BinaryStorageBuffer.Reader(data, 1024, 1024, new ContentCatalogData.Serializer().WithInternalIdResolvingDisabled());
+            var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
+            var locator = catalogData.CreateCustomLocator();
+
+            var pkToLoc = new Dictionary<string, (IResourceLocation, HashSet<object>)>();
+            foreach (var key in locator.Keys)
+            {
+                if (!locator.Locate(key, typeof(object), out var locs))
                 {
-                    string bundleFileName = Path.GetFileName(bundleFilePath);
-                    string destinationFilePath = Path.Combine(context.BuildPath, bundleFileName);
-                    File.Copy(bundleFilePath, destinationFilePath, true);
+                    continue;
                 }
 
-                // Modify catalog to update bundle paths
-#if (!UNITY_6000_0_OR_NEWER || ENABLE_JSON_CATALOG)
-                // JSON Catalog processing (Unity < 6 or Unity 6 with JSON enabled)
-                var catalogPath = Directory.GetFiles(context.BuildPath, "*.json")[0];
-                var catalog = JsonUtility.FromJson<ContentCatalogData>(File.ReadAllText(catalogPath));
-                for (int i = 0; i < catalog.InternalIds.Length; ++i)
+                foreach (var loc in locs)
                 {
-                    foreach (var bundleName in bundleNames)
+                    if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
                     {
-                        if (catalog.InternalIds[i].Contains(bundleName))
-                        {
-                            catalog.InternalIds[i] = $"{ResourceSystem.DynamicLoadPath}/{bundleName}";
-                            break;
-                        }
+                        pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
+                    }
+
+                    locKeys.Item2.Add(key);
+                }
+            }
+
+            var modifiedEntries = new List<ContentCatalogDataEntry>();
+            foreach (var kvp in pkToLoc)
+            {
+                var loc = kvp.Value.Item1;
+                string modifiedInternalId = RewriteBundleInternalId(loc.InternalId, bundleNames, result);
+
+                List<object> deps = null;
+                if (loc.HasDependencies)
+                {
+                    deps = new List<object>();
+                    foreach (var dependency in loc.Dependencies)
+                    {
+                        deps.Add(dependency.PrimaryKey);
                     }
                 }
-                File.Delete(catalogPath);
-                string newCatalogPath = Path.Combine(context.BuildPath, "catalog.json");
-                File.WriteAllText(newCatalogPath, JsonUtility.ToJson(catalog));
-                // Replace hash file
-                string hashPath = catalogPath.Replace(".json", ".hash");
-                File.Copy(hashPath, newCatalogPath.Replace(".json", ".hash"));
-                File.Delete(hashPath);
+
+                modifiedEntries.Add(new ContentCatalogDataEntry(
+                    loc.ResourceType,
+                    modifiedInternalId,
+                    loc.ProviderId,
+                    kvp.Value.Item2,
+                    deps,
+                    loc.Data
+                ));
+            }
+
+            var newCatalog = new ContentCatalogData(modifiedEntries, catalogData.ProviderId)
+            {
+                BuildResultHash = catalogData.BuildResultHash,
+                InstanceProviderData = catalogData.InstanceProviderData,
+                SceneProviderData = catalogData.SceneProviderData,
+                ResourceProviderData = catalogData.ResourceProviderData
+            };
+            newCatalog.SetData(modifiedEntries);
+
+            byte[] modifiedData = newCatalog.SerializeToByteArray();
+            File.WriteAllBytes(catalogPath, modifiedData);
+        }
 #else
-                // Binary Catalog processing for Unity 6 (without JSON enabled)
-                var catalogPath = Directory.GetFiles(context.BuildPath, "*.bin")[0];
-                
-                // Load the binary catalog
-                var data = File.ReadAllBytes(catalogPath);
-                var reader = new BinaryStorageBuffer.Reader(data, 1024, 1024, new ContentCatalogData.Serializer().WithInternalIdResolvingDisabled());
-                var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
-                
-                // Create locator to access binary catalog data
-                var locator = catalogData.CreateCustomLocator();
-                
-                // Build a map of primary key to location and keys
-                var pkToLoc = new Dictionary<string, (IResourceLocation, HashSet<object>)>();
-                foreach (var key in locator.Keys)
-                {
-                    if (locator.Locate(key, typeof(object), out var locs))
-                    {
-                        foreach (var loc in locs)
-                        {
-                            if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
-                                pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
-                            locKeys.Item2.Add(key);
-                        }
-                    }
-                }
-                
-                // Create new modified entries
-                var modifiedEntries = new List<ContentCatalogDataEntry>();
-                foreach (var kvp in pkToLoc)
-                {
-                    var loc = kvp.Value.Item1;
-                    string modifiedInternalId = loc.InternalId;
-                    
-                    // Check if this entry references any of our bundles
-                    foreach (var bundleName in bundleNames)
-                    {
-                        if (loc.InternalId.Contains(bundleName))
-                        {
-                            modifiedInternalId = $"{ResourceSystem.DynamicLoadPath}/{bundleName}";
-                            break;
-                        }
-                    }
-                    
-                    // Collect dependencies
-                    List<object> deps = null;
-                    if (loc.HasDependencies)
-                    {
-                        deps = new List<object>();
-                        foreach (var d in loc.Dependencies)
-                            deps.Add(d.PrimaryKey);
-                    }
-                    
-                    // Create new entry with modified InternalId
-                    var newEntry = new ContentCatalogDataEntry(
-                        loc.ResourceType,
-                        modifiedInternalId,
-                        loc.ProviderId,
-                        kvp.Value.Item2, // keys
-                        deps,
-                        loc.Data
-                    );
-                    modifiedEntries.Add(newEntry);
-                }
-                
-                // Create new catalog with modified data
-                var newCatalog = new ContentCatalogData(modifiedEntries, catalogData.ProviderId)
-                {
-                    BuildResultHash = catalogData.BuildResultHash,
-                    InstanceProviderData = catalogData.InstanceProviderData,
-                    SceneProviderData = catalogData.SceneProviderData,
-                    ResourceProviderData = catalogData.ResourceProviderData
-                };
-                newCatalog.SetData(modifiedEntries);
-                
-                // Save the modified catalog
-                File.Delete(catalogPath);
-                string newCatalogPath = Path.Combine(context.BuildPath, "catalog.bin");
-                newCatalog.SaveToFile(newCatalogPath);
-                
-                // Replace hash file
-                string hashPath = catalogPath.Replace(".bin", ".hash");
-                File.Copy(hashPath, newCatalogPath.Replace(".bin", ".hash"), true);
-                File.Delete(hashPath);
+        private static void ProcessJsonCatalog(string catalogPath, IReadOnlyCollection<string> bundleNames, AddressableCatalogPostprocessResult result)
+        {
+            var catalog = JsonUtility.FromJson<ContentCatalogData>(File.ReadAllText(catalogPath));
+            if (catalog.InternalIds == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < catalog.InternalIds.Length; ++i)
+            {
+                catalog.InternalIds[i] = RewriteBundleInternalId(catalog.InternalIds[i], bundleNames, result);
+            }
+
+            string json = JsonUtility.ToJson(catalog);
+            File.WriteAllText(catalogPath, json);
+        }
 #endif
+
+        private static string RewriteBundleInternalId(string internalId, IReadOnlyCollection<string> bundleNames, AddressableCatalogPostprocessResult result)
+        {
+            if (string.IsNullOrEmpty(internalId))
+            {
+                return internalId;
+            }
+
+            foreach (var bundleName in bundleNames)
+            {
+                if (internalId.IndexOf(bundleName, StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    continue;
+                }
+
+                result.BundleReferenceCount++;
+                return $"{ResourceSystem.DynamicLoadPath}/{bundleName}";
+            }
+
+            return internalId;
+        }
+
+        private static IReadOnlyCollection<string> CopyAddressablesBuildBundles(string buildPath, AddressableCatalogPostprocessResult result)
+        {
+            var bundleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string bundlePath in Directory.GetFiles(buildPath, $"*{BundleExtension}", SearchOption.AllDirectories))
+            {
+                bundleNames.Add(Path.GetFileName(bundlePath));
+            }
+
+            if (!Directory.Exists(Addressables.BuildPath))
+            {
+                return bundleNames.ToList();
+            }
+
+            foreach (string bundlePath in Directory.GetFiles(Addressables.BuildPath, $"*{BundleExtension}", SearchOption.AllDirectories))
+            {
+                string bundleName = Path.GetFileName(bundlePath);
+                string destination = Path.Combine(buildPath, bundleName);
+
+                if (!File.Exists(destination))
+                {
+                    File.Copy(bundlePath, destination, true);
+                    result.CopiedBundleCount++;
+                }
+
+                bundleNames.Add(bundleName);
+            }
+
+            return bundleNames.ToList();
+        }
+
+        private static void NormalizeCatalogFiles(string buildPath)
+        {
+            string extension = ResourceSystem.GetCatalogExtension();
+            string catalogPath = Path.Combine(buildPath, $"catalog{extension}");
+            string hashPath = Path.Combine(buildPath, "catalog.hash");
+
+            if (!File.Exists(catalogPath))
+            {
+                string versionedCatalog = Directory.GetFiles(buildPath, $"catalog_*{extension}", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                if (string.IsNullOrEmpty(versionedCatalog))
+                {
+                    throw new FileNotFoundException($"No Addressables content catalog was generated in {buildPath}.");
+                }
+
+                File.Move(versionedCatalog, catalogPath);
+            }
+
+            if (!File.Exists(hashPath))
+            {
+                string versionedHash = Directory.GetFiles(buildPath, "catalog_*.hash", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                if (string.IsNullOrEmpty(versionedHash))
+                {
+                    throw new FileNotFoundException($"No Addressables content catalog hash was generated in {buildPath}.");
+                }
+
+                File.Move(versionedHash, hashPath);
             }
         }
     }

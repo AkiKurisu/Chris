@@ -539,7 +539,7 @@ namespace Chris.Resource
             foreach (var kvp in pkToLoc)
             {
                 var loc = kvp.Value.Item1;
-                string modifiedInternalId = loc.InternalId.Replace(DynamicLoadPath, actualPath);
+                string modifiedInternalId = ResolveDynamicCatalogInternalId(loc.InternalId, actualPath);
 
                 // Collect dependencies
                 List<object> deps = null;
@@ -576,9 +576,17 @@ namespace Chris.Resource
             var wr = new BinaryStorageBuffer.Writer(0, new ContentCatalogData.Serializer());
             wr.WriteObject(newCatalog, false);
             File.WriteAllBytes(path, wr.SerializeToByteArray());
-            Debug.Log($"[Resource System] Load binary content catalog {path}");
-            Addressables.LoadContentCatalogAsync(path).WaitForCompletion();
-            File.WriteAllBytes(path, data);
+            try
+            {
+                Debug.Log($"[Resource System] Load binary content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                handle.WaitForCompletion();
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            finally
+            {
+                File.WriteAllBytes(path, data);
+            }
         }
 
         private static async Task ProcessBinaryCatalogAsync(string path, string actualPath)
@@ -611,7 +619,7 @@ namespace Chris.Resource
             foreach (var kvp in pkToLoc)
             {
                 var loc = kvp.Value.Item1;
-                string modifiedInternalId = loc.InternalId.Replace(DynamicLoadPath, actualPath);
+                string modifiedInternalId = ResolveDynamicCatalogInternalId(loc.InternalId, actualPath);
 
                 // Collect dependencies
                 List<object> deps = null;
@@ -648,31 +656,99 @@ namespace Chris.Resource
             var wr = new BinaryStorageBuffer.Writer(0, new ContentCatalogData.Serializer());
             wr.WriteObject(newCatalog, false);
             await File.WriteAllBytesAsync(path, wr.SerializeToByteArray());
-            Debug.Log($"[Resource System] Load binary content catalog {path}");
-            await Addressables.LoadContentCatalogAsync(path).ToUniTask();
-            await File.WriteAllBytesAsync(path, data);
+            try
+            {
+                Debug.Log($"[Resource System] Load binary content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                await UniTask.WaitUntil(() => handle.IsDone);
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Resource System] Failed to load binary content catalog {path}, {ex}");
+            }
+            finally
+            {
+                await File.WriteAllBytesAsync(path, data);
+            }
         }
 #else
         private static void ProcessJsonCatalog(string path, string actualPath)
         {
             string contentCatalog = File.ReadAllText(path, Encoding.UTF8);
-            string modifiedCatalog = contentCatalog.Replace(DynamicLoadPath, actualPath);
+            string modifiedCatalog = ResolveDynamicCatalogContent(contentCatalog, actualPath);
             File.WriteAllText(path, modifiedCatalog, Encoding.UTF8);
-            Debug.Log($"[Resource System] Load json content catalog {path}");
-            Addressables.LoadContentCatalogAsync(path).WaitForCompletion();
-            File.WriteAllText(path, contentCatalog, Encoding.UTF8);
+            try
+            {
+                Debug.Log($"[Resource System] Load json content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                handle.WaitForCompletion();
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            finally
+            {
+                File.WriteAllText(path, contentCatalog, Encoding.UTF8);
+            }
         }
         
         private static async Task ProcessJsonCatalogAsync(string path, string actualPath)
         {
             string contentCatalog = await File.ReadAllTextAsync(path, Encoding.UTF8);
-            string modifiedCatalog = contentCatalog.Replace(DynamicLoadPath, actualPath);
+            string modifiedCatalog = ResolveDynamicCatalogContent(contentCatalog, actualPath);
             await File.WriteAllTextAsync(path, modifiedCatalog, Encoding.UTF8);
-            Debug.Log($"[Resource System] Load json content catalog {path}");
-            await Addressables.LoadContentCatalogAsync(path).ToUniTask();
-            await File.WriteAllTextAsync(path, contentCatalog, Encoding.UTF8);
+            try
+            {
+                Debug.Log($"[Resource System] Load json content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                await UniTask.WaitUntil(() => handle.IsDone);
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            finally
+            {
+                await File.WriteAllTextAsync(path, contentCatalog, Encoding.UTF8);
+            }
         }
 #endif
+
+        private static string ResolveDynamicCatalogInternalId(string internalId, string actualPath)
+        {
+            if (string.IsNullOrEmpty(internalId))
+            {
+                return internalId;
+            }
+
+            return internalId.Replace(DynamicLoadPath, NormalizeCatalogPath(actualPath)).Replace('\\', '/');
+        }
+
+        private static string ResolveDynamicCatalogContent(string contentCatalog, string actualPath)
+        {
+            string normalizedActualPath = NormalizeCatalogPath(actualPath);
+            return contentCatalog
+                .Replace(DynamicLoadPath + @"\\", normalizedActualPath + "/")
+                .Replace(DynamicLoadPath + @"\/", normalizedActualPath + "/")
+                .Replace(DynamicLoadPath + "/", normalizedActualPath + "/")
+                .Replace(DynamicLoadPath, normalizedActualPath);
+        }
+
+        private static string NormalizeCatalogPath(string path)
+        {
+            return string.IsNullOrEmpty(path) ? path : path.Replace('\\', '/').TrimEnd('/');
+        }
+
+        private static void EnsureCatalogLoadSucceeded<T>(AsyncOperationHandle<T> handle, string path)
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                return;
+            }
+
+            if (handle.OperationException != null)
+            {
+                Debug.LogException(handle.OperationException);
+            }
+
+            throw new InvalidOperationException($"Addressables failed to load content catalog '{path}'. Status: {handle.Status}. {handle.OperationException?.Message ?? "No operation exception was provided."}", handle.OperationException);
+        }
 
 #if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
         private readonly struct ContentCatalogDataWrapper
