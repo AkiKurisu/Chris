@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Build;
@@ -104,6 +105,8 @@ namespace Chris.Resource.Editor
         public int BundleReferenceCount { get; set; }
 
         public int CopiedBundleCount { get; set; }
+
+        public string CatalogHash { get; set; }
     }
 
     internal static class AddressableCatalogPostprocessor
@@ -129,6 +132,7 @@ namespace Chris.Resource.Editor
 #else
             ProcessJsonCatalog(catalogPath, bundleNames, result);
 #endif
+            RewriteCatalogHash(buildPath, catalogPath, result);
 
             return result;
         }
@@ -319,6 +323,34 @@ namespace Chris.Resource.Editor
             }
 
             return bundleNames.ToList();
+        }
+
+        private static void RewriteCatalogHash(string buildPath, string catalogPath, AddressableCatalogPostprocessResult result)
+        {
+#if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
+            string catalogHash = CalculateAddressablesHash(File.ReadAllBytes(catalogPath));
+#else
+            string catalogHash = CalculateAddressablesHash(File.ReadAllText(catalogPath));
+#endif
+            File.WriteAllText(Path.Combine(buildPath, "catalog.hash"), catalogHash);
+            result.CatalogHash = catalogHash;
+        }
+
+        private static string CalculateAddressablesHash(object value)
+        {
+            var hashingMethods = Type.GetType("UnityEditor.Build.Pipeline.Utilities.HashingMethods, Unity.ScriptableBuildPipeline.Editor");
+            var calculateMethod = hashingMethods?.GetMethod("Calculate", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(object) }, null);
+            if (calculateMethod != null)
+            {
+                return calculateMethod.Invoke(null, new[] { value }).ToString();
+            }
+
+            return value switch
+            {
+                byte[] bytes => Hash128.Compute(bytes).ToString(),
+                string text => Hash128.Compute(text).ToString(),
+                _ => Hash128.Compute(value?.ToString() ?? string.Empty).ToString()
+            };
         }
 
         private static void NormalizeCatalogFiles(string buildPath)
