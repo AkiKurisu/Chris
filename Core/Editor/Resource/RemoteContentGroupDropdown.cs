@@ -18,8 +18,8 @@ namespace Chris.Resource.Editor
 
         private readonly Action<AddressableAssetGroup> _onSelected;
 
-        public RemoteContentGroupDropdown(IEnumerable<AddressableAssetGroup> groups, Action<AddressableAssetGroup> onSelected)
-            : base(new AdvancedDropdownState())
+        public RemoteContentGroupDropdown(AdvancedDropdownState state, IEnumerable<AddressableAssetGroup> groups, Action<AddressableAssetGroup> onSelected)
+            : base(state)
         {
             _groups = new List<AddressableAssetGroup>();
             foreach (var group in groups)
@@ -34,6 +34,11 @@ namespace Chris.Resource.Editor
             minimumSize = new Vector2(260, 320);
         }
 
+        public RemoteContentGroupDropdown(IEnumerable<AddressableAssetGroup> groups, Action<AddressableAssetGroup> onSelected)
+            : this(new AdvancedDropdownState(), groups, onSelected)
+        {
+        }
+
         protected override AdvancedDropdownItem BuildRoot()
         {
             var root = new AdvancedDropdownItem("Addressable Groups");
@@ -46,7 +51,7 @@ namespace Chris.Resource.Editor
             _groups.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
             for (int i = 0; i < _groups.Count; i++)
             {
-                root.AddChild(new AdvancedDropdownItem(_groups[i].Name) { id = i });
+                root.AddChild(new GroupDropdownItem(_groups[i]));
             }
 
             return root;
@@ -54,12 +59,23 @@ namespace Chris.Resource.Editor
 
         protected override void ItemSelected(AdvancedDropdownItem item)
         {
-            if (item == null || item.id < 0 || item.id >= _groups.Count)
+            if (item is not GroupDropdownItem groupItem)
             {
                 return;
             }
 
-            _onSelected?.Invoke(_groups[item.id]);
+            _onSelected?.Invoke(groupItem.Group);
+        }
+
+        private sealed class GroupDropdownItem : AdvancedDropdownItem
+        {
+            public GroupDropdownItem(AddressableAssetGroup group)
+                : base(group.Name)
+            {
+                Group = group;
+            }
+
+            public AddressableAssetGroup Group { get; }
         }
     }
 }
