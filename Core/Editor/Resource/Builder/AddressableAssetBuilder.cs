@@ -141,7 +141,7 @@ namespace Chris.Resource.Editor
             var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
             var locator = catalogData.CreateCustomLocator();
 
-            var pkToLoc = new Dictionary<string, (IResourceLocation, HashSet<object>)>();
+            var locationToKeys = new Dictionary<CatalogLocationKey, (IResourceLocation, HashSet<object>)>();
             foreach (var key in locator.Keys)
             {
                 if (!locator.Locate(key, typeof(object), out var locs))
@@ -151,9 +151,10 @@ namespace Chris.Resource.Editor
 
                 foreach (var loc in locs)
                 {
-                    if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
+                    var locationKey = CatalogLocationKey.Create(loc);
+                    if (!locationToKeys.TryGetValue(locationKey, out var locKeys))
                     {
-                        pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
+                        locationToKeys.Add(locationKey, locKeys = (loc, new HashSet<object>()));
                     }
 
                     locKeys.Item2.Add(key);
@@ -161,7 +162,7 @@ namespace Chris.Resource.Editor
             }
 
             var modifiedEntries = new List<ContentCatalogDataEntry>();
-            foreach (var kvp in pkToLoc)
+            foreach (var kvp in locationToKeys)
             {
                 var loc = kvp.Value.Item1;
                 string modifiedInternalId = RewriteBundleInternalId(loc.InternalId, bundleNames, result);
@@ -197,6 +198,57 @@ namespace Chris.Resource.Editor
 
             byte[] modifiedData = newCatalog.SerializeToByteArray();
             File.WriteAllBytes(catalogPath, modifiedData);
+        }
+
+        private readonly struct CatalogLocationKey : IEquatable<CatalogLocationKey>
+        {
+            private readonly string _primaryKey;
+            private readonly string _internalId;
+            private readonly string _providerId;
+            private readonly Type _resourceType;
+            private readonly int _dependencyHashCode;
+
+            private CatalogLocationKey(IResourceLocation location)
+            {
+                _primaryKey = location.PrimaryKey;
+                _internalId = location.InternalId;
+                _providerId = location.ProviderId;
+                _resourceType = location.ResourceType;
+                _dependencyHashCode = location.DependencyHashCode;
+            }
+
+            public static CatalogLocationKey Create(IResourceLocation location)
+            {
+                return new CatalogLocationKey(location);
+            }
+
+            public bool Equals(CatalogLocationKey other)
+            {
+                return string.Equals(_primaryKey, other._primaryKey, StringComparison.Ordinal)
+                       && string.Equals(_internalId, other._internalId, StringComparison.Ordinal)
+                       && string.Equals(_providerId, other._providerId, StringComparison.Ordinal)
+                       && Equals(_resourceType, other._resourceType)
+                       && _dependencyHashCode == other._dependencyHashCode;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is CatalogLocationKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_primaryKey ?? string.Empty);
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_internalId ?? string.Empty);
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_providerId ?? string.Empty);
+                    hash = hash * 31 + (_resourceType != null ? _resourceType.GetHashCode() : 0);
+                    hash = hash * 31 + _dependencyHashCode;
+                    return hash;
+                }
+            }
         }
 #else
         private static void ProcessJsonCatalog(string catalogPath, IReadOnlyCollection<string> bundleNames, AddressableCatalogPostprocessResult result)

@@ -12,6 +12,7 @@ using Cysharp.Threading.Tasks;
 #if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
 using System.Reflection;
 using UnityEngine.AddressableAssets.ResourceLocators;
+using UnityEngine.ResourceManagement.ResourceLocations;
 using UnityEngine.ResourceManagement.Util;
 #else
 using System.Text;
@@ -516,51 +517,7 @@ namespace Chris.Resource
             var reader = new BinaryStorageBuffer.Reader(data, 1024, 1024, new ContentCatalogData.Serializer().WithInternalIdResolvingDisabled());
             var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
 
-            // Create locator to access catalog data
-            var locator = catalogData.CreateCustomLocator();
-
-            // Build a map of primary key to location and keys
-            var pkToLoc = new Dictionary<string, (UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation, HashSet<object>)>();
-            foreach (var key in locator.Keys)
-            {
-                if (locator.Locate(key, typeof(object), out var locs))
-                {
-                    foreach (var loc in locs)
-                    {
-                        if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
-                            pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
-                        locKeys.Item2.Add(key);
-                    }
-                }
-            }
-
-            // Create new modified entries
-            var modifiedEntries = new List<ContentCatalogDataEntry>();
-            foreach (var kvp in pkToLoc)
-            {
-                var loc = kvp.Value.Item1;
-                string modifiedInternalId = ResolveDynamicCatalogInternalId(loc.InternalId, actualPath);
-
-                // Collect dependencies
-                List<object> deps = null;
-                if (loc.HasDependencies)
-                {
-                    deps = new List<object>();
-                    foreach (var d in loc.Dependencies)
-                        deps.Add(d.PrimaryKey);
-                }
-
-                // Create new entry with modified InternalId
-                var newEntry = new ContentCatalogDataEntry(
-                    loc.ResourceType,
-                    modifiedInternalId,
-                    loc.ProviderId,
-                    kvp.Value.Item2,
-                    deps,
-                    loc.Data
-                );
-                modifiedEntries.Add(newEntry);
-            }
+            var modifiedEntries = CreateModifiedBinaryCatalogEntries(catalogData, internalId => ResolveDynamicCatalogInternalId(internalId, actualPath));
 
             // Create new catalog with modified data
             var newCatalog = new ContentCatalogData(catalogData.ProviderId)
@@ -596,51 +553,7 @@ namespace Chris.Resource
             var reader = new BinaryStorageBuffer.Reader(data, 1024, 1024, new ContentCatalogData.Serializer().WithInternalIdResolvingDisabled());
             var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
 
-            // Create locator to access catalog data
-            var locator = catalogData.CreateCustomLocator();
-
-            // Build a map of primary key to location and keys
-            var pkToLoc = new Dictionary<string, (UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation, HashSet<object>)>();
-            foreach (var key in locator.Keys)
-            {
-                if (locator.Locate(key, typeof(object), out var locs))
-                {
-                    foreach (var loc in locs)
-                    {
-                        if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
-                            pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
-                        locKeys.Item2.Add(key);
-                    }
-                }
-            }
-
-            // Create new modified entries
-            var modifiedEntries = new List<ContentCatalogDataEntry>();
-            foreach (var kvp in pkToLoc)
-            {
-                var loc = kvp.Value.Item1;
-                string modifiedInternalId = ResolveDynamicCatalogInternalId(loc.InternalId, actualPath);
-
-                // Collect dependencies
-                List<object> deps = null;
-                if (loc.HasDependencies)
-                {
-                    deps = new List<object>();
-                    foreach (var d in loc.Dependencies)
-                        deps.Add(d.PrimaryKey);
-                }
-
-                // Create new entry with modified InternalId
-                var newEntry = new ContentCatalogDataEntry(
-                    loc.ResourceType,
-                    modifiedInternalId,
-                    loc.ProviderId,
-                    kvp.Value.Item2,
-                    deps,
-                    loc.Data
-                );
-                modifiedEntries.Add(newEntry);
-            }
+            var modifiedEntries = CreateModifiedBinaryCatalogEntries(catalogData, internalId => ResolveDynamicCatalogInternalId(internalId, actualPath));
 
             // Create new catalog with modified data
             var newCatalog = new ContentCatalogData(catalogData.ProviderId)
@@ -663,13 +576,111 @@ namespace Chris.Resource
                 await UniTask.WaitUntil(() => handle.IsDone);
                 EnsureCatalogLoadSucceeded(handle, path);
             }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[Resource System] Failed to load binary content catalog {path}, {ex}");
-            }
             finally
             {
                 await File.WriteAllBytesAsync(path, data);
+            }
+        }
+
+        private static List<ContentCatalogDataEntry> CreateModifiedBinaryCatalogEntries(ContentCatalogData catalogData, Func<string, string> internalIdResolver)
+        {
+            var locator = catalogData.CreateCustomLocator();
+            var locationToKeys = new Dictionary<CatalogLocationKey, (IResourceLocation, HashSet<object>)>();
+            foreach (var key in locator.Keys)
+            {
+                if (!locator.Locate(key, typeof(object), out var locs))
+                {
+                    continue;
+                }
+
+                foreach (var loc in locs)
+                {
+                    var locationKey = CatalogLocationKey.Create(loc);
+                    if (!locationToKeys.TryGetValue(locationKey, out var locKeys))
+                    {
+                        locationToKeys.Add(locationKey, locKeys = (loc, new HashSet<object>()));
+                    }
+
+                    locKeys.Item2.Add(key);
+                }
+            }
+
+            var modifiedEntries = new List<ContentCatalogDataEntry>();
+            foreach (var kvp in locationToKeys)
+            {
+                var loc = kvp.Value.Item1;
+                var modifiedInternalId = internalIdResolver(loc.InternalId);
+                List<object> deps = null;
+                if (loc.HasDependencies)
+                {
+                    deps = new List<object>();
+                    foreach (var dependency in loc.Dependencies)
+                    {
+                        deps.Add(dependency.PrimaryKey);
+                    }
+                }
+
+                modifiedEntries.Add(new ContentCatalogDataEntry(
+                    loc.ResourceType,
+                    modifiedInternalId,
+                    loc.ProviderId,
+                    kvp.Value.Item2,
+                    deps,
+                    loc.Data
+                ));
+            }
+
+            return modifiedEntries;
+        }
+
+        private readonly struct CatalogLocationKey : IEquatable<CatalogLocationKey>
+        {
+            private readonly string _primaryKey;
+            private readonly string _internalId;
+            private readonly string _providerId;
+            private readonly Type _resourceType;
+            private readonly int _dependencyHashCode;
+
+            private CatalogLocationKey(IResourceLocation location)
+            {
+                _primaryKey = location.PrimaryKey;
+                _internalId = location.InternalId;
+                _providerId = location.ProviderId;
+                _resourceType = location.ResourceType;
+                _dependencyHashCode = location.DependencyHashCode;
+            }
+
+            public static CatalogLocationKey Create(IResourceLocation location)
+            {
+                return new CatalogLocationKey(location);
+            }
+
+            public bool Equals(CatalogLocationKey other)
+            {
+                return string.Equals(_primaryKey, other._primaryKey, StringComparison.Ordinal)
+                       && string.Equals(_internalId, other._internalId, StringComparison.Ordinal)
+                       && string.Equals(_providerId, other._providerId, StringComparison.Ordinal)
+                       && Equals(_resourceType, other._resourceType)
+                       && _dependencyHashCode == other._dependencyHashCode;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is CatalogLocationKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_primaryKey ?? string.Empty);
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_internalId ?? string.Empty);
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_providerId ?? string.Empty);
+                    hash = hash * 31 + (_resourceType != null ? _resourceType.GetHashCode() : 0);
+                    hash = hash * 31 + _dependencyHashCode;
+                    return hash;
+                }
             }
         }
 #else
