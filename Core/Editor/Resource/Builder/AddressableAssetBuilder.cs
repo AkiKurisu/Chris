@@ -339,7 +339,20 @@ namespace Chris.Resource.Editor
         private static string CalculateAddressablesHash(object value)
         {
             var hashingMethods = Type.GetType("UnityEditor.Build.Pipeline.Utilities.HashingMethods, Unity.ScriptableBuildPipeline.Editor");
-            var calculateMethod = hashingMethods?.GetMethod("Calculate", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(object) }, null);
+            var calculateMethod = hashingMethods?
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .FirstOrDefault(method =>
+                {
+                    if (method.Name != "Calculate")
+                    {
+                        return false;
+                    }
+
+                    var parameters = method.GetParameters();
+                    return parameters.Length == 1
+                           && parameters[0].ParameterType == typeof(object)
+                           && !Attribute.IsDefined(parameters[0], typeof(ParamArrayAttribute));
+                });
             if (calculateMethod != null)
             {
                 return calculateMethod.Invoke(null, new[] { value }).ToString();
