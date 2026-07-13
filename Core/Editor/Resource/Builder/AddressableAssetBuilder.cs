@@ -21,8 +21,6 @@ namespace Chris.Resource.Editor
     {
         private bool _buildRemoteCatalog;
 
-        private Dictionary<BundledAssetGroupSchema, bool> _includeInBuildMap;
-
         public void Build(ResourceExportContext context)
         {
             // Force enable remote catalog
@@ -30,17 +28,6 @@ namespace Chris.Resource.Editor
             AddressableAssetSettingsDefaultObject.Settings.BuildRemoteCatalog = true;
             AddressableAssetSettingsDefaultObject.Settings.RemoteCatalogBuildPath.SetVariableByName(AddressableAssetSettingsDefaultObject.Settings, AddressableAssetSettings.kRemoteBuildPath);
             AddressableAssetSettingsDefaultObject.Settings.RemoteCatalogLoadPath.SetVariableByName(AddressableAssetSettingsDefaultObject.Settings, AddressableAssetSettings.kRemoteLoadPath);
-
-            _includeInBuildMap = new Dictionary<BundledAssetGroupSchema, bool>();
-            foreach (var group in AddressableAssetSettingsDefaultObject.Settings.groups)
-            {
-                if (group.HasSchema<BundledAssetGroupSchema>())
-                {
-                    var schema = group.GetSchema<BundledAssetGroupSchema>();
-                    _includeInBuildMap[schema] = schema.IncludeInBuild;
-                    schema.IncludeInBuild = context.AssetGroupFilter(group);
-                }
-            }
 
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             settings.profileSettings.SetValue(settings.activeProfileId, "Remote.LoadPath", ResourceSystem.DynamicLoadPath);
@@ -52,15 +39,6 @@ namespace Chris.Resource.Editor
             // Reset build setting
             AddressableAssetSettingsDefaultObject.Settings.BuildRemoteCatalog = _buildRemoteCatalog;
 
-            foreach (var group in AddressableAssetSettingsDefaultObject.Settings.groups)
-            {
-                if (group.HasSchema<BundledAssetGroupSchema>())
-                {
-                    var schema = group.GetSchema<BundledAssetGroupSchema>();
-                    schema.IncludeInBuild = _includeInBuildMap[schema];
-                }
-            }
-            _includeInBuildMap.Clear();
             EditorUtility.SetDirty(AddressableAssetSettingsDefaultObject.Settings);
             AssetDatabase.SaveAssetIfDirty(AddressableAssetSettingsDefaultObject.Settings);
             if (context.SkipCatalogPostprocess)
@@ -76,6 +54,11 @@ namespace Chris.Resource.Editor
 
     internal sealed class ChrisAddressablesDiagnosticBuildScript : BuildScriptPackedMode
     {
+        private static readonly FieldInfo IncludeInBuildField = typeof(BundledAssetGroupSchema)
+            .GetField("m_IncludeInBuild", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        private Func<AddressableAssetGroup, bool> _assetGroupFilter;
+
         public static Exception LastException { get; private set; }
 
         public override string Name => "Chris Addressables Diagnostics";
@@ -83,6 +66,47 @@ namespace Chris.Resource.Editor
         public static void ClearLastException()
         {
             LastException = null;
+        }
+
+        public void Configure(Func<AddressableAssetGroup, bool> assetGroupFilter)
+        {
+            _assetGroupFilter = assetGroupFilter;
+        }
+
+        protected override string ProcessBundledAssetSchema(BundledAssetGroupSchema schema,
+            AddressableAssetGroup assetGroup, AddressableAssetsBuildContext aaContext)
+        {
+            if (_assetGroupFilter == null)
+            {
+                return base.ProcessBundledAssetSchema(schema, assetGroup, aaContext);
+            }
+
+            if (!_assetGroupFilter(assetGroup))
+            {
+                return string.Empty;
+            }
+
+            if (schema.IncludeInBuild)
+            {
+                return base.ProcessBundledAssetSchema(schema, assetGroup, aaContext);
+            }
+
+            if (IncludeInBuildField == null)
+            {
+                throw new MissingFieldException(typeof(BundledAssetGroupSchema).FullName, "m_IncludeInBuild");
+            }
+
+            // Addressables has no build-time include override. Change its backing field only while
+            // the selected group is processed so the schema asset is never marked dirty or saved.
+            IncludeInBuildField.SetValue(schema, true);
+            try
+            {
+                return base.ProcessBundledAssetSchema(schema, assetGroup, aaContext);
+            }
+            finally
+            {
+                IncludeInBuildField.SetValue(schema, false);
+            }
         }
 
         protected override TResult BuildDataImplementation<TResult>(AddressablesDataBuilderInput builderInput)

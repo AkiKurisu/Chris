@@ -208,8 +208,8 @@ namespace Chris.Resource.Editor
                 }
 
                 AddressablesPlayerBuildResult addressablesResult = _options.EnableAddressablesDiagnostics
-                    ? BuildPlayerContentWithDiagnostics()
-                    : BuildPlayerContent();
+                    ? BuildPlayerContentWithDiagnostics(_context.AssetGroupFilter)
+                    : BuildPlayerContent(_context.AssetGroupFilter);
                 result.AddressablesResult = addressablesResult;
                 if (addressablesResult == null)
                 {
@@ -234,13 +234,17 @@ namespace Chris.Resource.Editor
             }
         }
 
-        private static AddressablesPlayerBuildResult BuildPlayerContent()
+        private static AddressablesPlayerBuildResult BuildPlayerContent(Func<AddressableAssetGroup, bool> assetGroupFilter)
         {
-            AddressableAssetSettings.BuildPlayerContent(out AddressablesPlayerBuildResult addressablesResult);
-            return addressablesResult;
+            return BuildPlayerContent(assetGroupFilter, false);
         }
 
-        private static AddressablesPlayerBuildResult BuildPlayerContentWithDiagnostics()
+        private static AddressablesPlayerBuildResult BuildPlayerContentWithDiagnostics(Func<AddressableAssetGroup, bool> assetGroupFilter)
+        {
+            return BuildPlayerContent(assetGroupFilter, true);
+        }
+
+        private static AddressablesPlayerBuildResult BuildPlayerContent(Func<AddressableAssetGroup, bool> assetGroupFilter, bool enableDiagnostics)
         {
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (!settings)
@@ -256,6 +260,7 @@ namespace Chris.Resource.Editor
             var diagnosticBuilder = ScriptableObject.CreateInstance<ChrisAddressablesDiagnosticBuildScript>();
             diagnosticBuilder.hideFlags = HideFlags.HideAndDontSave;
             diagnosticBuilder.name = "Chris Addressables Diagnostics";
+            diagnosticBuilder.Configure(assetGroupFilter);
             ChrisAddressablesDiagnosticBuildScript.ClearLastException();
 
             try
@@ -264,7 +269,7 @@ namespace Chris.Resource.Editor
                 settings.ActivePlayerDataBuilderIndex = builders.Count - 1;
 
                 AddressableAssetSettings.BuildPlayerContent(out AddressablesPlayerBuildResult addressablesResult);
-                if (ChrisAddressablesDiagnosticBuildScript.LastException != null)
+                if (enableDiagnostics && ChrisAddressablesDiagnosticBuildScript.LastException != null)
                 {
                     Debug.LogError($"[Chris] BuildPlayerContent returned a shallow error result. Full exception was logged above. Error: {addressablesResult?.Error}");
                 }
