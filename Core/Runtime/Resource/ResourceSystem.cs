@@ -12,6 +12,7 @@ using Cysharp.Threading.Tasks;
 #if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
 using System.Reflection;
 using UnityEngine.AddressableAssets.ResourceLocators;
+using UnityEngine.ResourceManagement.ResourceLocations;
 using UnityEngine.ResourceManagement.Util;
 #else
 using System.Text;
@@ -516,51 +517,7 @@ namespace Chris.Resource
             var reader = new BinaryStorageBuffer.Reader(data, 1024, 1024, new ContentCatalogData.Serializer().WithInternalIdResolvingDisabled());
             var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
 
-            // Create locator to access catalog data
-            var locator = catalogData.CreateCustomLocator();
-
-            // Build a map of primary key to location and keys
-            var pkToLoc = new Dictionary<string, (UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation, HashSet<object>)>();
-            foreach (var key in locator.Keys)
-            {
-                if (locator.Locate(key, typeof(object), out var locs))
-                {
-                    foreach (var loc in locs)
-                    {
-                        if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
-                            pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
-                        locKeys.Item2.Add(key);
-                    }
-                }
-            }
-
-            // Create new modified entries
-            var modifiedEntries = new List<ContentCatalogDataEntry>();
-            foreach (var kvp in pkToLoc)
-            {
-                var loc = kvp.Value.Item1;
-                string modifiedInternalId = loc.InternalId.Replace(DynamicLoadPath, actualPath);
-
-                // Collect dependencies
-                List<object> deps = null;
-                if (loc.HasDependencies)
-                {
-                    deps = new List<object>();
-                    foreach (var d in loc.Dependencies)
-                        deps.Add(d.PrimaryKey);
-                }
-
-                // Create new entry with modified InternalId
-                var newEntry = new ContentCatalogDataEntry(
-                    loc.ResourceType,
-                    modifiedInternalId,
-                    loc.ProviderId,
-                    kvp.Value.Item2,
-                    deps,
-                    loc.Data
-                );
-                modifiedEntries.Add(newEntry);
-            }
+            var modifiedEntries = CreateModifiedBinaryCatalogEntries(catalogData, internalId => ResolveDynamicCatalogInternalId(internalId, actualPath));
 
             // Create new catalog with modified data
             var newCatalog = new ContentCatalogData(catalogData.ProviderId)
@@ -576,9 +533,17 @@ namespace Chris.Resource
             var wr = new BinaryStorageBuffer.Writer(0, new ContentCatalogData.Serializer());
             wr.WriteObject(newCatalog, false);
             File.WriteAllBytes(path, wr.SerializeToByteArray());
-            Debug.Log($"[Resource System] Load binary content catalog {path}");
-            Addressables.LoadContentCatalogAsync(path).WaitForCompletion();
-            File.WriteAllBytes(path, data);
+            try
+            {
+                Debug.Log($"[Resource System] Load binary content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                handle.WaitForCompletion();
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            finally
+            {
+                File.WriteAllBytes(path, data);
+            }
         }
 
         private static async Task ProcessBinaryCatalogAsync(string path, string actualPath)
@@ -588,51 +553,7 @@ namespace Chris.Resource
             var reader = new BinaryStorageBuffer.Reader(data, 1024, 1024, new ContentCatalogData.Serializer().WithInternalIdResolvingDisabled());
             var catalogData = reader.ReadObject<ContentCatalogData>(0, out _, false);
 
-            // Create locator to access catalog data
-            var locator = catalogData.CreateCustomLocator();
-
-            // Build a map of primary key to location and keys
-            var pkToLoc = new Dictionary<string, (UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation, HashSet<object>)>();
-            foreach (var key in locator.Keys)
-            {
-                if (locator.Locate(key, typeof(object), out var locs))
-                {
-                    foreach (var loc in locs)
-                    {
-                        if (!pkToLoc.TryGetValue(loc.PrimaryKey, out var locKeys))
-                            pkToLoc.Add(loc.PrimaryKey, locKeys = (loc, new HashSet<object>()));
-                        locKeys.Item2.Add(key);
-                    }
-                }
-            }
-
-            // Create new modified entries
-            var modifiedEntries = new List<ContentCatalogDataEntry>();
-            foreach (var kvp in pkToLoc)
-            {
-                var loc = kvp.Value.Item1;
-                string modifiedInternalId = loc.InternalId.Replace(DynamicLoadPath, actualPath);
-
-                // Collect dependencies
-                List<object> deps = null;
-                if (loc.HasDependencies)
-                {
-                    deps = new List<object>();
-                    foreach (var d in loc.Dependencies)
-                        deps.Add(d.PrimaryKey);
-                }
-
-                // Create new entry with modified InternalId
-                var newEntry = new ContentCatalogDataEntry(
-                    loc.ResourceType,
-                    modifiedInternalId,
-                    loc.ProviderId,
-                    kvp.Value.Item2,
-                    deps,
-                    loc.Data
-                );
-                modifiedEntries.Add(newEntry);
-            }
+            var modifiedEntries = CreateModifiedBinaryCatalogEntries(catalogData, internalId => ResolveDynamicCatalogInternalId(internalId, actualPath));
 
             // Create new catalog with modified data
             var newCatalog = new ContentCatalogData(catalogData.ProviderId)
@@ -648,31 +569,197 @@ namespace Chris.Resource
             var wr = new BinaryStorageBuffer.Writer(0, new ContentCatalogData.Serializer());
             wr.WriteObject(newCatalog, false);
             await File.WriteAllBytesAsync(path, wr.SerializeToByteArray());
-            Debug.Log($"[Resource System] Load binary content catalog {path}");
-            await Addressables.LoadContentCatalogAsync(path).ToUniTask();
-            await File.WriteAllBytesAsync(path, data);
+            try
+            {
+                Debug.Log($"[Resource System] Load binary content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                await UniTask.WaitUntil(() => handle.IsDone);
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            finally
+            {
+                await File.WriteAllBytesAsync(path, data);
+            }
+        }
+
+        private static List<ContentCatalogDataEntry> CreateModifiedBinaryCatalogEntries(ContentCatalogData catalogData, Func<string, string> internalIdResolver)
+        {
+            var locator = catalogData.CreateCustomLocator();
+            var locationToKeys = new Dictionary<CatalogLocationKey, (IResourceLocation, HashSet<object>)>();
+            foreach (var key in locator.Keys)
+            {
+                if (!locator.Locate(key, typeof(object), out var locs))
+                {
+                    continue;
+                }
+
+                foreach (var loc in locs)
+                {
+                    var locationKey = CatalogLocationKey.Create(loc);
+                    if (!locationToKeys.TryGetValue(locationKey, out var locKeys))
+                    {
+                        locationToKeys.Add(locationKey, locKeys = (loc, new HashSet<object>()));
+                    }
+
+                    locKeys.Item2.Add(key);
+                }
+            }
+
+            var modifiedEntries = new List<ContentCatalogDataEntry>();
+            foreach (var kvp in locationToKeys)
+            {
+                var loc = kvp.Value.Item1;
+                var modifiedInternalId = internalIdResolver(loc.InternalId);
+                List<object> deps = null;
+                if (loc.HasDependencies)
+                {
+                    deps = new List<object>();
+                    foreach (var dependency in loc.Dependencies)
+                    {
+                        deps.Add(dependency.PrimaryKey);
+                    }
+                }
+
+                modifiedEntries.Add(new ContentCatalogDataEntry(
+                    loc.ResourceType,
+                    modifiedInternalId,
+                    loc.ProviderId,
+                    kvp.Value.Item2,
+                    deps,
+                    loc.Data
+                ));
+            }
+
+            return modifiedEntries;
+        }
+
+        private readonly struct CatalogLocationKey : IEquatable<CatalogLocationKey>
+        {
+            private readonly string _primaryKey;
+            private readonly string _internalId;
+            private readonly string _providerId;
+            private readonly Type _resourceType;
+            private readonly int _dependencyHashCode;
+
+            private CatalogLocationKey(IResourceLocation location)
+            {
+                _primaryKey = location.PrimaryKey;
+                _internalId = location.InternalId;
+                _providerId = location.ProviderId;
+                _resourceType = location.ResourceType;
+                _dependencyHashCode = location.DependencyHashCode;
+            }
+
+            public static CatalogLocationKey Create(IResourceLocation location)
+            {
+                return new CatalogLocationKey(location);
+            }
+
+            public bool Equals(CatalogLocationKey other)
+            {
+                return string.Equals(_primaryKey, other._primaryKey, StringComparison.Ordinal)
+                       && string.Equals(_internalId, other._internalId, StringComparison.Ordinal)
+                       && string.Equals(_providerId, other._providerId, StringComparison.Ordinal)
+                       && Equals(_resourceType, other._resourceType)
+                       && _dependencyHashCode == other._dependencyHashCode;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is CatalogLocationKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_primaryKey ?? string.Empty);
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_internalId ?? string.Empty);
+                    hash = hash * 31 + StringComparer.Ordinal.GetHashCode(_providerId ?? string.Empty);
+                    hash = hash * 31 + (_resourceType != null ? _resourceType.GetHashCode() : 0);
+                    hash = hash * 31 + _dependencyHashCode;
+                    return hash;
+                }
+            }
         }
 #else
         private static void ProcessJsonCatalog(string path, string actualPath)
         {
             string contentCatalog = File.ReadAllText(path, Encoding.UTF8);
-            string modifiedCatalog = contentCatalog.Replace(DynamicLoadPath, actualPath);
+            string modifiedCatalog = ResolveDynamicCatalogContent(contentCatalog, actualPath);
             File.WriteAllText(path, modifiedCatalog, Encoding.UTF8);
-            Debug.Log($"[Resource System] Load json content catalog {path}");
-            Addressables.LoadContentCatalogAsync(path).WaitForCompletion();
-            File.WriteAllText(path, contentCatalog, Encoding.UTF8);
+            try
+            {
+                Debug.Log($"[Resource System] Load json content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                handle.WaitForCompletion();
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            finally
+            {
+                File.WriteAllText(path, contentCatalog, Encoding.UTF8);
+            }
         }
         
         private static async Task ProcessJsonCatalogAsync(string path, string actualPath)
         {
             string contentCatalog = await File.ReadAllTextAsync(path, Encoding.UTF8);
-            string modifiedCatalog = contentCatalog.Replace(DynamicLoadPath, actualPath);
+            string modifiedCatalog = ResolveDynamicCatalogContent(contentCatalog, actualPath);
             await File.WriteAllTextAsync(path, modifiedCatalog, Encoding.UTF8);
-            Debug.Log($"[Resource System] Load json content catalog {path}");
-            await Addressables.LoadContentCatalogAsync(path).ToUniTask();
-            await File.WriteAllTextAsync(path, contentCatalog, Encoding.UTF8);
+            try
+            {
+                Debug.Log($"[Resource System] Load json content catalog {path}");
+                var handle = Addressables.LoadContentCatalogAsync(path);
+                await UniTask.WaitUntil(() => handle.IsDone);
+                EnsureCatalogLoadSucceeded(handle, path);
+            }
+            finally
+            {
+                await File.WriteAllTextAsync(path, contentCatalog, Encoding.UTF8);
+            }
         }
 #endif
+
+        private static string ResolveDynamicCatalogInternalId(string internalId, string actualPath)
+        {
+            if (string.IsNullOrEmpty(internalId))
+            {
+                return internalId;
+            }
+
+            return internalId.Replace(DynamicLoadPath, NormalizeCatalogPath(actualPath)).Replace('\\', '/');
+        }
+
+        private static string ResolveDynamicCatalogContent(string contentCatalog, string actualPath)
+        {
+            string normalizedActualPath = NormalizeCatalogPath(actualPath);
+            return contentCatalog
+                .Replace(DynamicLoadPath + @"\\", normalizedActualPath + "/")
+                .Replace(DynamicLoadPath + @"\/", normalizedActualPath + "/")
+                .Replace(DynamicLoadPath + "/", normalizedActualPath + "/")
+                .Replace(DynamicLoadPath, normalizedActualPath);
+        }
+
+        private static string NormalizeCatalogPath(string path)
+        {
+            return string.IsNullOrEmpty(path) ? path : path.Replace('\\', '/').TrimEnd('/');
+        }
+
+        private static void EnsureCatalogLoadSucceeded<T>(AsyncOperationHandle<T> handle, string path)
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                return;
+            }
+
+            if (handle.OperationException != null)
+            {
+                Debug.LogException(handle.OperationException);
+            }
+
+            throw new InvalidOperationException($"Addressables failed to load content catalog '{path}'. Status: {handle.Status}. {handle.OperationException?.Message ?? "No operation exception was provided."}", handle.OperationException);
+        }
 
 #if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
         private readonly struct ContentCatalogDataWrapper
