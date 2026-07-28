@@ -19,6 +19,12 @@ The Resource module has four main parts:
   local remote package that can later be mounted with `ResourceSystem.LoadCatalog`
   or `ResourceSystem.LoadCatalogAsync`.
 
+For projects whose authoritative content source is not persistent Addressable
+groups, see [Content Pipeline](ContentPipeline.md). It builds a dependency graph
+from project-defined scopes, creates transient Addressables settings, supports
+validated scoped updates, and can mount the same graph through AssetDatabase in
+Editor Play Mode.
+
 ## Runtime Loading
 
 Load by Addressables address and release the returned handle when the asset is no
@@ -256,52 +262,14 @@ assets from the remote package.
 ## Editor Export Pipeline
 
 Resource export is editor-only and lives in the `Chris.Resource.Editor`
-namespace.
+namespace. Chris provides the code-level exporter primitives but does not provide
+a profile asset or a built-in editor window. Projects own their build settings
+and user-facing orchestration.
 
-The recommended remote-content entry point is `RemoteContentProfile`:
-
-1. Create a profile from `Assets/Create/Chris/Resource/Remote Content Profile`.
-2. Set package name, version, output root, and zip output.
-3. Add the Addressable groups that should be included in this package.
-4. Open `Tools/Chris/Resource/Remote Content Builder`.
-5. Build for the active Unity platform.
-
-`RemoteContentProfile` builds one local remote package. Group selection is the
-V1 filtering unit; labels can still exist in Addressables but are not used as
-remote build filters.
-
-```csharp
-#if UNITY_EDITOR
-using Chris.Resource.Editor;
-using UnityEditor;
-using UnityEngine;
-
-public static class RemoteContentCommands
-{
-    [MenuItem("Tools/MyGame/Build Remote Content")]
-    public static void BuildRemoteContent()
-    {
-        var profile = AssetDatabase.LoadAssetAtPath<RemoteContentProfile>(
-            "Assets/Settings/RemoteContentProfile.asset");
-
-        ResourceExportResult result = ResourceExporter.Export(profile);
-        if (!result.Succeeded)
-        {
-            Debug.LogError(result.Error);
-            return;
-        }
-
-        Debug.Log($"Remote content built: {result.BuildPath}");
-    }
-}
-#endif
-```
-
-For custom export tools, create a `ResourceExportContext` and pass the builders
-that should participate in the pipeline. The Addressables builder temporarily
-switches selected groups into the remote build, writes bundle locations with
-`{DYNAMIC_LOCAL_PATH}`, restores settings in cleanup, and postprocesses the
-catalog so the package can be loaded locally.
+Create a `ResourceExportContext` and pass the builders that should participate in
+the pipeline. The Addressables builder temporarily includes the selected groups,
+writes bundle locations with `{DYNAMIC_LOCAL_PATH}`, restores settings in
+cleanup, and postprocesses the catalog so the package can be loaded locally.
 
 ```csharp
 #if UNITY_EDITOR
@@ -335,8 +303,6 @@ public static class CustomResourceExport
 #endif
 ```
 
-`ResourceExporter.Export(RemoteContentProfile)` keeps the output directory so it
-can be copied or inspected, and optionally creates a zip next to it. The builder
-does not deploy files to any runtime folder automatically; the game or developer
-tooling must copy the complete package contents to the directory that will be
-passed to `ResourceSystem.LoadCatalogAsync`.
+The exporter does not deploy files to any runtime folder automatically. The game
+or developer tooling must copy the complete package contents to the directory
+that will be passed to `ResourceSystem.LoadCatalogAsync`.

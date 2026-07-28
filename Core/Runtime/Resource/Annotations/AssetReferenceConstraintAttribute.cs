@@ -27,13 +27,19 @@ namespace Chris.Resource
         /// <value></value>
         public bool ForceGroup { get; private set; }
 
+        /// <summary>
+        /// Register the referenced asset in AddressableAssetSettings. Disable for pipeline-managed references.
+        /// </summary>
+        public bool RegisterAddressable { get; private set; }
+
         public AssetReferenceConstraintAttribute(Type assetType = null, string formatter = null, 
-            string group = null, bool forceGroup = false)
+            string group = null, bool forceGroup = false, bool registerAddressable = true)
         {
             AssetType = assetType;
             Formatter = formatter;
             Group = group;
             ForceGroup = forceGroup;
+            RegisterAddressable = registerAddressable;
         }
     }
 }

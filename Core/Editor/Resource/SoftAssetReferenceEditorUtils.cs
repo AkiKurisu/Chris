@@ -51,6 +51,17 @@ namespace Chris.Resource.Editor
         }
 
         /// <summary>
+        /// Resolve the AssetDatabase path stored by a soft reference without loading the asset.
+        /// </summary>
+        public static bool TryGetAssetPath(SoftAssetReferenceBase softAssetReference, out string assetPath)
+        {
+            assetPath = softAssetReference == null
+                ? string.Empty
+                : AssetDatabase.GUIDToAssetPath(softAssetReference.Guid);
+            return !string.IsNullOrEmpty(assetPath);
+        }
+
+        /// <summary>
         /// Get asset from soft asset reference, fallback to addressable system if GUID lookup fails
         /// </summary>
         /// <param name="softAssetReference">The soft asset reference to load</param>
@@ -71,8 +82,12 @@ namespace Chris.Resource.Editor
         /// </summary>
         /// <param name="asset"></param>
         /// <param name="groupName"></param>
+        /// <param name="registerAddressable">Whether to create an Addressable entry when one does not exist.</param>
         /// <returns></returns>
-        public static SoftAssetReference FromObject(UObject asset, string groupName = null)
+        public static SoftAssetReference FromObject(
+            UObject asset,
+            string groupName = null,
+            bool registerAddressable = true)
         {
             if (!asset)
             {
@@ -86,14 +101,18 @@ namespace Chris.Resource.Editor
             }
             else
             {
-                AddressableAssetGroup assetGroup;
-                if (string.IsNullOrEmpty(groupName))
-                    assetGroup = AddressableAssetSettingsDefaultObject.Settings.DefaultGroup;
-                else
-                    assetGroup = ResourceEditorUtils.GetOrCreateAssetGroup(groupName);
-                var entry = assetGroup.AddAsset(asset);
-                assetGroup.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, entry, false, true);
-                reference.Address = entry.address;
+                reference.Address = AssetDatabase.GetAssetPath(asset);
+                if (registerAddressable)
+                {
+                    AddressableAssetGroup assetGroup;
+                    if (string.IsNullOrEmpty(groupName))
+                        assetGroup = AddressableAssetSettingsDefaultObject.Settings.DefaultGroup;
+                    else
+                        assetGroup = ResourceEditorUtils.GetOrCreateAssetGroup(groupName);
+                    var entry = assetGroup.AddAsset(asset);
+                    assetGroup.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, entry, false, true);
+                    reference.Address = entry.address;
+                }
             }
             return reference;
         }
@@ -105,9 +124,12 @@ namespace Chris.Resource.Editor
         /// <param name="asset">The asset to create reference from</param>
         /// <param name="groupName">Optional addressable group name, uses default if null</param>
         /// <returns>A typed soft asset reference</returns>
-        public static SoftAssetReference<T> FromTObject<T>(T asset, string groupName = null) where T : UObject
+        public static SoftAssetReference<T> FromTObject<T>(
+            T asset,
+            string groupName = null,
+            bool registerAddressable = true) where T : UObject
         {
-            return FromObject(asset, groupName);
+            return FromObject(asset, groupName, registerAddressable);
         }
 
         /// <summary>

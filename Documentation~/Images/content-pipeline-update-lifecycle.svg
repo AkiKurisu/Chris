@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Baseline and scoped update lifecycle</title>
+  <desc id="desc">A baseline creates a full installed package. A scoped update validates changes, emits a new catalog and changed bundles, then overlays those files onto the baseline so unchanged bundles are reused.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563EB"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.09"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="720" rx="28" fill="#F8FAFC"/>
+  <text x="64" y="72" fill="#0F172A" font-family="Inter, Segoe UI, sans-serif" font-size="30" font-weight="700">Baseline + scoped Update = installed content</text>
+  <text x="64" y="105" fill="#64748B" font-family="Inter, Segoe UI, sans-serif" font-size="16">An Update is an overlay candidate, not a standalone replacement for the Baseline.</text>
+
+  <rect x="55" y="145" width="330" height="418" rx="20" fill="#FFFFFF" stroke="#93C5FD" filter="url(#shadow)"/>
+  <rect x="55" y="145" width="330" height="54" rx="20" fill="#DBEAFE"/>
+  <path d="M55 179 V199 H385 V179" fill="#DBEAFE"/>
+  <text x="83" y="180" fill="#1D4ED8" font-family="Inter, Segoe UI, sans-serif" font-size="14" font-weight="700" letter-spacing="1.2">1 · BASELINE</text>
+  <text x="83" y="241" fill="#0F172A" font-family="Inter, Segoe UI, sans-serif" font-size="20" font-weight="700">Complete graph</text>
+  <rect x="83" y="266" width="274" height="52" rx="12" fill="#EFF6FF"/>
+  <text x="220" y="297" text-anchor="middle" fill="#1E40AF" font-family="Inter, Segoe UI, sans-serif" font-size="14" font-weight="700">Addressables + SBP build</text>
+  <path d="M220 318 V342" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <rect x="83" y="351" width="274" height="176" rx="14" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="103" y="381" fill="#475569" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="700" letter-spacing="1">INSTALLED ABDATA</text>
+  <rect x="103" y="399" width="234" height="28" rx="8" fill="#DBEAFE"/>
+  <text x="118" y="418" fill="#1E40AF" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">catalog v1</text>
+  <rect x="103" y="439" width="68" height="60" rx="10" fill="#E2E8F0"/>
+  <text x="137" y="464" text-anchor="middle" fill="#334155" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="700">A v1</text>
+  <text x="137" y="483" text-anchor="middle" fill="#64748B" font-family="Inter, Segoe UI, sans-serif" font-size="10">bundle</text>
+  <rect x="184" y="439" width="68" height="60" rx="10" fill="#E2E8F0"/>
+  <text x="218" y="464" text-anchor="middle" fill="#334155" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="700">B v1</text>
+  <text x="218" y="483" text-anchor="middle" fill="#64748B" font-family="Inter, Segoe UI, sans-serif" font-size="10">bundle</text>
+  <rect x="265" y="439" width="72" height="60" rx="10" fill="#EDE9FE"/>
+  <text x="301" y="464" text-anchor="middle" fill="#6D28D9" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="700">Shared v1</text>
+  <text x="301" y="483" text-anchor="middle" fill="#7C3AED" font-family="Inter, Segoe UI, sans-serif" font-size="10">bundle</text>
+
+  <path d="M385 354 H431" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="438" y="145" width="324" height="418" rx="20" fill="#FFFFFF" stroke="#C4B5FD" filter="url(#shadow)"/>
+  <rect x="438" y="145" width="324" height="54" rx="20" fill="#EDE9FE"/>
+  <path d="M438 179 V199 H762 V179" fill="#EDE9FE"/>
+  <text x="466" y="180" fill="#6D28D9" font-family="Inter, Segoe UI, sans-serif" font-size="14" font-weight="700" letter-spacing="1.2">2 · SCOPED UPDATE</text>
+  <text x="466" y="241" fill="#0F172A" font-family="Inter, Segoe UI, sans-serif" font-size="20" font-weight="700">Scope B selected</text>
+  <rect x="466" y="266" width="268" height="62" rx="12" fill="#F5F3FF"/>
+  <circle cx="492" cy="297" r="11" fill="#8B5CF6"/>
+  <path d="M487 297 l4 4 7 -9" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="515" y="294" fill="#5B21B6" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">Change validator</text>
+  <text x="515" y="314" fill="#7C3AED" font-family="Inter, Segoe UI, sans-serif" font-size="11">shared impact expands safely</text>
+  <path d="M600 328 V352" stroke="#7C3AED" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="466" y="361" width="268" height="166" rx="14" fill="#FAF5FF" stroke="#DDD6FE"/>
+  <text x="486" y="391" fill="#6B21A8" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="700" letter-spacing="1">UPDATE ABDATA</text>
+  <rect x="486" y="409" width="228" height="28" rx="8" fill="#EDE9FE"/>
+  <text x="501" y="428" fill="#6D28D9" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">catalog v2</text>
+  <rect x="486" y="449" width="98" height="52" rx="10" fill="#DDD6FE"/>
+  <text x="535" y="471" text-anchor="middle" fill="#5B21B6" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="700">B v2</text>
+  <text x="535" y="489" text-anchor="middle" fill="#7C3AED" font-family="Inter, Segoe UI, sans-serif" font-size="10">changed</text>
+  <rect x="596" y="449" width="118" height="52" rx="10" fill="#DDD6FE"/>
+  <text x="655" y="471" text-anchor="middle" fill="#5B21B6" font-family="Inter, Segoe UI, sans-serif" font-size="12" font-weight="700">Shared v2</text>
+  <text x="655" y="489" text-anchor="middle" fill="#7C3AED" font-family="Inter, Segoe UI, sans-serif" font-size="10">changed</text>
+
+  <path d="M762 354 H808" stroke="#475569" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="815" y="145" width="330" height="418" rx="20" fill="#FFFFFF" stroke="#6EE7B7" filter="url(#shadow)"/>
+  <rect x="815" y="145" width="330" height="54" rx="20" fill="#D1FAE5"/>
+  <path d="M815 179 V199 H1145 V179" fill="#D1FAE5"/>
+  <text x="843" y="180" fill="#047857" font-family="Inter, Segoe UI, sans-serif" font-size="14" font-weight="700" letter-spacing="1.2">3 · OVERLAY INSTALL</text>
+  <text x="843" y="241" fill="#0F172A" font-family="Inter, Segoe UI, sans-serif" font-size="20" font-weight="700">Final abdata</text>
+  <text x="843" y="267" fill="#64748B" font-family="Inter, Segoe UI, sans-serif" font-size="13">Update files overwrite matching names.</text>
+  <rect x="843" y="292" width="274" height="235" rx="14" fill="#F0FDF4" stroke="#A7F3D0"/>
+  <rect x="863" y="316" width="234" height="31" rx="8" fill="#D1FAE5"/>
+  <text x="878" y="337" fill="#047857" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">catalog v2</text>
+  <rect x="863" y="365" width="234" height="38" rx="9" fill="#E2E8F0"/>
+  <circle cx="882" cy="384" r="7" fill="#94A3B8"/>
+  <text x="899" y="389" fill="#334155" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">A v1 · reused from Baseline</text>
+  <rect x="863" y="415" width="234" height="38" rx="9" fill="#DDD6FE"/>
+  <circle cx="882" cy="434" r="7" fill="#8B5CF6"/>
+  <text x="899" y="439" fill="#5B21B6" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">B v2 · overwritten</text>
+  <rect x="863" y="465" width="234" height="38" rx="9" fill="#DDD6FE"/>
+  <circle cx="882" cy="484" r="7" fill="#8B5CF6"/>
+  <text x="899" y="489" fill="#5B21B6" font-family="Inter, Segoe UI, sans-serif" font-size="13" font-weight="700">Shared v2 · overwritten</text>
+
+  <rect x="55" y="612" width="1090" height="63" rx="16" fill="#0F172A"/>
+  <text x="83" y="640" fill="#F8FAFC" font-family="Inter, Segoe UI, sans-serif" font-size="14" font-weight="700">Invariant</text>
+  <text x="153" y="640" fill="#CBD5E1" font-family="Inter, Segoe UI, sans-serif" font-size="13">the new catalog must always find every referenced Bundle in the merged directory.</text>
+  <text x="83" y="661" fill="#94A3B8" font-family="Inter, Segoe UI, sans-serif" font-size="12">Deleting the Baseline before overlaying an Update removes unchanged Bundle files and breaks loading.</text>
+</svg>

@@ -1,6 +1,6 @@
 ---
 name: chris
-description: Guide for using the Chris Unity framework (com.kurisu.chris). Covers Core systems (Pool, Events, Configs, Resource, DataDriven, Schedulers, Serialization, Collections, R3, Tasks, Modules) and Gameplay layer (GameWorld, Actor, Level, Audio, Animation, Graphics, AI/EQS, Mod, FX, Capture). Use when implementing features using Chris APIs, debugging Chris subsystems, understanding Chris architecture, or finding entry points for any Chris system.
+description: Practical guide for using and extending the Chris Unity framework (com.kurisu.chris). Use when implementing with Chris APIs, debugging framework behavior, understanding its architecture, or locating subsystem entry points.
 ---
 
 # Chris API Guide
@@ -40,6 +40,7 @@ Search for a `package.json` containing `"name": "com.kurisu.chris"` under any `P
 |---|---|---|
 | `Chris` | `Core/Runtime/` | Core runtime systems |
 | `Chris.Editor` | `Core/Editor/` | Core editor tools |
+| `Chris.ContentPipeline.Editor` | `Core/Editor/ContentPipeline/` | Graph-driven transient content builds |
 | `Chris.Gameplay` | `Gameplay/Runtime/` | Gameplay-level systems |
 | `Chris.Gameplay.Editor` | `Gameplay/Editor/` | Gameplay editor tools |
 
@@ -64,6 +65,7 @@ Search for a `package.json` containing `"name": "com.kurisu.chris"` under any `P
 | Event System | `Chris.Events` | `EventSystem.EventHandler` |
 | Config System | `Chris.Configs` | `ConfigSystem.GetConfig<T>()`, `Config<T>.Get()` |
 | Resource System | `Chris.Resource` | `ResourceSystem.*`, `SoftAssetReference<T>` |
+| Content Pipeline (Editor) | `Chris.ContentPipeline` | `ContentBuildGraphBuilder`, `AddressablesContentBuildBackend` |
 | Data-Driven | `Chris.DataDriven` | `DataTableManager<T>.Get()`, `DataTable` |
 | Schedulers | `Chris.Schedulers` | `Scheduler.Delay(...)`, `Scheduler.WaitFrame(...)` |
 | Serialization | `Chris.Serialization` | `SaveUtility.*`, `SaveLoadSerializer` |
@@ -92,6 +94,8 @@ Search for a `package.json` containing `"name": "com.kurisu.chris"` under any `P
 
 - For Core subsystem paths and API summaries → see [core.md](core.md)
 - For Gameplay subsystem paths and API summaries → see [gameplay.md](gameplay.md)
+- For graph-driven content builds and Editor mounting → see
+  [ContentPipeline.md](../../ContentPipeline.md)
 
 ---
 
