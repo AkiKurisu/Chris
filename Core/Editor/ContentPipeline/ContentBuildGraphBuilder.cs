@@ -520,15 +520,10 @@ namespace Chris.ContentPipeline
             if (node.OwnershipHints.Count == 1)
             {
                 var hint = node.OwnershipHints.First();
-                if (hint != ContentOwnership.Scope || node.ExplicitScopeIds.Count <= 1)
+                if (hint != ContentOwnership.Scope)
                 {
                     return hint;
                 }
-            }
-
-            if (node.ExplicitScopeIds.Count == 1)
-            {
-                return ContentOwnership.Scope;
             }
 
             if (node.ExplicitScopeIds.Count > 1 || node.UsageScopeIds.Count > 1)
