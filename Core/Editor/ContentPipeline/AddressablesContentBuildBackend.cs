@@ -1429,6 +1429,12 @@ namespace Chris.ContentPipeline
                 var scopes = (oldAsset?.usageScopeIds ?? Array.Empty<string>())
                     .Union(newAsset?.usageScopeIds ?? Array.Empty<string>(), StringComparer.Ordinal)
                     .ToArray();
+                if (string.Equals(asset.location, ContentLocation.Local.ToString(), StringComparison.Ordinal))
+                {
+                    violations.Add($"{assetId} changes Local Player content and requires a new baseline");
+                    continue;
+                }
+
                 var isShared = string.Equals(asset.ownership, ContentOwnership.Shared.ToString(), StringComparison.Ordinal) ||
                                scopes.Length > 1;
                 if (isShared && scopes.Any(allowed.Contains))
@@ -1442,11 +1448,6 @@ namespace Chris.ContentPipeline
                 if (string.IsNullOrEmpty(owner) || !allowed.Contains(owner))
                 {
                     violations.Add($"{assetId} (owner: {owner}, scopes: {string.Join(", ", scopes)})");
-                }
-
-                if (string.Equals(asset.location, ContentLocation.Local.ToString(), StringComparison.Ordinal))
-                {
-                    violations.Add($"{assetId} changes Local Player content and requires a new baseline");
                 }
             }
 
