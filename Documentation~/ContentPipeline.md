@@ -135,13 +135,16 @@ Dependency assets do not need to be contributed manually. The
 `IContentAssetDependencyResolver` discovers them and records every scope that
 uses them.
 
-For Unity assets, use the asset GUID as `assetId`. A stable suffix may be added
-for a sub-asset:
+For Unity assets, use the exact main-asset GUID as `assetId`:
 
 ```text
 <asset-guid>
-<asset-guid>:<stable-sub-asset-id>
 ```
+
+Explicit sub-assets are not currently supported end to end. Contributors must
+promote them to standalone Unity assets instead of appending a suffix to the
+main asset GUID. The graph rejects duplicate explicit paths before the
+Addressables backend can collapse them onto one GUID entry.
 
 ### Location
 
@@ -189,6 +192,10 @@ The build request selects one of two backend packing policies:
 - `LogicalPartitions` preserves the scope plus packing-hint layout.
 - `SizeOptimized` keeps location, scene, and semantic families separate, then
   groups explicit entries toward a configurable soft target size.
+
+Both policies keep Local and Remote entries in separate partitions. A logical
+scope or packing key is never allowed to make a Remote entry inherit Local
+delivery accidentally.
 
 Size optimization does not split one explicit asset or its indivisible
 dependency closure. A single entry can therefore exceed the target. Baseline
@@ -542,13 +549,19 @@ Debug.Log($"Runtime content: {package.PackagePath}");
 The builder:
 
 1. selects the one remote catalog recorded by the artifact manifest;
-2. collects the exact bundles referenced by that catalog;
-3. rewrites bundle internal IDs to
+2. verifies the source catalog and referenced bundles against the artifact
+   manifest before copying them;
+3. collects the exact bundles referenced by that catalog;
+4. rewrites bundle internal IDs to
    `{DYNAMIC_LOCAL_PATH}/<bundle-name>`;
-4. copies the catalog and required bundles into a flat `abdata` directory;
-5. writes `catalog.hash` and `package-manifest.json`;
-6. validates file size, SHA-256, missing references, and duplicate bundle names;
-7. atomically commits the package.
+5. copies the catalog and required bundles into a flat `abdata` directory;
+6. writes `catalog.hash` and `package-manifest.json`;
+7. validates file size, SHA-256, missing references, and duplicate bundle names;
+8. atomically commits the package.
+
+The normalized dynamic load path is part of the package manifest and package
+reuse contract. Reusing one artifact build with a different token or URL fails
+explicitly instead of returning a catalog rewritten for the previous path.
 
 The output is:
 

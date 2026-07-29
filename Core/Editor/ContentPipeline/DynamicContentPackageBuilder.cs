@@ -19,6 +19,7 @@ namespace Chris.ContentPipeline
         public string buildId;
         public string baselineId;
         public string artifactManifestPath;
+        public string dynamicLoadPath;
         public string catalogRelativePath;
         public string[] referencedBundles = Array.Empty<string>();
         public ContentArtifactRecord[] files = Array.Empty<ContentArtifactRecord>();
@@ -30,6 +31,7 @@ namespace Chris.ContentPipeline
             var manifest = JsonUtility.FromJson<DynamicContentPackageManifest>(File.ReadAllText(path));
             if (manifest == null || manifest.schemaVersion != 1)
                 throw new InvalidDataException($"Unsupported dynamic content package manifest: {path}");
+            manifest.dynamicLoadPath = NormalizeDynamicLoadPath(manifest.dynamicLoadPath);
             manifest.referencedBundles ??= Array.Empty<string>();
             manifest.files ??= Array.Empty<ContentArtifactRecord>();
             return manifest;
@@ -37,8 +39,19 @@ namespace Chris.ContentPipeline
 
         public void Save(string path)
         {
+            dynamicLoadPath = NormalizeDynamicLoadPath(dynamicLoadPath);
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
             File.WriteAllText(path, JsonUtility.ToJson(this, true));
+        }
+
+        internal static string NormalizeDynamicLoadPath(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new InvalidDataException("Dynamic content package load path is empty.");
+            var normalized = value.Trim().TrimEnd('/', '\\');
+            if (normalized.Length == 0)
+                throw new InvalidDataException("Dynamic content package load path is empty.");
+            return normalized;
         }
     }
 
@@ -87,6 +100,8 @@ namespace Chris.ContentPipeline
         private static DynamicContentPackageResult BuildInternal(DynamicContentPackageRequest request)
         {
             ValidateRequest(request);
+            var dynamicLoadPath =
+                DynamicContentPackageManifest.NormalizeDynamicLoadPath(request.DynamicLoadPath);
             var artifactManifestPath = Path.GetFullPath(request.ArtifactManifestPath);
             var artifactManifest = ContentArtifactManifest.Load(artifactManifestPath);
             var isUpdate = string.Equals(
@@ -123,7 +138,8 @@ namespace Chris.ContentPipeline
                     finalRoot,
                     artifactManifest,
                     baselinePackage,
-                    baselinePackageRoot);
+                    baselinePackageRoot,
+                    dynamicLoadPath);
                 return CreateResult(finalRoot, existing);
             }
 
@@ -143,14 +159,17 @@ namespace Chris.ContentPipeline
                 File.Copy(catalogSource, catalogDestination, true);
 
                 var candidateBundles = BuildCandidateBundleMap(artifactManifest, artifactManifestPath);
-                var baselineBundles = BuildPackageBundleMap(baselinePackage, baselinePackageRoot);
+                var baselineBundles = BuildPackageBundleMap(
+                    baselinePackage,
+                    baselinePackageRoot,
+                    true);
                 var availableBundles = new Dictionary<string, BundleSource>(baselineBundles, StringComparer.OrdinalIgnoreCase);
                 foreach (var pair in candidateBundles)
                     availableBundles[pair.Key] = pair.Value;
 
                 var referencedBundles = RewriteCatalog(
                     catalogDestination,
-                    request.DynamicLoadPath.TrimEnd('/', '\\'),
+                    dynamicLoadPath,
                     availableBundles);
                 var copiedFiles = new List<ContentArtifactRecord>();
                 foreach (var bundleName in referencedBundles)
@@ -158,8 +177,11 @@ namespace Chris.ContentPipeline
                     if (!candidateBundles.TryGetValue(bundleName, out var source))
                         continue;
                     var destination = Path.Combine(packageRoot, bundleName);
+                    ValidateFile(source.Path, source.Record);
                     File.Copy(source.Path, destination, true);
-                    copiedFiles.Add(CreateFileRecord(destination, PackageDirectoryName + "/" + bundleName, "bundle", source.Scopes));
+                    copiedFiles.Add(CreateCopiedBundleRecord(
+                        source,
+                        PackageDirectoryName + "/" + bundleName));
                 }
 
                 var catalogRelativePath = PackageDirectoryName + "/" + Path.GetFileName(catalogDestination);
@@ -179,6 +201,7 @@ namespace Chris.ContentPipeline
                     buildId = artifactManifest.buildId,
                     baselineId = artifactManifest.baselineId,
                     artifactManifestPath = artifactManifestPath,
+                    dynamicLoadPath = dynamicLoadPath,
                     catalogRelativePath = catalogRelativePath,
                     referencedBundles = referencedBundles.OrderBy(value => value, StringComparer.Ordinal).ToArray(),
                     files = copiedFiles.OrderBy(value => value.relativePath, StringComparer.Ordinal).ToArray()
@@ -250,7 +273,7 @@ namespace Chris.ContentPipeline
             {
                 var name = Path.GetFileName(artifact.relativePath);
                 var path = ResolveArtifactPath(manifestPath, artifact.relativePath);
-                AddBundle(result, name, new BundleSource(path, artifact.sourceScopes), "artifact manifest");
+                AddBundle(result, name, new BundleSource(path, artifact), "artifact manifest");
             }
 
             return result;
@@ -258,18 +281,19 @@ namespace Chris.ContentPipeline
 
         private static Dictionary<string, BundleSource> BuildPackageBundleMap(
             DynamicContentPackageManifest manifest,
-            string manifestRoot)
+            string manifestRoot,
+            bool validateFiles)
         {
             var result = new Dictionary<string, BundleSource>(StringComparer.OrdinalIgnoreCase);
             if (manifest == null) return result;
             foreach (var file in manifest.files.Where(value => value.kind == "bundle"))
             {
                 var path = ResolveWithin(manifestRoot, file.relativePath);
-                ValidateFile(path, file);
+                if (validateFiles) ValidateFile(path, file);
                 AddBundle(
                     result,
                     Path.GetFileName(file.relativePath),
-                    new BundleSource(path, file.sourceScopes),
+                    new BundleSource(path, file),
                     "baseline package");
             }
 
@@ -281,13 +305,23 @@ namespace Chris.ContentPipeline
             string packageRoot,
             ContentArtifactManifest artifact,
             DynamicContentPackageManifest baselinePackage,
-            string baselinePackageRoot)
+            string baselinePackageRoot,
+            string expectedDynamicLoadPath)
         {
             if (!string.Equals(package.buildId, artifact.buildId, StringComparison.Ordinal) ||
                 !string.Equals(package.buildKind, artifact.buildKind, StringComparison.Ordinal) ||
                 !string.Equals(package.baselineId, artifact.baselineId, StringComparison.Ordinal))
             {
                 throw new InvalidDataException($"Dynamic package path contains a different build: {packageRoot}");
+            }
+            if (!string.Equals(
+                    package.dynamicLoadPath,
+                    expectedDynamicLoadPath,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    $"Dynamic package '{packageRoot}' uses load path '{package.dynamicLoadPath}', " +
+                    $"but the request uses '{expectedDynamicLoadPath}'. Remove the stale package and rebuild it.");
             }
 
             if (package.files.Count(file =>
@@ -304,8 +338,11 @@ namespace Chris.ContentPipeline
             }
 
             ValidatePackageFiles(packageRoot, package.files);
-            var availableBundles = BuildPackageBundleMap(package, packageRoot);
-            foreach (var pair in BuildPackageBundleMap(baselinePackage, baselinePackageRoot))
+            var availableBundles = BuildPackageBundleMap(package, packageRoot, false);
+            foreach (var pair in BuildPackageBundleMap(
+                         baselinePackage,
+                         baselinePackageRoot,
+                         true))
                 availableBundles[pair.Key] = pair.Value;
             var missing = package.referencedBundles
                 .Where(bundle => !availableBundles.ContainsKey(bundle))
@@ -465,6 +502,21 @@ namespace Chris.ContentPipeline
             };
         }
 
+        private static ContentArtifactRecord CreateCopiedBundleRecord(
+            BundleSource source,
+            string relativePath)
+        {
+            return new ContentArtifactRecord
+            {
+                relativePath = relativePath.Replace('\\', '/'),
+                kind = "bundle",
+                size = source.Record.size,
+                sha256 = source.Record.sha256,
+                partitionId = source.Record.partitionId,
+                sourceScopes = source.Scopes
+            };
+        }
+
         private static string CalculateAddressablesHash(string catalogPath)
         {
             object value =
@@ -529,15 +581,17 @@ namespace Chris.ContentPipeline
 
         private readonly struct BundleSource
         {
-            public BundleSource(string path, string[] scopes)
+            public BundleSource(string path, ContentArtifactRecord record)
             {
                 Path = path;
-                Scopes = scopes ?? Array.Empty<string>();
+                Record = record ?? throw new ArgumentNullException(nameof(record));
             }
 
             public string Path { get; }
 
-            public string[] Scopes { get; }
+            public ContentArtifactRecord Record { get; }
+
+            public string[] Scopes => Record.sourceScopes ?? Array.Empty<string>();
         }
 
 #if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)

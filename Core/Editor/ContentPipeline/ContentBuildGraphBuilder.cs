@@ -169,6 +169,7 @@ namespace Chris.ContentPipeline
             }
 
             DetectAddressConflicts(nodes.Values, diagnostics);
+            DetectExplicitPathConflicts(nodes.Values, diagnostics);
             return nodes;
         }
 
@@ -272,6 +273,34 @@ namespace Chris.ContentPipeline
             }
         }
 
+        private static void DetectExplicitPathConflicts(
+            IEnumerable<MutableAssetNode> nodes,
+            DiagnosticCollector diagnostics)
+        {
+            foreach (var group in nodes
+                         .Where(node => !string.IsNullOrEmpty(node.AssetPath))
+                         .GroupBy(node => node.AssetPath, StringComparer.Ordinal)
+                         .Where(group => group.Select(node => node.AssetId)
+                             .Distinct(StringComparer.Ordinal)
+                             .Skip(1)
+                             .Any())
+                         .OrderBy(group => group.Key, StringComparer.Ordinal))
+            {
+                var assetIds = group.Select(node => node.AssetId)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(value => value, StringComparer.Ordinal)
+                    .ToArray();
+                diagnostics.Add(
+                    "CBG1107",
+                    ContentDiagnosticSeverity.Error,
+                    $"Asset path '{group.Key}' is contributed with multiple asset IDs: " +
+                    $"{string.Join(", ", assetIds)}. Sub-assets are not supported by the Addressables backend.",
+                    assetId: assetIds[0],
+                    suggestion:
+                    "Contribute the exact main-asset GUID once, or promote each sub-asset to a standalone asset.");
+            }
+        }
+
         private static HashSet<ContentDependencyEdgeKey> ResolveDependencies(
             IDictionary<string, MutableAssetNode> nodes,
             IReadOnlyDictionary<string, ContentScopeDefinition> scopes,
@@ -345,8 +374,7 @@ namespace Chris.ContentPipeline
                     continue;
                 }
 
-                if (!string.Equals(source.AssetId, sourceResolution.AssetId, StringComparison.Ordinal) &&
-                    !source.AssetId.StartsWith(sourceResolution.AssetId + ":", StringComparison.Ordinal))
+                if (!string.Equals(source.AssetId, sourceResolution.AssetId, StringComparison.Ordinal))
                 {
                     diagnostics.Add(
                         "CBG1206",
@@ -355,7 +383,8 @@ namespace Chris.ContentPipeline
                         $"(resolved ID '{sourceResolution.AssetId}').",
                         pair.ScopeId,
                         source.AssetId,
-                        "Use the AssetDatabase GUID, with an optional stable sub-asset suffix.");
+                        "Use the exact AssetDatabase GUID for the main asset. " +
+                        "Sub-assets must be promoted to standalone assets before contribution.");
                 }
 
                 if (string.IsNullOrEmpty(source.TypeName))

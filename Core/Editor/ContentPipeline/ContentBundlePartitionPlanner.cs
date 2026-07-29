@@ -216,17 +216,29 @@ namespace Chris.ContentPipeline
             IReadOnlyCollection<ContentAssetNode> nodes)
         {
             var pathSizeCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var scopeLocations = graph.Scopes.ToDictionary(
+                scope => scope.Id,
+                scope => scope.DefaultLocation,
+                StringComparer.Ordinal);
             return nodes
-                .GroupBy(GetLogicalPartitionId, StringComparer.Ordinal)
-                .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .Select(node => new LogicalCandidate(
+                    node,
+                    ResolveLocation(new[] { node }, scopeLocations)))
+                .GroupBy(candidate => new LogicalPartitionKey(
+                    candidate.Location,
+                    GetLogicalPartitionId(candidate.Node)))
+                .OrderBy(group => group.Key.StableId, StringComparer.Ordinal)
                 .Select(group =>
                 {
-                    var members = group.OrderBy(node => node.AssetId, StringComparer.Ordinal).ToArray();
+                    var members = group
+                        .Select(candidate => candidate.Node)
+                        .OrderBy(node => node.AssetId, StringComparer.Ordinal)
+                        .ToArray();
                     var first = members[0];
                     return new ContentBundlePartition(
-                        group.Key,
+                        group.Key.StableId,
                         GetSemanticFamily(first),
-                        ResolveLocation(graph, members),
+                        group.Key.Location,
                         members.Any(IsScene),
                         EstimatePartitionContent(graph, members, pathSizeCache),
                         0,
@@ -242,11 +254,15 @@ namespace Chris.ContentPipeline
             ContentArtifactManifest previousManifest)
         {
             var pathSizeCache = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var scopeLocations = graph.Scopes.ToDictionary(
+                scope => scope.Id,
+                scope => scope.DefaultLocation,
+                StringComparer.Ordinal);
             var candidateArray = nodes
                 .Select(node => new Candidate(
                     node,
                     GetSemanticFamily(node),
-                    ResolveLocation(graph, new[] { node }),
+                    ResolveLocation(new[] { node }, scopeLocations),
                     IsScene(node),
                     EstimateNodeContent(graph, node, pathSizeCache)))
                 .ToArray();
@@ -624,12 +640,11 @@ namespace Chris.ContentPipeline
         }
 
         private static ContentLocation ResolveLocation(
-            ContentBuildGraph graph,
-            IReadOnlyCollection<ContentAssetNode> nodes)
+            IReadOnlyCollection<ContentAssetNode> nodes,
+            IReadOnlyDictionary<string, ContentLocation> scopeLocations)
         {
             if (nodes.Any(node => node.Location == ContentLocation.Local)) return ContentLocation.Local;
             if (nodes.Any(node => node.Location == ContentLocation.Remote)) return ContentLocation.Remote;
-            var scopeLocations = graph.Scopes.ToDictionary(scope => scope.Id, scope => scope.DefaultLocation);
             return nodes.SelectMany(node => node.UsageScopeIds)
                 .Where(scopeLocations.ContainsKey)
                 .Select(scopeId => scopeLocations[scopeId])
@@ -774,6 +789,54 @@ namespace Chris.ContentPipeline
                     return hash;
                 }
             }
+        }
+
+        private readonly struct LogicalPartitionKey : IEquatable<LogicalPartitionKey>
+        {
+            public LogicalPartitionKey(ContentLocation location, string partitionId)
+            {
+                Location = location;
+                PartitionId = partitionId ?? string.Empty;
+            }
+
+            public ContentLocation Location { get; }
+
+            public string PartitionId { get; }
+
+            public string StableId => $"{Location}:{PartitionId}";
+
+            public bool Equals(LogicalPartitionKey other)
+            {
+                return Location == other.Location &&
+                       string.Equals(PartitionId, other.PartitionId, StringComparison.Ordinal);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is LogicalPartitionKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return ((int)Location * 397) ^
+                           StringComparer.Ordinal.GetHashCode(PartitionId);
+                }
+            }
+        }
+
+        private readonly struct LogicalCandidate
+        {
+            public LogicalCandidate(ContentAssetNode node, ContentLocation location)
+            {
+                Node = node;
+                Location = location;
+            }
+
+            public ContentAssetNode Node { get; }
+
+            public ContentLocation Location { get; }
         }
 
         private sealed class Candidate
