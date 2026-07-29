@@ -139,6 +139,7 @@ namespace Chris.ContentPipeline
                 var catalogSource = ResolveArtifactPath(artifactManifestPath, catalogArtifact.relativePath);
                 var catalogExtension = Path.GetExtension(catalogSource);
                 var catalogDestination = Path.Combine(packageRoot, "catalog" + catalogExtension);
+                ValidateFile(catalogSource, catalogArtifact);
                 File.Copy(catalogSource, catalogDestination, true);
 
                 var candidateBundles = BuildCandidateBundleMap(artifactManifest, artifactManifestPath);
