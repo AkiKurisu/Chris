@@ -104,6 +104,11 @@ namespace Chris.ContentPipeline
             var stagingParent = Path.Combine(platformRoot, ".staging");
             Directory.CreateDirectory(stagingParent);
             using var processLock = ContentBuildProcessLock.Acquire(platformRoot);
+            var projectBuildRoot = Path.Combine(
+                Path.GetDirectoryName(Application.dataPath)!,
+                "Library",
+                "ChrisContentPipeline");
+            using var addressablesBuildLock = ContentBuildProcessLock.Acquire(projectBuildRoot);
             using var session = new AddressablesBuildSession(
                 Path.Combine(stagingParent, Guid.NewGuid().ToString("N")));
 
