@@ -446,6 +446,12 @@ ContentBuildStorageCleanupResult cleanup =
         EditorUserBuildSettings.activeBuildTarget);
 ```
 
+Channels are stable machine-readable identifiers and must match
+`[a-z0-9]+(?:-[a-z0-9]+)*`, for example `development` or `preview-android`.
+The build backend, pointer queries, and storage maintenance use the same
+validated channel-to-directory mapping; display names with spaces or uppercase
+letters are not accepted as aliases.
+
 Execution rebuilds the plan while holding the same platform build lock used by
 the Addressables backend. Invalid pointers, mismatched manifests, unknown
 artifact directories, or paths outside the expected containers stop pruning.
@@ -623,6 +629,12 @@ package.
 `ContentBuildGraphAssetDatabaseMount` makes explicit graph assets resolvable by
 Addressables in Editor Play Mode without creating persistent Addressable groups
 or building bundles.
+
+The mount omits explicit assets owned as `BuiltIn` or `Excluded`, matching the
+build contract: built-in content must come from Unity, the Player, or the main
+Addressables catalog, while excluded content remains available only for graph
+analysis. This prevents Editor Play Mode from exposing content that the dynamic
+package will not contain.
 
 Addressables must already be initialized:
 

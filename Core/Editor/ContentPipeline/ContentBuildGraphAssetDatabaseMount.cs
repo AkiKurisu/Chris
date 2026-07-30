@@ -56,7 +56,9 @@ namespace Chris.ContentPipeline
             }
 
             var records = graph.Assets
-                .Where(node => node.IsExplicit)
+                .Where(node => node.IsExplicit &&
+                               node.Ownership is not ContentOwnership.BuiltIn and
+                               not ContentOwnership.Excluded)
                 .OrderBy(node => node.AssetId, StringComparer.Ordinal)
                 .Select(node => new ContentAssetDatabaseLocationRecord
                 {

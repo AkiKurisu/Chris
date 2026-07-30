@@ -2,11 +2,41 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
 namespace Chris.ContentPipeline
 {
+    internal static class ContentPipelinePlatformPath
+    {
+        private static readonly Regex ChannelPattern = new(
+            "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            RegexOptions.CultureInvariant);
+
+        public static string GetPlatformRoot(
+            string outputRoot,
+            string channel,
+            BuildTarget target)
+        {
+            if (string.IsNullOrWhiteSpace(outputRoot))
+                throw new ArgumentException("Content OutputRoot is empty.", nameof(outputRoot));
+            ValidateChannel(channel);
+            return Path.Combine(Path.GetFullPath(outputRoot), channel, target.ToString());
+        }
+
+        public static void ValidateChannel(string channel)
+        {
+            if (string.IsNullOrEmpty(channel) || !ChannelPattern.IsMatch(channel))
+            {
+                throw new ArgumentException(
+                    "Content channel must contain only lowercase ASCII letters, digits, and " +
+                    "single hyphens between segments, for example 'development' or 'preview-android'.",
+                    nameof(channel));
+            }
+        }
+    }
+
     public sealed class ContentBuildStorageCleanupPreview
     {
         public string PlatformRoot { get; internal set; }
@@ -47,11 +77,7 @@ namespace Chris.ContentPipeline
             string channel,
             BuildTarget target)
         {
-            if (string.IsNullOrWhiteSpace(outputRoot))
-                throw new ArgumentException("Content OutputRoot is empty.", nameof(outputRoot));
-            var safeChannel = RequireSafeSegment(channel, nameof(channel));
-            var safePlatform = RequireSafeSegment(target.ToString(), nameof(target));
-            return Path.Combine(Path.GetFullPath(outputRoot), safeChannel, safePlatform);
+            return ContentPipelinePlatformPath.GetPlatformRoot(outputRoot, channel, target);
         }
 
         public static ContentBuildStorageCleanupPreview Preview(
@@ -295,19 +321,6 @@ namespace Chris.ContentPipeline
             if (!File.Exists(resolved))
                 throw new FileNotFoundException($"{description} target is missing.", resolved);
             return resolved;
-        }
-
-        private static string RequireSafeSegment(string value, string parameterName)
-        {
-            var segment = value?.Trim();
-            if (string.IsNullOrEmpty(segment) ||
-                !string.Equals(segment, Path.GetFileName(segment), StringComparison.Ordinal) ||
-                segment.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
-                segment is "." or "..")
-            {
-                throw new ArgumentException($"Unsafe content path segment: {value}", parameterName);
-            }
-            return segment;
         }
 
         private static long GetDirectorySize(string path)

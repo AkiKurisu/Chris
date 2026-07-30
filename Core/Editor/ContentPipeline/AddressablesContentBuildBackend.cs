@@ -51,7 +51,7 @@ namespace Chris.ContentPipeline
             string channel,
             BuildTarget target)
         {
-            var platformRoot = GetPlatformRoot(outputRoot, channel, target);
+            var platformRoot = ContentPipelinePlatformPath.GetPlatformRoot(outputRoot, channel, target);
             return GetPointerManifestPath(
                 platformRoot,
                 "current-baseline.json",
@@ -63,7 +63,7 @@ namespace Chris.ContentPipeline
             string channel,
             BuildTarget target)
         {
-            var platformRoot = GetPlatformRoot(outputRoot, channel, target);
+            var platformRoot = ContentPipelinePlatformPath.GetPlatformRoot(outputRoot, channel, target);
             var baselinePath = GetPointerManifestPath(
                 platformRoot,
                 "current-baseline.json",
@@ -100,7 +100,10 @@ namespace Chris.ContentPipeline
             AddressablesCompatibility.ValidateApi();
 
             var sbpVersion = GetPackageVersion(typeof(UnityEditor.Build.Pipeline.ContentPipeline).Assembly);
-            var platformRoot = GetPlatformRoot(request.OutputRoot, request.Channel, request.Target);
+            var platformRoot = ContentPipelinePlatformPath.GetPlatformRoot(
+                request.OutputRoot,
+                request.Channel,
+                request.Target);
             var stagingParent = Path.Combine(platformRoot, ".staging");
             Directory.CreateDirectory(stagingParent);
             using var processLock = ContentBuildProcessLock.Acquire(platformRoot);
@@ -237,8 +240,7 @@ namespace Chris.ContentPipeline
 
             if (string.IsNullOrWhiteSpace(request.OutputRoot))
                 throw new ArgumentException("Output root is empty.", nameof(request));
-            if (string.IsNullOrWhiteSpace(request.Channel))
-                throw new ArgumentException("Channel is empty.", nameof(request));
+            ContentPipelinePlatformPath.ValidateChannel(request.Channel);
             if (string.IsNullOrWhiteSpace(request.PlayerVersion))
                 throw new ArgumentException("Player version is empty.", nameof(request));
             if (string.IsNullOrWhiteSpace(request.RemoteLoadPath))
@@ -269,9 +271,9 @@ namespace Chris.ContentPipeline
             settings.ContentStateBuildPath = session.StateRoot;
             settings.InternalBundleIdMode = BundledAssetGroupSchema.BundleInternalIdMode.GroupGuid;
             settings.BuiltInBundleNaming = BuiltInBundleNaming.Custom;
-            settings.BuiltInBundleCustomNaming = $"aic-{SafeName(request.Channel)}-{request.Target}-{configurationFingerprint[..10]}";
+            settings.BuiltInBundleCustomNaming = $"aic-{request.Channel}-{request.Target}-{configurationFingerprint[..10]}";
             settings.MonoScriptBundleNaming = MonoScriptBundleNaming.Custom;
-            settings.MonoScriptBundleCustomNaming = $"aic-{SafeName(request.Channel)}-{request.Target}-{configurationFingerprint[..10]}";
+            settings.MonoScriptBundleCustomNaming = $"aic-{request.Channel}-{request.Target}-{configurationFingerprint[..10]}";
 
             var profile = settings.activeProfileId;
             settings.profileSettings.SetValue(profile, AddressableAssetSettings.kRemoteBuildPath, EnsureTrailingSlash(session.RemoteRoot));
@@ -900,12 +902,7 @@ namespace Chris.ContentPipeline
             return "metadata";
         }
 
-        private static string GetPlatformRoot(string outputRoot, string channel, BuildTarget target)
-        {
-            return Path.GetFullPath(Path.Combine(outputRoot, SafeName(channel), target.ToString()));
-        }
-
-        private static string SafeName(string value)
+        private static string SafeLabel(string value)
         {
             var builder = new StringBuilder();
             foreach (var character in value ?? string.Empty)
@@ -922,7 +919,7 @@ namespace Chris.ContentPipeline
             var segments = (partitionId ?? string.Empty)
                 .Split(new[] { ':', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
             var label = segments.LastOrDefault() ?? "content";
-            label = SafeName(label);
+            label = SafeLabel(label);
             return label.Length <= 20 ? label : label[..20];
         }
 
