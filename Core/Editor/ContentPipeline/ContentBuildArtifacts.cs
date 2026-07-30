@@ -153,12 +153,12 @@ namespace Chris.ContentPipeline
 
         public static ContentArtifactManifest Load(string path)
         {
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            if (string.IsNullOrWhiteSpace(path) || !ContentPipelineFileSystem.FileExists(path))
             {
                 throw new FileNotFoundException("Content artifact manifest was not found.", path);
             }
 
-            var json = File.ReadAllText(path);
+            var json = ContentPipelineFileSystem.ReadAllText(path);
             ValidateSerializedContract(json, path);
             var manifest = JsonUtility.FromJson<ContentArtifactManifest>(json);
             if (manifest == null || manifest.schemaVersion != CurrentSchemaVersion)
@@ -173,8 +173,11 @@ namespace Chris.ContentPipeline
         {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Manifest path is empty.", nameof(path));
             Validate(path);
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-            File.WriteAllText(path, JsonUtility.ToJson(this, true), new UTF8Encoding(false));
+            ContentPipelineFileSystem.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+            ContentPipelineFileSystem.WriteAllText(
+                path,
+                JsonUtility.ToJson(this, true),
+                new UTF8Encoding(false));
         }
 
         private void Validate(string path)
@@ -670,7 +673,7 @@ namespace Chris.ContentPipeline
 
         public static string Sha256File(string path)
         {
-            using var stream = File.OpenRead(path);
+            using var stream = ContentPipelineFileSystem.OpenRead(path);
             using var algorithm = SHA256.Create();
             return ToHex(algorithm.ComputeHash(stream));
         }
@@ -693,8 +696,17 @@ namespace Chris.ContentPipeline
         }
     }
 
-    internal static class ContentPipelineFileSystem
+    /// <summary>
+    /// Performs content-pipeline-owned file operations while keeping Windows extended paths
+    /// confined to the direct System.IO boundary.
+    /// </summary>
+    public static class ContentPipelineFileSystem
     {
+        private const int LegacyMaxPath = 260;
+        private const int LegacyMaxDirectoryPath = 248;
+        private const string ExtendedPathPrefix = @"\\?\";
+        private const string ExtendedUncPathPrefix = @"\\?\UNC\";
+
         public static string Normalize(string path)
         {
             return Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
@@ -712,36 +724,211 @@ namespace Chris.ContentPipeline
             return Path.GetRelativePath(Normalize(root), Normalize(path)).Replace('\\', '/');
         }
 
+        public static bool FileExists(string path)
+        {
+            return File.Exists(ToSystemPath(path));
+        }
+
+        public static bool DirectoryExists(string path)
+        {
+            return Directory.Exists(ToSystemPath(path, maximumLength: LegacyMaxDirectoryPath));
+        }
+
+        public static void CreateDirectory(string path)
+        {
+            Directory.CreateDirectory(ToSystemPath(path, maximumLength: LegacyMaxDirectoryPath));
+        }
+
+        public static Stream OpenRead(string path)
+        {
+            return File.OpenRead(ToSystemPath(path));
+        }
+
+        public static Stream OpenRead(string path, int bufferSize, FileOptions options)
+        {
+            return new FileStream(
+                ToSystemPath(path),
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize,
+                options);
+        }
+
+        public static FileStream OpenFile(
+            string path,
+            FileMode mode,
+            FileAccess access,
+            FileShare share)
+        {
+            return new FileStream(ToSystemPath(path), mode, access, share);
+        }
+
+        public static string ReadAllText(string path)
+        {
+            return File.ReadAllText(ToSystemPath(path));
+        }
+
+        public static byte[] ReadAllBytes(string path)
+        {
+            return File.ReadAllBytes(ToSystemPath(path));
+        }
+
+        public static void WriteAllText(string path, string content)
+        {
+            File.WriteAllText(ToSystemPath(path), content);
+        }
+
+        public static void WriteAllText(string path, string content, Encoding encoding)
+        {
+            File.WriteAllText(ToSystemPath(path), content, encoding);
+        }
+
+        public static void WriteAllBytes(string path, byte[] content)
+        {
+            File.WriteAllBytes(ToSystemPath(path), content);
+        }
+
+        public static void CopyFile(string source, string destination, bool overwrite)
+        {
+            File.Copy(ToSystemPath(source), ToSystemPath(destination), overwrite);
+        }
+
+        public static void MoveFile(string source, string destination)
+        {
+            File.Move(ToSystemPath(source), ToSystemPath(destination));
+        }
+
+        public static void ReplaceFile(string source, string destination)
+        {
+            File.Replace(ToSystemPath(source), ToSystemPath(destination), null);
+        }
+
+        public static void DeleteFile(string path)
+        {
+            File.Delete(ToSystemPath(path));
+        }
+
+        public static long GetFileLength(string path)
+        {
+            return new FileInfo(ToSystemPath(path)).Length;
+        }
+
+        public static string[] GetDirectories(
+            string path,
+            string searchPattern = "*",
+            SearchOption searchOption = SearchOption.TopDirectoryOnly)
+        {
+            return Directory.GetDirectories(
+                    ToSystemPath(path, forceExtended: true),
+                    searchPattern,
+                    searchOption)
+                .Select(FromSystemPath)
+                .ToArray();
+        }
+
+        public static string[] GetFiles(
+            string path,
+            string searchPattern = "*",
+            SearchOption searchOption = SearchOption.TopDirectoryOnly)
+        {
+            return Directory.GetFiles(
+                    ToSystemPath(path, forceExtended: true),
+                    searchPattern,
+                    searchOption)
+                .Select(FromSystemPath)
+                .ToArray();
+        }
+
+        public static string[] GetFileSystemEntries(string path)
+        {
+            return Directory.GetFileSystemEntries(ToSystemPath(path, forceExtended: true))
+                .Select(FromSystemPath)
+                .ToArray();
+        }
+
+        public static void MoveDirectory(string source, string destination)
+        {
+            Directory.Move(
+                ToSystemPath(source, maximumLength: LegacyMaxDirectoryPath),
+                ToSystemPath(destination, maximumLength: LegacyMaxDirectoryPath));
+        }
+
+        public static void DeleteDirectory(string path, bool recursive = false)
+        {
+            Directory.Delete(
+                ToSystemPath(path, maximumLength: LegacyMaxDirectoryPath),
+                recursive);
+        }
+
         public static void CopyDirectory(string source, string destination)
         {
-            if (!Directory.Exists(source)) return;
-            Directory.CreateDirectory(destination);
-            foreach (var directory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+            if (!DirectoryExists(source)) return;
+            CreateDirectory(destination);
+            foreach (var directory in GetDirectories(source, "*", SearchOption.AllDirectories))
             {
-                Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+                CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
             }
 
-            foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+            foreach (var file in GetFiles(source, "*", SearchOption.AllDirectories))
             {
                 var target = Path.Combine(destination, Path.GetRelativePath(source, file));
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.Copy(file, target, true);
+                CreateDirectory(Path.GetDirectoryName(target)!);
+                CopyFile(file, target, true);
             }
         }
 
         public static void AtomicWrite(string path, string content)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+            CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
             var temporaryPath = path + ".tmp";
-            File.WriteAllText(temporaryPath, content, new UTF8Encoding(false));
-            if (File.Exists(path))
+            WriteAllText(temporaryPath, content, new UTF8Encoding(false));
+            if (FileExists(path))
             {
-                File.Replace(temporaryPath, path, null);
+                ReplaceFile(temporaryPath, path);
             }
             else
             {
-                File.Move(temporaryPath, path);
+                MoveFile(temporaryPath, path);
             }
+        }
+
+        private static string ToSystemPath(
+            string path,
+            bool forceExtended = false,
+            int maximumLength = LegacyMaxPath)
+        {
+            if (string.IsNullOrWhiteSpace(path) ||
+                Path.DirectorySeparatorChar != '\\' ||
+                path.StartsWith(ExtendedPathPrefix, StringComparison.Ordinal))
+            {
+                return path;
+            }
+
+            var fullPath = Path.GetFullPath(path);
+            if (!forceExtended && fullPath.Length < maximumLength)
+            {
+                return path;
+            }
+
+            if (fullPath.StartsWith(@"\\", StringComparison.Ordinal))
+            {
+                return ExtendedUncPathPrefix + fullPath[2..];
+            }
+
+            return ExtendedPathPrefix + fullPath;
+        }
+
+        private static string FromSystemPath(string path)
+        {
+            if (path.StartsWith(ExtendedUncPathPrefix, StringComparison.Ordinal))
+            {
+                return @"\\" + path[ExtendedUncPathPrefix.Length..];
+            }
+
+            return path.StartsWith(ExtendedPathPrefix, StringComparison.Ordinal)
+                ? path[ExtendedPathPrefix.Length..]
+                : path;
         }
     }
 }

@@ -96,7 +96,7 @@ namespace Chris.ContentPipeline
             bool clearCurrent = false)
         {
             var platformRoot = GetPlatformRoot(outputRoot, channel, target);
-            Directory.CreateDirectory(platformRoot);
+            ContentPipelineFileSystem.CreateDirectory(platformRoot);
             using var processLock = ContentBuildProcessLock.Acquire(platformRoot);
             return Execute(outputRoot, channel, target, processLock, clearCurrent);
         }
@@ -139,11 +139,11 @@ namespace Chris.ContentPipeline
 
             foreach (var candidate in plan.CandidateDirectories)
             {
-                if (!Directory.Exists(candidate)) continue;
+                if (!ContentPipelineFileSystem.DirectoryExists(candidate)) continue;
                 var size = GetDirectorySize(candidate);
                 try
                 {
-                    Directory.Delete(candidate, true);
+                    ContentPipelineFileSystem.DeleteDirectory(candidate, true);
                     deleted.Add(candidate);
                     deletedBytes += size;
                 }
@@ -230,9 +230,9 @@ namespace Chris.ContentPipeline
             string expectedKind)
         {
             var pointerPath = Path.Combine(platformRoot, pointerName);
-            if (!File.Exists(pointerPath)) return null;
+            if (!ContentPipelineFileSystem.FileExists(pointerPath)) return null;
             var pointer = JsonUtility.FromJson<ContentBuildStoragePointer>(
-                File.ReadAllText(pointerPath));
+                ContentPipelineFileSystem.ReadAllText(pointerPath));
             if (pointer == null ||
                 string.IsNullOrWhiteSpace(pointer.buildId) ||
                 string.IsNullOrWhiteSpace(pointer.manifest))
@@ -275,8 +275,8 @@ namespace Chris.ContentPipeline
             ICollection<string> candidates)
         {
             var container = Path.Combine(platformRoot, containerName);
-            if (!Directory.Exists(container)) return;
-            foreach (var directory in Directory.GetDirectories(container))
+            if (!ContentPipelineFileSystem.DirectoryExists(container)) return;
+            foreach (var directory in ContentPipelineFileSystem.GetDirectories(container))
             {
                 var resolved = Path.GetFullPath(directory);
                 if (!ContentPipelineFileSystem.IsWithin(resolved, container))
@@ -298,8 +298,8 @@ namespace Chris.ContentPipeline
             ICollection<string> candidates)
         {
             var stagingRoot = Path.Combine(platformRoot, StagingContainerName);
-            if (!Directory.Exists(stagingRoot)) return;
-            foreach (var directory in Directory.GetDirectories(stagingRoot))
+            if (!ContentPipelineFileSystem.DirectoryExists(stagingRoot)) return;
+            foreach (var directory in ContentPipelineFileSystem.GetDirectories(stagingRoot))
             {
                 var resolved = Path.GetFullPath(directory);
                 if (!ContentPipelineFileSystem.IsWithin(resolved, stagingRoot))
@@ -318,17 +318,22 @@ namespace Chris.ContentPipeline
                 relativePath.Replace('/', Path.DirectorySeparatorChar)));
             if (!ContentPipelineFileSystem.IsWithin(resolved, root))
                 throw new InvalidDataException($"{description} path escapes its root: {relativePath}");
-            if (!File.Exists(resolved))
+            if (!ContentPipelineFileSystem.FileExists(resolved))
                 throw new FileNotFoundException($"{description} target is missing.", resolved);
             return resolved;
         }
 
         private static long GetDirectorySize(string path)
         {
-            if (!Directory.Exists(path)) return 0;
+            if (!ContentPipelineFileSystem.DirectoryExists(path)) return 0;
             long result = 0;
-            foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
-                result = checked(result + new FileInfo(file).Length);
+            foreach (var file in ContentPipelineFileSystem.GetFiles(
+                         path,
+                         "*",
+                         SearchOption.AllDirectories))
+            {
+                result = checked(result + ContentPipelineFileSystem.GetFileLength(file));
+            }
             return result;
         }
 
@@ -336,10 +341,10 @@ namespace Chris.ContentPipeline
             string path,
             ICollection<string> failures)
         {
-            if (!File.Exists(path)) return;
+            if (!ContentPipelineFileSystem.FileExists(path)) return;
             try
             {
-                File.Delete(path);
+                ContentPipelineFileSystem.DeleteFile(path);
             }
             catch (Exception exception)
             {
@@ -349,14 +354,14 @@ namespace Chris.ContentPipeline
 
         private static void TryDeleteEmptyDirectory(string path)
         {
-            if (!Directory.Exists(path) ||
-                Directory.EnumerateFileSystemEntries(path).Any())
+            if (!ContentPipelineFileSystem.DirectoryExists(path) ||
+                ContentPipelineFileSystem.GetFileSystemEntries(path).Length != 0)
             {
                 return;
             }
             try
             {
-                Directory.Delete(path);
+                ContentPipelineFileSystem.DeleteDirectory(path);
             }
             catch (IOException)
             {
