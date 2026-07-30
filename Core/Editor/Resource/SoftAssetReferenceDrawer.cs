@@ -26,7 +26,12 @@ namespace Chris.Resource.Editor
         
         public sealed override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            GetPropertyMetaData(out var assetGroup, out var assetType, out var processMethod, out var forceMoveToGroup);
+            GetPropertyMetaData(
+                out var assetGroup,
+                out var assetType,
+                out var processMethod,
+                out var forceMoveToGroup,
+                out var registerAddressable);
             var addressProp = property.FindPropertyRelative(AddressPropertyName);
             var guidProp = property.FindPropertyRelative(GuidPropertyName);
             var lockProp = property.FindPropertyRelative(LockPropertyName);
@@ -47,7 +52,13 @@ namespace Chris.Resource.Editor
             {
                 if (Object)
                 {
-                    AssignAddress(property, Object, processMethod, assetGroup, forceMoveToGroup);
+                    AssignAddress(
+                        property,
+                        Object,
+                        processMethod,
+                        assetGroup,
+                        forceMoveToGroup,
+                        registerAddressable);
                 }
                 else
                 {
@@ -84,7 +95,13 @@ namespace Chris.Resource.Editor
                     // when reference is in locked mode, prefer to Object value
                     if (lockProp.boolValue)
                     {
-                        AssignAddress(property, Object, processMethod, assetGroup, forceMoveToGroup);
+                        AssignAddress(
+                            property,
+                            Object,
+                            processMethod,
+                            assetGroup,
+                            forceMoveToGroup,
+                            registerAddressable);
                     }
                     else
                     {
@@ -95,21 +112,28 @@ namespace Chris.Resource.Editor
             }
         }
         
-        private static void AssignAddress(SerializedProperty property, UObject Object, string processMethod, AddressableAssetGroup assetGroup, bool forceMoveToGroup)
+        private static void AssignAddress(
+            SerializedProperty property,
+            UObject Object,
+            string processMethod,
+            AddressableAssetGroup assetGroup,
+            bool forceMoveToGroup,
+            bool registerAddressable)
         {
             var addressProp = property.FindPropertyRelative(AddressPropertyName);
             var guidProp = property.FindPropertyRelative(GuidPropertyName);
             // Already exists => use entry current address, ensure to not affect other references
             string path = AssetDatabase.GetAssetPath(Object);
             var existingEntry = Object.ToAddressableAssetEntry();
-            if (existingEntry != null && !(forceMoveToGroup && existingEntry.parentGroup != assetGroup))
+            if (existingEntry != null &&
+                (!registerAddressable || !(forceMoveToGroup && existingEntry.parentGroup != assetGroup)))
             {
                 addressProp.stringValue = existingEntry.address;
                 guidProp.stringValue = Object.GetAssetGUID();
             }
             else
             {
-                // Is new => format address and register it
+                // Format a stable address, then register only when the field contract requests it.
                 if (string.IsNullOrEmpty(processMethod))
                 {
                     addressProp.stringValue = path;
@@ -128,10 +152,13 @@ namespace Chris.Resource.Editor
                         addressProp.stringValue = path;
                 }
                 guidProp.stringValue = Object.GetAssetGUID();
-                using (assetGroup.Modify())
+                if (registerAddressable)
                 {
-                    var entry = assetGroup.AddAsset(Object);
-                    entry.address = addressProp.stringValue;
+                    using (assetGroup.Modify())
+                    {
+                        var entry = assetGroup.AddAsset(Object);
+                        entry.address = addressProp.stringValue;
+                    }
                 }
             }
         }
@@ -162,7 +189,12 @@ namespace Chris.Resource.Editor
 
                     if (evt.type == EventType.DragPerform)
                     {
-                        GetPropertyMetaData(out var assetGroup, out var assetType, out var processMethod, out var forceMoveToGroup);
+                        GetPropertyMetaData(
+                            out var assetGroup,
+                            out var assetType,
+                            out var processMethod,
+                            out var forceMoveToGroup,
+                            out var registerAddressable);
                         var array = DragAndDrop.objectReferences.Where(asset =>
                         {
                             return asset.GetType() == assetType || asset.GetType().IsSubclassOf(assetType);
@@ -178,14 +210,26 @@ namespace Chris.Resource.Editor
                         if (string.IsNullOrEmpty(lstGuid))
                         {
                             startId = 1;
-                            AssignAddress(lstProp, array[0], processMethod, assetGroup, forceMoveToGroup);
+                            AssignAddress(
+                                lstProp,
+                                array[0],
+                                processMethod,
+                                assetGroup,
+                                forceMoveToGroup,
+                                registerAddressable);
                             lstProp.FindPropertyRelative(LockPropertyName).boolValue = true;
                         }
                         for (int i = startId; i < array.Length; ++i)
                         {
                             parentProp.InsertArrayElementAtIndex(parentProp.arraySize);
                             var childProp = parentProp.GetArrayElementAtIndex(parentProp.arraySize - 1);
-                            AssignAddress(childProp, array[i], processMethod, assetGroup, forceMoveToGroup);
+                            AssignAddress(
+                                childProp,
+                                array[i],
+                                processMethod,
+                                assetGroup,
+                                forceMoveToGroup,
+                                registerAddressable);
                             childProp.FindPropertyRelative(LockPropertyName).boolValue = true;
                         }
                         Event.current.Use();
@@ -194,13 +238,18 @@ namespace Chris.Resource.Editor
             }
         }
         
-        private void GetPropertyMetaData(out AddressableAssetGroup assetGroup, out Type assetType,
-                                out string processMethod, out bool forceMoveToGroup)
+        private void GetPropertyMetaData(
+            out AddressableAssetGroup assetGroup,
+            out Type assetType,
+            out string processMethod,
+            out bool forceMoveToGroup,
+            out bool registerAddressable)
         {
             assetGroup = AddressableAssetSettingsDefaultObject.Settings.DefaultGroup;
             assetType = GetAssetType();
             processMethod = null;
             forceMoveToGroup = false;
+            registerAddressable = true;
             var constraint = fieldInfo.GetCustomAttribute<AssetReferenceConstraintAttribute>(false);
             if (constraint != null)
             {
@@ -210,6 +259,7 @@ namespace Chris.Resource.Editor
 
                 processMethod = constraint.Formatter;
                 forceMoveToGroup = constraint.ForceGroup;
+                registerAddressable = constraint.RegisterAddressable;
                 if (!string.IsNullOrEmpty(constraint.Group))
                 {
                     assetGroup = ResourceEditorUtils.GetOrCreateAssetGroup(constraint.Group);

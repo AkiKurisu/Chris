@@ -129,6 +129,39 @@ await ResourceSystem.EnsureAssetExistsAsync<T>(key);
 
 ---
 
+## Content Pipeline — `Chris.ContentPipeline` (Editor)
+
+**Path:** `Core/Editor/ContentPipeline/`
+
+| Class | Role |
+|---|---|
+| `ContentBuildGraphBuilder` | Merges project contributors and recursively resolves Unity dependencies |
+| `UnityContentAssetDependencyResolver` | AssetDatabase-backed dependency resolver |
+| `AddressablesContentBuildBackend` | Builds Baseline or scoped Update artifacts from transient Addressables settings |
+| `DynamicContentPackageBuilder` | Produces a flat relocatable catalog and Bundle package |
+| `ContentBuildGraphAssetDatabaseMount` | Mounts explicit graph assets through AssetDatabase for Editor Play Mode |
+| `ContentBuildGraphReport` | Writes deterministic graph diagnostics as JSON |
+
+**Key API:**
+```csharp
+ContentBuildGraph graph = new ContentBuildGraphBuilder().Build(
+    contributors,
+    new UnityContentAssetDependencyResolver());
+
+ContentPipelineBuildResult result =
+    new AddressablesContentBuildBackend().Build(request);
+
+using ContentBuildGraphAssetDatabaseMount mount =
+    ContentBuildGraphAssetDatabaseMount.Create(graph, locatorId);
+```
+
+The project owns the content source adapter and delivery workflow. Chris owns
+graph planning, transient Addressables/SBP builds, manifests, runtime package
+materialization, and Editor mounting. See
+`Documentation~/ContentPipeline.md` for the complete contract and examples.
+
+---
+
 ## DataDriven — `Chris.DataDriven`
 
 **Path:** `Core/Runtime/DataDriven/`

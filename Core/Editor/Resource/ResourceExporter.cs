@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using System.IO;
@@ -68,59 +67,6 @@ namespace Chris.Resource.Editor
         public bool Export()
         {
             return ExportWithResult().Succeeded;
-        }
-
-        public static ResourceExportResult Export(RemoteContentProfile profile)
-        {
-            var result = new ResourceExportResult();
-            if (!profile)
-            {
-                result.Error = "Remote content profile is null.";
-                return result;
-            }
-
-            var validation = profile.ValidateProfile();
-            if (!validation.IsValid)
-            {
-                result.Error = string.Join(Environment.NewLine, validation.Errors);
-                return result;
-            }
-
-            if (!AddressableAssetSettingsDefaultObject.Settings)
-            {
-                result.Error = "AddressableAssetSettings is missing.";
-                return result;
-            }
-
-            var groups = profile.GetBuildGroups();
-            var groupGuids = new HashSet<string>(groups.Select(group => group.Guid));
-            var context = new ResourceExportContext
-            {
-                Name = profile.SafePackageName,
-                AssetGroupFilter = group => group && groupGuids.Contains(group.Guid)
-            };
-
-            var options = new ResourceExportOptions
-            {
-                OutputRoot = profile.GetOutputRootFullPath(),
-                ZipOutput = profile.ZipOutput,
-                DeleteBuildDirectoryAfterZip = false,
-                EnableAddressablesDiagnostics = true
-            };
-
-            var exporter = CreateFromContext(context, new IResourceBuilder[]
-            {
-                new AddressableAssetBuilder(),
-                new DefaultBundleNamePatchBuilder()
-            }, options);
-
-            result = exporter.ExportWithResult();
-            if (result.Succeeded)
-            {
-                Debug.Log($"<color=#3aff48>Remote Content Exporter</color>: Built '{profile.PackageName}' at {result.BuildPath}. Copy the complete package contents to the runtime AbDataPath before loading the catalog.");
-            }
-
-            return result;
         }
 
         public ResourceExportResult ExportWithResult()
