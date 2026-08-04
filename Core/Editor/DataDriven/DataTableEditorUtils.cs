@@ -177,7 +177,7 @@ namespace Chris.DataDriven.Editor
             var group = ResourceEditorUtils.GetOrCreateAssetGroup(addressableAttribute.Group);
             using (group.Modify())
             {
-                group.AddAsset(dataTable).address = address;
+                group.AddAsset(dataTable, addressableAttribute.Labels).address = address;
             }
         }
 
