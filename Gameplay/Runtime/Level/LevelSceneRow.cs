@@ -20,7 +20,7 @@ namespace Chris.Gameplay.Level
         Console = 1 << 2
     }
     
-    [Serializable, AddressableDataTable(address:LevelSceneDataTableManager.TableKey)]
+    [Serializable, AddressableDataTable(Labels = new[] { LevelSceneDataTableManager.TableLabel })]
     public class LevelSceneRow : IDataTableRow, IValidateRow
     {
         public string levelName;

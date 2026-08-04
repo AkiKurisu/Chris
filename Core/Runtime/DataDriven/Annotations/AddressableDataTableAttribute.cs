@@ -15,6 +15,11 @@ namespace Chris.DataDriven
         
         public string Address { get; }
 
+        /// <summary>
+        /// Addressables labels assigned when registering the DataTable asset.
+        /// </summary>
+        public string[] Labels { get; set; } = Array.Empty<string>();
+
         public AddressableDataTableAttribute(string group = "DataTables" /* Default group for DataTables */, 
             string address = null)
         {

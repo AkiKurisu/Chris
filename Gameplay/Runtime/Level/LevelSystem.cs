@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Chris.DataDriven;
 using Chris.Pool;
+using Chris.Resource;
 using Cysharp.Threading.Tasks;
 using R3;
 using UnityEngine;
@@ -88,15 +89,32 @@ namespace Chris.Gameplay.Level
 
     public sealed class LevelSceneDataTableManager : DataTableManager<LevelSceneDataTableManager>
     {
-        public const string TableKey = "LevelSceneDataTable";
+        public const string TableLabel = "LevelSceneTable";
         
         public LevelSceneDataTableManager(object _) : base(_)
         {
         }
 
-        protected override UniTask Initialize(bool sync)
+        protected override async UniTask Initialize(bool sync)
         {
-            return InitializeSingleTable(TableKey, sync);
+            IList<DataTable> tables;
+            if (sync)
+            {
+                tables = ResourceSystem.LoadAssetsAsync<DataTable>(TableLabel).WaitForCompletion();
+            }
+            else
+            {
+                tables = await ResourceSystem.LoadAssetsAsync<DataTable>(TableLabel);
+            }
+
+            if (tables == null) return;
+            foreach (var table in tables)
+            {
+                if (table != null)
+                {
+                    RegisterDataTable(table);
+                }
+            }
         }
         
         private LevelReference[] _references;
