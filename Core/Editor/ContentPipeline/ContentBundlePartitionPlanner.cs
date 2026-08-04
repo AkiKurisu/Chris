@@ -539,7 +539,9 @@ namespace Chris.ContentPipeline
             {
                 if (!pathSizeCache.TryGetValue(path, out var size))
                 {
-                    size = File.Exists(path) ? new FileInfo(path).Length : 0;
+                    size = ContentPipelineFileSystem.FileExists(path)
+                        ? ContentPipelineFileSystem.GetFileLength(path)
+                        : 0;
                     pathSizeCache[path] = size;
                 }
 

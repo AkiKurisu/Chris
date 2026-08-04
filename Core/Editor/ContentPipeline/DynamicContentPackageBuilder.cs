@@ -11,6 +11,31 @@ using UnityEngine.ResourceManagement.Util;
 
 namespace Chris.ContentPipeline
 {
+    /// <summary>
+    /// Defines the stable physical layout of materialized dynamic content packages.
+    /// Complete build identity remains stored in the package manifest.
+    /// </summary>
+    public static class DynamicContentPackageLayout
+    {
+        public const string BaselineContainerName = "baselines";
+        public const string UpdateContainerName = "updates";
+        public const int PackageDirectoryIdLength = 32;
+
+        public static string GetContainerName(bool isUpdate)
+        {
+            return isUpdate ? UpdateContainerName : BaselineContainerName;
+        }
+
+        public static string GetPackageDirectoryName(string buildId)
+        {
+            if (string.IsNullOrWhiteSpace(buildId))
+                throw new InvalidDataException("Dynamic package build id is empty.");
+            return buildId.Length <= PackageDirectoryIdLength
+                ? buildId
+                : buildId[..PackageDirectoryIdLength];
+        }
+    }
+
     [Serializable]
     public sealed class DynamicContentPackageManifest
     {
@@ -26,9 +51,10 @@ namespace Chris.ContentPipeline
 
         public static DynamicContentPackageManifest Load(string path)
         {
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            if (string.IsNullOrWhiteSpace(path) || !ContentPipelineFileSystem.FileExists(path))
                 throw new FileNotFoundException("Dynamic content package manifest was not found.", path);
-            var manifest = JsonUtility.FromJson<DynamicContentPackageManifest>(File.ReadAllText(path));
+            var manifest = JsonUtility.FromJson<DynamicContentPackageManifest>(
+                ContentPipelineFileSystem.ReadAllText(path));
             if (manifest == null || manifest.schemaVersion != 1)
                 throw new InvalidDataException($"Unsupported dynamic content package manifest: {path}");
             manifest.dynamicLoadPath = NormalizeDynamicLoadPath(manifest.dynamicLoadPath);
@@ -40,8 +66,8 @@ namespace Chris.ContentPipeline
         public void Save(string path)
         {
             dynamicLoadPath = NormalizeDynamicLoadPath(dynamicLoadPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-            File.WriteAllText(path, JsonUtility.ToJson(this, true));
+            ContentPipelineFileSystem.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+            ContentPipelineFileSystem.WriteAllText(path, JsonUtility.ToJson(this, true));
         }
 
         internal static string NormalizeDynamicLoadPath(string value)
@@ -124,13 +150,13 @@ namespace Chris.ContentPipeline
 
             var outputRoot = Path.GetFullPath(request.OutputRoot);
             using var processLock = ContentBuildProcessLock.Acquire(outputRoot);
-            // Keep runtime package paths comfortably below the legacy MAX_PATH limit used by
-            // some Unity/Mono editor APIs. The full build id remains authoritative in the
-            // manifest and is validated before an existing package can be reused.
-            var collectionName = isUpdate ? "u" : "b";
-            var finalRoot = Path.Combine(outputRoot, collectionName, GetPackageDirectoryName(artifactManifest.buildId));
+            var collectionName = DynamicContentPackageLayout.GetContainerName(isUpdate);
+            var finalRoot = Path.Combine(
+                outputRoot,
+                collectionName,
+                DynamicContentPackageLayout.GetPackageDirectoryName(artifactManifest.buildId));
             var finalManifestPath = Path.Combine(finalRoot, PackageManifestName);
-            if (File.Exists(finalManifestPath))
+            if (ContentPipelineFileSystem.FileExists(finalManifestPath))
             {
                 var existing = DynamicContentPackageManifest.Load(finalManifestPath);
                 ValidateExistingPackage(
@@ -144,19 +170,19 @@ namespace Chris.ContentPipeline
             }
 
             var stagingParent = Path.Combine(outputRoot, ".staging");
-            Directory.CreateDirectory(stagingParent);
+            ContentPipelineFileSystem.CreateDirectory(stagingParent);
             var stagingRoot = Path.Combine(stagingParent, Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(stagingRoot);
+            ContentPipelineFileSystem.CreateDirectory(stagingRoot);
             try
             {
                 var packageRoot = Path.Combine(stagingRoot, PackageDirectoryName);
-                Directory.CreateDirectory(packageRoot);
+                ContentPipelineFileSystem.CreateDirectory(packageRoot);
                 var catalogArtifact = SelectRemoteCatalog(artifactManifest);
                 var catalogSource = ResolveArtifactPath(artifactManifestPath, catalogArtifact.relativePath);
                 var catalogExtension = Path.GetExtension(catalogSource);
                 var catalogDestination = Path.Combine(packageRoot, "catalog" + catalogExtension);
                 ValidateFile(catalogSource, catalogArtifact);
-                File.Copy(catalogSource, catalogDestination, true);
+                ContentPipelineFileSystem.CopyFile(catalogSource, catalogDestination, true);
 
                 var candidateBundles = BuildCandidateBundleMap(artifactManifest, artifactManifestPath);
                 var baselineBundles = BuildPackageBundleMap(
@@ -178,7 +204,7 @@ namespace Chris.ContentPipeline
                         continue;
                     var destination = Path.Combine(packageRoot, bundleName);
                     ValidateFile(source.Path, source.Record);
-                    File.Copy(source.Path, destination, true);
+                    ContentPipelineFileSystem.CopyFile(source.Path, destination, true);
                     copiedFiles.Add(CreateCopiedBundleRecord(
                         source,
                         PackageDirectoryName + "/" + bundleName));
@@ -187,7 +213,9 @@ namespace Chris.ContentPipeline
                 var catalogRelativePath = PackageDirectoryName + "/" + Path.GetFileName(catalogDestination);
                 copiedFiles.Add(CreateFileRecord(catalogDestination, catalogRelativePath, "catalog", Array.Empty<string>()));
                 var catalogHashPath = Path.Combine(packageRoot, CatalogHashName);
-                File.WriteAllText(catalogHashPath, CalculateAddressablesHash(catalogDestination));
+                ContentPipelineFileSystem.WriteAllText(
+                    catalogHashPath,
+                    CalculateAddressablesHash(catalogDestination));
                 copiedFiles.Add(CreateFileRecord(
                     catalogHashPath,
                     PackageDirectoryName + "/" + CatalogHashName,
@@ -208,15 +236,16 @@ namespace Chris.ContentPipeline
                 };
                 packageManifest.Save(Path.Combine(stagingRoot, PackageManifestName));
 
-                Directory.CreateDirectory(Path.GetDirectoryName(finalRoot)!);
-                if (Directory.Exists(finalRoot))
+                ContentPipelineFileSystem.CreateDirectory(Path.GetDirectoryName(finalRoot)!);
+                if (ContentPipelineFileSystem.DirectoryExists(finalRoot))
                     throw new IOException($"Dynamic package output already exists without a valid manifest: {finalRoot}");
-                Directory.Move(stagingRoot, finalRoot);
+                ContentPipelineFileSystem.MoveDirectory(stagingRoot, finalRoot);
                 return CreateResult(finalRoot, packageManifest);
             }
             catch
             {
-                if (Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, true);
+                if (ContentPipelineFileSystem.DirectoryExists(stagingRoot))
+                    ContentPipelineFileSystem.DeleteDirectory(stagingRoot, true);
                 throw;
             }
         }
@@ -243,13 +272,6 @@ namespace Chris.ContentPipeline
                 ManifestPath = Path.Combine(outputPath, PackageManifestName),
                 Manifest = manifest
             };
-        }
-
-        private static string GetPackageDirectoryName(string buildId)
-        {
-            if (string.IsNullOrWhiteSpace(buildId))
-                throw new InvalidDataException("Dynamic package build id is empty.");
-            return buildId.Length <= 16 ? buildId : buildId[..16];
         }
 
         private static ContentArtifactRecord SelectRemoteCatalog(ContentArtifactManifest manifest)
@@ -388,7 +410,7 @@ namespace Chris.ContentPipeline
             string dynamicLoadPath,
             IReadOnlyDictionary<string, BundleSource> bundles)
         {
-            var data = File.ReadAllBytes(catalogPath);
+            var data = ContentPipelineFileSystem.ReadAllBytes(catalogPath);
             var reader = new BinaryStorageBuffer.Reader(
                 data,
                 1024,
@@ -440,7 +462,9 @@ namespace Chris.ContentPipeline
                 ResourceProviderData = catalogData.ResourceProviderData
             };
             rewritten.SetData(entries);
-            File.WriteAllBytes(catalogPath, rewritten.SerializeToByteArray());
+            ContentPipelineFileSystem.WriteAllBytes(
+                catalogPath,
+                rewritten.SerializeToByteArray());
             return referenced.OrderBy(value => value, StringComparer.Ordinal).ToArray();
         }
 #else
@@ -449,13 +473,14 @@ namespace Chris.ContentPipeline
             string dynamicLoadPath,
             IReadOnlyDictionary<string, BundleSource> bundles)
         {
-            var catalog = JsonUtility.FromJson<ContentCatalogData>(File.ReadAllText(catalogPath));
+            var catalog = JsonUtility.FromJson<ContentCatalogData>(
+                ContentPipelineFileSystem.ReadAllText(catalogPath));
             if (catalog?.InternalIds == null)
                 throw new InvalidDataException($"JSON content catalog has no internal IDs: {catalogPath}");
             var referenced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             for (var i = 0; i < catalog.InternalIds.Length; i++)
                 catalog.InternalIds[i] = RewriteInternalId(catalog.InternalIds[i], dynamicLoadPath, bundles, referenced);
-            File.WriteAllText(catalogPath, JsonUtility.ToJson(catalog));
+            ContentPipelineFileSystem.WriteAllText(catalogPath, JsonUtility.ToJson(catalog));
             return referenced.OrderBy(value => value, StringComparer.Ordinal).ToArray();
         }
 #endif
@@ -496,7 +521,7 @@ namespace Chris.ContentPipeline
             {
                 relativePath = relativePath.Replace('\\', '/'),
                 kind = kind,
-                size = new FileInfo(path).Length,
+                size = ContentPipelineFileSystem.GetFileLength(path),
                 sha256 = ContentPipelineHash.Sha256File(path),
                 sourceScopes = scopes ?? Array.Empty<string>()
             };
@@ -521,9 +546,9 @@ namespace Chris.ContentPipeline
         {
             object value =
 #if (UNITY_6000_0_OR_NEWER && !ENABLE_JSON_CATALOG)
-                File.ReadAllBytes(catalogPath);
+                ContentPipelineFileSystem.ReadAllBytes(catalogPath);
 #else
-                File.ReadAllText(catalogPath);
+                ContentPipelineFileSystem.ReadAllText(catalogPath);
 #endif
             var hashingMethods = Type.GetType(
                 "UnityEditor.Build.Pipeline.Utilities.HashingMethods, Unity.ScriptableBuildPipeline.Editor");
@@ -560,8 +585,9 @@ namespace Chris.ContentPipeline
 
         private static void ValidateFile(string path, ContentArtifactRecord file)
         {
-            if (!File.Exists(path)) throw new FileNotFoundException("Dynamic package file is missing.", path);
-            if (new FileInfo(path).Length != file.size ||
+            if (!ContentPipelineFileSystem.FileExists(path))
+                throw new FileNotFoundException("Dynamic package file is missing.", path);
+            if (ContentPipelineFileSystem.GetFileLength(path) != file.size ||
                 !string.Equals(ContentPipelineHash.Sha256File(path), file.sha256, StringComparison.Ordinal))
                 throw new InvalidDataException($"Dynamic package file failed integrity validation: {path}");
         }

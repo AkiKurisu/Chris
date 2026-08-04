@@ -105,7 +105,7 @@ namespace Chris.ContentPipeline
                 request.Channel,
                 request.Target);
             var stagingParent = Path.Combine(platformRoot, ".staging");
-            Directory.CreateDirectory(stagingParent);
+            ContentPipelineFileSystem.CreateDirectory(stagingParent);
             using var processLock = ContentBuildProcessLock.Acquire(platformRoot);
             var projectBuildRoot = Path.Combine(
                 Path.GetDirectoryName(Application.dataPath)!,
@@ -399,7 +399,11 @@ namespace Chris.ContentPipeline
             {
                 foreach (var path in result.FileRegistry.GetFilePaths())
                 {
-                    if (!string.IsNullOrWhiteSpace(path) && File.Exists(path)) sourcePaths.Add(Path.GetFullPath(path));
+                    if (!string.IsNullOrWhiteSpace(path) &&
+                        ContentPipelineFileSystem.FileExists(path))
+                    {
+                        sourcePaths.Add(Path.GetFullPath(path));
+                    }
                 }
             }
 
@@ -438,15 +442,15 @@ namespace Chris.ContentPipeline
                         ContentPipelineFileSystem.Normalize(destination),
                         StringComparison.OrdinalIgnoreCase))
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                    File.Copy(sourcePath, destination, true);
+                    ContentPipelineFileSystem.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    ContentPipelineFileSystem.CopyFile(sourcePath, destination, true);
                 }
 
                 var record = new ContentArtifactRecord
                 {
                     relativePath = relativePath,
                     kind = ClassifyArtifact(relativePath),
-                    size = new FileInfo(destination).Length,
+                    size = ContentPipelineFileSystem.GetFileLength(destination),
                     sha256 = ContentPipelineHash.Sha256File(destination),
                     partitionId = bundlePartitions.TryGetValue(sourcePath, out var partition)
                         ? partition.PartitionId
@@ -457,9 +461,9 @@ namespace Chris.ContentPipeline
                 {
                     records.Add(record);
                 }
-                else if (File.Exists(destination))
+                else if (ContentPipelineFileSystem.FileExists(destination))
                 {
-                    File.Delete(destination);
+                    ContentPipelineFileSystem.DeleteFile(destination);
                 }
             }
 
@@ -504,7 +508,7 @@ namespace Chris.ContentPipeline
                 artifactIdentity));
             var contentStateRelativePath = string.Empty;
             if (!string.IsNullOrEmpty(buildResult.ContentStateFilePath) &&
-                File.Exists(buildResult.ContentStateFilePath))
+                ContentPipelineFileSystem.FileExists(buildResult.ContentStateFilePath))
             {
                 contentStateRelativePath = GetArtifactRelativePath(session, buildResult.ContentStateFilePath);
             }
@@ -704,11 +708,11 @@ namespace Chris.ContentPipeline
         {
             var container = manifest.buildKind == "baseline" ? "baselines" : "updates";
             committedPath = Path.Combine(platformRoot, container, manifest.buildId);
-            Directory.CreateDirectory(Path.GetDirectoryName(committedPath)!);
-            if (Directory.Exists(committedPath))
+            ContentPipelineFileSystem.CreateDirectory(Path.GetDirectoryName(committedPath)!);
+            if (ContentPipelineFileSystem.DirectoryExists(committedPath))
             {
                 var existingManifest = Path.Combine(committedPath, ManifestFileName);
-                if (!File.Exists(existingManifest) ||
+                if (!ContentPipelineFileSystem.FileExists(existingManifest) ||
                     !string.Equals(
                         ContentArtifactManifest.Load(existingManifest).buildId,
                         manifest.buildId,
@@ -721,7 +725,7 @@ namespace Chris.ContentPipeline
             }
             else
             {
-                Directory.Move(session.Root, committedPath);
+                ContentPipelineFileSystem.MoveDirectory(session.Root, committedPath);
                 session.MarkCommitted();
             }
 
@@ -738,7 +742,8 @@ namespace Chris.ContentPipeline
             if (manifest.buildKind == "baseline")
             {
                 var staleUpdatePointer = Path.Combine(platformRoot, "latest-update-candidate.json");
-                if (File.Exists(staleUpdatePointer)) File.Delete(staleUpdatePointer);
+                if (ContentPipelineFileSystem.FileExists(staleUpdatePointer))
+                    ContentPipelineFileSystem.DeleteFile(staleUpdatePointer);
             }
             ContentPipelineFileSystem.AtomicWrite(
                 Path.Combine(platformRoot, pointerName),
@@ -751,8 +756,9 @@ namespace Chris.ContentPipeline
             ContentPipelineBuildKind expectedKind)
         {
             var pointerPath = Path.Combine(platformRoot, pointerName);
-            if (!File.Exists(pointerPath)) return string.Empty;
-            var pointer = JsonUtility.FromJson<ContentBuildPointer>(File.ReadAllText(pointerPath));
+            if (!ContentPipelineFileSystem.FileExists(pointerPath)) return string.Empty;
+            var pointer = JsonUtility.FromJson<ContentBuildPointer>(
+                ContentPipelineFileSystem.ReadAllText(pointerPath));
             if (pointer == null ||
                 string.IsNullOrWhiteSpace(pointer.buildId) ||
                 string.IsNullOrWhiteSpace(pointer.manifest))
@@ -762,7 +768,7 @@ namespace Chris.ContentPipeline
             var manifestPath = Path.GetFullPath(Path.Combine(platformRoot, pointer.manifest));
             if (!ContentPipelineFileSystem.IsWithin(manifestPath, platformRoot))
                 throw new InvalidDataException($"Content build pointer escapes its platform root: {pointerPath}");
-            if (!File.Exists(manifestPath))
+            if (!ContentPipelineFileSystem.FileExists(manifestPath))
                 throw new FileNotFoundException("Content build pointer target is missing.", manifestPath);
             var manifest = ContentArtifactManifest.Load(manifestPath);
             var expectedKindValue = expectedKind.ToString().ToLowerInvariant();
@@ -845,7 +851,7 @@ namespace Chris.ContentPipeline
             if (string.IsNullOrWhiteSpace(relativePath))
                 throw new InvalidDataException("Baseline manifest does not contain a Content State path.");
             var path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath)!, relativePath));
-            if (!File.Exists(path))
+            if (!ContentPipelineFileSystem.FileExists(path))
                 throw new FileNotFoundException("Baseline Content State is missing.", path);
             return path;
         }
@@ -935,7 +941,7 @@ namespace Chris.ContentPipeline
 
         private static void AddFile(ISet<string> paths, string path)
         {
-            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            if (!string.IsNullOrWhiteSpace(path) && ContentPipelineFileSystem.FileExists(path))
             {
                 paths.Add(Path.GetFullPath(path));
             }
@@ -955,7 +961,8 @@ namespace Chris.ContentPipeline
             }
 
             var registeredFiles = result.FileRegistry?.GetFilePaths()
-                .Where(path => !string.IsNullOrEmpty(path) && File.Exists(path))
+                .Where(path => !string.IsNullOrEmpty(path) &&
+                               ContentPipelineFileSystem.FileExists(path))
                 .Select(Path.GetFullPath)
                 .ToArray() ?? Array.Empty<string>();
             var registeredRemoteFiles = registeredFiles
@@ -974,7 +981,7 @@ namespace Chris.ContentPipeline
 
             if (request.BuildKind == ContentPipelineBuildKind.Baseline &&
                 (string.IsNullOrEmpty(result.ContentStateFilePath) ||
-                 !File.Exists(result.ContentStateFilePath)))
+                 !ContentPipelineFileSystem.FileExists(result.ContentStateFilePath)))
             {
                 throw new InvalidDataException("Addressables did not produce the required baseline Content State.");
             }
@@ -1224,8 +1231,8 @@ namespace Chris.ContentPipeline
             Root = Path.GetFullPath(root);
             RemoteRoot = Path.Combine(Root, "remote");
             StateRoot = Path.Combine(Root, "state");
-            Directory.CreateDirectory(RemoteRoot);
-            Directory.CreateDirectory(StateRoot);
+            ContentPipelineFileSystem.CreateDirectory(RemoteRoot);
+            ContentPipelineFileSystem.CreateDirectory(StateRoot);
 
             _addressablesBuildPath = Path.GetFullPath(Addressables.BuildPath);
             _backupPath = Path.Combine(
@@ -1234,10 +1241,10 @@ namespace Chris.ContentPipeline
                 "ChrisContentPipeline",
                 "backups",
                 Guid.NewGuid().ToString("N"));
-            if (Directory.Exists(_addressablesBuildPath))
+            if (ContentPipelineFileSystem.DirectoryExists(_addressablesBuildPath))
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(_backupPath)!);
-                Directory.Move(_addressablesBuildPath, _backupPath);
+                ContentPipelineFileSystem.CreateDirectory(Path.GetDirectoryName(_backupPath)!);
+                ContentPipelineFileSystem.MoveDirectory(_addressablesBuildPath, _backupPath);
             }
         }
 
@@ -1254,7 +1261,8 @@ namespace Chris.ContentPipeline
 
         public void Discard()
         {
-            if (Directory.Exists(Root)) Directory.Delete(Root, true);
+            if (ContentPipelineFileSystem.DirectoryExists(Root))
+                ContentPipelineFileSystem.DeleteDirectory(Root, true);
             _committed = true;
         }
 
@@ -1265,15 +1273,16 @@ namespace Chris.ContentPipeline
             Exception cleanupException = null;
             try
             {
-                if (Directory.Exists(_addressablesBuildPath))
+                if (ContentPipelineFileSystem.DirectoryExists(_addressablesBuildPath))
                 {
-                    Directory.Delete(_addressablesBuildPath, true);
+                    ContentPipelineFileSystem.DeleteDirectory(_addressablesBuildPath, true);
                 }
 
-                if (Directory.Exists(_backupPath))
+                if (ContentPipelineFileSystem.DirectoryExists(_backupPath))
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(_addressablesBuildPath)!);
-                    Directory.Move(_backupPath, _addressablesBuildPath);
+                    ContentPipelineFileSystem.CreateDirectory(
+                        Path.GetDirectoryName(_addressablesBuildPath)!);
+                    ContentPipelineFileSystem.MoveDirectory(_backupPath, _addressablesBuildPath);
                 }
             }
             catch (Exception exception)
@@ -1283,9 +1292,9 @@ namespace Chris.ContentPipeline
 
             try
             {
-                if (!_committed && Directory.Exists(Root))
+                if (!_committed && ContentPipelineFileSystem.DirectoryExists(Root))
                 {
-                    Directory.Delete(Root, true);
+                    ContentPipelineFileSystem.DeleteDirectory(Root, true);
                 }
             }
             catch (Exception exception)
@@ -1317,11 +1326,11 @@ namespace Chris.ContentPipeline
         public static ContentBuildProcessLock Acquire(string platformRoot)
         {
             var root = ContentPipelineFileSystem.Normalize(platformRoot);
-            Directory.CreateDirectory(root);
+            ContentPipelineFileSystem.CreateDirectory(root);
             var path = Path.Combine(root, ".build.lock");
             try
             {
-                return new ContentBuildProcessLock(new FileStream(
+                return new ContentBuildProcessLock(ContentPipelineFileSystem.OpenFile(
                     path,
                     FileMode.OpenOrCreate,
                     FileAccess.ReadWrite,
@@ -1351,7 +1360,8 @@ namespace Chris.ContentPipeline
         {
             var assets = graph.Assets.Select(node =>
             {
-                var dependencyHash = !string.IsNullOrEmpty(node.AssetPath) && File.Exists(node.AssetPath)
+                var dependencyHash = !string.IsNullOrEmpty(node.AssetPath) &&
+                                     ContentPipelineFileSystem.FileExists(node.AssetPath)
                     ? AssetDatabase.GetAssetDependencyHash(node.AssetPath).ToString()
                     : "missing";
                 var fingerprint = ContentPipelineHash.Sha256(string.Join(

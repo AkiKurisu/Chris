@@ -545,7 +545,7 @@ DynamicContentPackageResult package =
         new DynamicContentPackageRequest
         {
             ArtifactManifestPath = result.ManifestPath,
-            OutputRoot = "Export/RuntimePackages",
+            OutputRoot = "Export/ContentOutput",
             DynamicLoadPath = ResourceSystem.DynamicLoadPath
         });
 
@@ -573,14 +573,19 @@ The output is:
 
 ```text
 <OutputRoot>/
-  b|u/
-    <short-build-id>/
+  baselines|updates/
+    <first-32-characters-of-build-id>/
       package-manifest.json
       abdata/
         catalog.bin|catalog.json
         catalog.hash
         *.bundle
 ```
+
+The physical directory uses the first 32 hexadecimal characters, matching
+Unity's `Hash128` convention, while the package manifest retains the complete
+SHA-256 build ID. Reusing an existing directory always compares the complete
+ID and rejects a prefix collision.
 
 `DynamicContentPackageResult.PackagePath` points to the `abdata` directory.
 Pass this directory to `ResourceSystem.LoadCatalogAsync` at runtime.
@@ -607,7 +612,7 @@ DynamicContentPackageResult updatePackage =
         new DynamicContentPackageRequest
         {
             ArtifactManifestPath = update.ManifestPath,
-            OutputRoot = "Export/RuntimePackages",
+            OutputRoot = "Export/ContentOutput",
             DynamicLoadPath = ResourceSystem.DynamicLoadPath,
             BaselinePackageManifestPath = baselinePackage.ManifestPath
         });
@@ -623,6 +628,18 @@ directory with only the update payload.
 
 The package builder throws on failure. It never commits a partial runtime
 package.
+
+### Windows Long Paths
+
+Content Pipeline keeps ordinary absolute paths in manifests, diagnostics, and
+public results. At the direct `System.IO` boundary, Windows paths at or beyond
+the legacy `MAX_PATH` limit are adapted to the `\\?\` form (or `\\?\UNC\` for
+network shares). Artifact hashing, package copying, atomic commits, pointer
+I/O, and storage maintenance all use this boundary.
+
+Addressables, SBP, AssetDatabase, and other Unity APIs continue to receive
+ordinary paths. Long-path handling does not weaken source artifact size or
+SHA-256 validation.
 
 ## Editor AssetDatabase Mount
 
